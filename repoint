@@ -1,0 +1,203 @@
+#!/bin/bash
+
+# Disable shellcheck warnings for useless-use-of-cat. UUOC is good
+# practice, not bad: clearer, safer, less error-prone.
+# shellcheck disable=SC2002
+
+# User configuration for preferred SML implementation (polyml, mlton,
+# mlkit, smlnj)
+sml="$REPOINT_SML"
+
+set -eu
+
+# Avoid gussying up output
+export HGPLAIN=true
+
+mydir=$(dirname "$0")
+program="$mydir/repoint.sml"
+
+lockfile="$mydir/.repoint.pid"
+
+waitcount=0
+while ! ( set -o noclobber ; echo $$ > "$lockfile" ) 2>/dev/null ; do
+    other=$(cat "$lockfile")
+    case "$waitcount" in
+        *0) echo 1>&2
+            echo "Repoint (pid $other) is already running here, waiting for it to complete" 1>&2
+            echo "(^C to abandon, or delete $lockfile if there is no such process)" 1>&2;;
+        179) echo "ERROR: Waited too long, giving up" 1>&2
+             exit 1;;
+        *) ;;
+    esac
+    sleep 1
+    echo -n . 1>&2
+    waitcount=$(($waitcount + 1))
+done
+
+cleanup_lockfile() {
+    rm -f "$lockfile"
+}
+
+hasher=
+local_install=
+if [ -w "$mydir" ]; then
+    if echo | sha256sum >/dev/null 2>&1 ; then
+	hasher=sha256sum
+        local_install=true
+    elif echo | shasum >/dev/null 2>&1 ; then
+	hasher=shasum
+	local_install=true
+    else
+        echo "WARNING: sha256sum or shasum program not found" 1>&2
+    fi
+fi
+
+gen_sml=
+gen_out_local=
+gen_out_global=
+gen_out_exec=
+if [ -n "$local_install" ]; then
+    hash=$(echo "$sml" | cat "$program" - | $hasher | cut -c1-16)
+    gen_sml="$mydir/.repoint-$hash.sml"
+    gen_out_local="$mydir/.repoint-$hash.bin"
+    gen_out_exec="$gen_out_local"
+else
+    gen_sml=$(mktemp /tmp/repoint-XXXXXXXX.sml)
+    gen_out_global=$(mktemp /tmp/repoint-XXXXXXXX.bin)
+    gen_out_exec="$gen_out_global"
+fi
+
+cleanup() {
+    if [ -n "$gen_sml" ]; then rm -f "$gen_sml"; fi
+    if [ -n "$gen_out_global" ]; then rm -f "$gen_out_global"; fi
+    cleanup_lockfile
+}
+
+trap cleanup 0
+
+if [ -x "$gen_out_exec" ]; then
+    "$gen_out_exec" "$@"
+    exit $?
+fi
+
+# We need one of Poly/ML, SML/NJ, MLton, or MLKit. Since we're running
+# a single-file SML program as if it were a script, our order of
+# preference is usually based on startup speed. An exception is the
+# local_install case, where we retain a persistent binary
+
+if [ -z "$sml" ]; then
+    if [ -n "$local_install" ] && mlton 2>&1 | grep -q 'MLton'; then
+	sml="mlton"
+    elif sml -h 2>&1 | grep -q 'Standard ML of New Jersey'; then
+	sml="smlnj"
+    # We would prefer Poly/ML to SML/NJ, except that Poly v5.7 has a
+    # nasty bug that occasionally causes it to deadlock on startup.
+    # That is fixed in v5.7.1, so we could promote it up the order
+    # again at some point in future
+    elif echo | poly -v 2>/dev/null | grep -q 'Poly/ML'; then
+	sml="polyml"
+    elif mlton 2>&1 | grep -q 'MLton'; then
+	sml="mlton"
+    # MLKit is at the bottom because it leaves compiled files around
+    # in an MLB subdir in the current directory
+    elif mlkit 2>&1 | grep -q 'MLKit'; then
+	sml="mlkit"
+    else cat 1>&2 <<EOF
+
+ERROR: No supported SML compiler or interpreter found       
+EOF
+	cat 1>&2 <<EOF
+
+  The Repoint external source code manager needs a Standard ML (SML)
+  compiler or interpreter to run.
+
+  Please ensure you have one of the following SML implementations
+  installed and present in your PATH, and try again.
+
+    1. Standard ML of New Jersey
+       - may be found in a distribution package called: smlnj
+       - executable name: sml
+
+    2. Poly/ML
+       - may be found in a distribution package called: polyml
+       - executable name: poly
+
+    3. MLton
+       - may be found in a distribution package called: mlton
+       - executable name: mlton
+
+    4. MLKit
+       - may be found in a distribution package called: mlkit
+       - executable name: mlkit
+
+EOF
+	exit 2
+    fi
+fi
+
+arglist=""
+for arg in "$@"; do
+    if [ -n "$arglist" ]; then arglist="$arglist,"; fi
+    if echo "$arg" | grep -q '["'"'"']' ; then
+	arglist="$arglist\"usage\""
+    else
+	arglist="$arglist\"$arg\""
+    fi
+done
+
+case "$sml" in
+    polyml)
+        if [ -n "$local_install" ] && polyc --help >/dev/null 2>&1 ; then
+            if [ ! -x "$gen_out_exec" ]; then
+                polyc -o "$gen_out_exec" "$program"
+            fi
+	    "$gen_out_exec" "$@"
+        else
+            echo 'use "'"$program"'"; repoint ['"$arglist"'];' |
+                poly -q --error-exit
+        fi ;;
+    mlton)
+        if [ ! -x "$gen_out_exec" ]; then
+	    echo "[Precompiling Repoint binary...]" 1>&2
+	    echo "val _ = main ()" | cat "$program" - > "$gen_sml"
+	    mlton -output "$gen_out_exec" "$gen_sml"
+        fi
+	"$gen_out_exec" "$@" ;;
+    mlkit)
+        if [ ! -x "$gen_out_exec" ]; then
+	    echo "[Precompiling Repoint binary...]" 1>&2
+	    echo "val _ = main ()" | cat "$program" - > "$gen_sml"
+	    mlkit -output "$gen_out_exec" "$gen_sml"
+        fi
+	"$gen_out_exec" "$@" ;;
+    smlnj)
+	cat "$program" | (
+	    cat <<EOF
+val smlrun__cp = 
+    let val x = !Control.Print.out in
+        Control.Print.out := { say = fn _ => (), flush = fn () => () };
+        x
+    end;
+val smlrun__prev = ref "";
+Control.Print.out := { 
+    say = fn s => 
+        (if String.isSubstring " Error" s
+         then (Control.Print.out := smlrun__cp;
+               (#say smlrun__cp) (!smlrun__prev);
+               (#say smlrun__cp) s)
+         else (smlrun__prev := s; ())),
+    flush = fn s => ()
+};
+EOF
+	    cat -
+	    cat <<EOF
+val _ = repoint [$arglist];
+val _ = OS.Process.exit (OS.Process.success);
+EOF
+            ) > "$gen_sml"
+	CM_VERBOSE=false sml "$gen_sml" ;;
+    *)
+	echo "ERROR: Unknown SML implementation name: $sml" 1>&2;
+	exit 2 ;;
+esac
+       
