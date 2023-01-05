@@ -3,6 +3,7 @@
 
 * Method by Frithjof Vollmer, HMDK Stuttgart
 * Code by Chris Cannam, Particular Programs Ltd
+* Makes use of pYIN by Matthias Mauch
 
 ## To build:
 

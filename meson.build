@@ -21,17 +21,30 @@ system = host_machine.system()
 architecture = host_machine.cpu_family()
 cpp = meson.get_compiler('cpp')
 
-vamp_dir = 'ext/vamp-plugin-sdk'
-
 plugin_sources = [
   'articulation/Articulation.cpp',
   'libmain.cpp',
 ]
 
-sdk_sources = [
+vamp_dir = 'ext/vamp-plugin-sdk'
+vamp_sources = [
   vamp_dir / 'src/vamp-sdk/PluginAdapter.cpp',
   vamp_dir / 'src/vamp-sdk/RealTime.cpp',
   vamp_dir / 'src/vamp-sdk/FFT.cpp',
+]
+
+pyin_dir = 'ext/pyin'
+pyin_sources = [
+  pyin_dir / 'PYinVamp.cpp',
+  pyin_dir / 'YinVamp.cpp',
+  pyin_dir / 'LocalCandidatePYIN.cpp',
+  pyin_dir / 'Yin.cpp',
+  pyin_dir / 'YinUtil.cpp',
+  pyin_dir / 'MonoNote.cpp',
+  pyin_dir / 'MonoNoteParameters.cpp',
+  pyin_dir / 'SparseHMM.cpp',
+  pyin_dir / 'MonoNoteHMM.cpp',
+  pyin_dir / 'MonoPitchHMM.cpp',
 ]
 
 if system == 'darwin'
@@ -51,7 +64,8 @@ endif
 expressive_means = shared_library(
   'expressive-means',
   plugin_sources,
-  sdk_sources,
+  vamp_sources,
+  pyin_sources,
   include_directories: [ vamp_dir ],
   link_args: [ vamp_symbol_args ],
   name_prefix: '',
