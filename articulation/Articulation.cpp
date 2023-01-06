@@ -11,12 +11,33 @@
 
 #include "Articulation.h"
 
+using std::cerr;
+using std::endl;
+
+static const float default_pitchAverageWindow_ms = 250.f;
+static const float default_onsetSensitivityPitch_cents = 20.f;
+static const float default_onsetSensitivityNoise_percent = 10.f;
+static const float default_onsetSensitivityLevel_dB = 20.f;
+static const float default_onsetSensitivityNoiseTimeWindow_ms = 50.f;
+static const float default_minimumOnsetInterval_ms = 200.f;
+static const float default_sustainBeginThreshold_ms = 50.f;
+static const float default_sustainEndThreshold_dBFS = -45.f;
+static const float default_volumeDevelopmentThreshold_dB = 2.f;
+static const float default_scalingFactor = 10.7f;
 
 Articulation::Articulation(float inputSampleRate) :
-    Plugin(inputSampleRate)
-    // Also be sure to set your plugin parameters (presumably stored
-    // in member variables) to their default values here -- the host
-    // will not do that for you
+    Plugin(inputSampleRate),
+    m_pyin(inputSampleRate),
+    m_pitchAverageWindow_ms(default_pitchAverageWindow_ms),
+    m_onsetSensitivityPitch_cents(default_onsetSensitivityPitch_cents),
+    m_onsetSensitivityNoise_percent(default_onsetSensitivityNoise_percent),
+    m_onsetSensitivityLevel_dB(default_onsetSensitivityLevel_dB),
+    m_onsetSensitivityNoiseTimeWindow_ms(default_onsetSensitivityNoiseTimeWindow_ms),
+    m_minimumOnsetInterval_ms(default_minimumOnsetInterval_ms),
+    m_sustainBeginThreshold_ms(default_sustainBeginThreshold_ms),
+    m_sustainEndThreshold_dBFS(default_sustainEndThreshold_dBFS),
+    m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
+    m_scalingFactor(default_scalingFactor)
 {
 }
 
@@ -77,15 +98,13 @@ Articulation::getInputDomain() const
 size_t
 Articulation::getPreferredBlockSize() const
 {
-    return 0; // 0 means "I can handle any block size"
+    return m_pyin.getPreferredBlockSize();
 }
 
 size_t 
 Articulation::getPreferredStepSize() const
 {
-    return 0; // 0 means "anything sensible"; in practice this
-              // means the same as the block size for TimeDomain
-              // plugins, or half of it for FrequencyDomain plugins
+    return m_pyin.getPreferredStepSize();
 }
 
 size_t
@@ -105,45 +124,174 @@ Articulation::getParameterDescriptors() const
 {
     ParameterList list;
 
-    // If the plugin has no adjustable parameters, return an empty
-    // list here (and there's no need to provide implementations of
-    // getParameter and setParameter in that case either).
-
-    // Note that it is your responsibility to make sure the parameters
-    // start off having their default values (e.g. in the constructor
-    // above).  The host needs to know the default value so it can do
-    // things like provide a "reset to default" function, but it will
-    // not explicitly set your parameters to their defaults for you if
-    // they have not changed in the mean time.
+    ParameterList pyinParams = m_pyin.getParameterDescriptors();
+    for (auto d: pyinParams) {
+        // I think these ones are not relevant to us? Check this
+        if (d.identifier == "fixedlag" ||
+            d.identifier == "outputunvoiced" ||
+            d.identifier == "onsetsensitivity" ||
+            d.identifier == "prunethresh") {
+            continue;
+        }
+        d.identifier = "pyin-" + d.identifier;
+        d.name = "pYIN: " + d.name;
+        list.push_back(d);
+    }
 
     ParameterDescriptor d;
-    d.identifier = "parameter";
-    d.name = "Some Parameter";
+
     d.description = "";
-    d.unit = "";
-    d.minValue = 0;
-    d.maxValue = 10;
-    d.defaultValue = 5;
     d.isQuantized = false;
+
+    d.identifier = "pitchAverageWindow";
+    d.name = "Moving pitch average window";
+    d.unit = "ms";
+    d.minValue = 20.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = default_pitchAverageWindow_ms;
     list.push_back(d);
 
+    d.identifier = "onsetSensitivityPitch";
+    d.name = "Onset sensitivity: Pitch";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_onsetSensitivityPitch_cents;
+    list.push_back(d);
+    
+    d.identifier = "onsetSensitivityNoise";
+    d.name = "Onset sensitivity: Noise";
+    d.unit = "%";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_onsetSensitivityNoise_percent;
+    list.push_back(d);
+    
+    d.identifier = "onsetSensitivityLevel";
+    d.name = "Onset sensitivity: Level";
+    d.unit = "dB";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_onsetSensitivityLevel_dB;
+    list.push_back(d);
+    
+    d.identifier = "onsetSensitivityNoiseTimeWindow";
+    d.name = "Onset sensitivity: Noise time window";
+    d.unit = "ms";
+    d.minValue = 20.f;
+    d.maxValue = 500.f;
+    d.defaultValue = default_onsetSensitivityNoiseTimeWindow_ms;
+    list.push_back(d);
+    
+    d.identifier = "minimumOnsetInterval";
+    d.name = "Minimum onset interval";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = default_minimumOnsetInterval_ms;
+    list.push_back(d);
+    
+    d.identifier = "sustainBeginThreshold";
+    d.name = "Sustain phase begin threshold";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = default_sustainBeginThreshold_ms;
+    list.push_back(d);
+    
+    d.identifier = "sustainEndThreshold";
+    d.name = "Sustain phase end threshold";
+    d.unit = "dBFS";
+    d.minValue = -80.f;
+    d.maxValue = 0.f;
+    d.defaultValue = default_sustainEndThreshold_dBFS;
+    list.push_back(d);
+    
+    d.identifier = "volumeDevelopmentThreshold";
+    d.name = "Volume development threshold";
+    d.unit = "dB";
+    d.minValue = 0.f;
+    d.maxValue = 10.f;
+    d.defaultValue = default_volumeDevelopmentThreshold_dB;
+    list.push_back(d);
+    
+    d.identifier = "scalingFactor";
+    d.name = "Scaling factor";
+    d.unit = "";
+    d.minValue = 1.f;
+    d.maxValue = 30.f;
+    d.defaultValue = default_scalingFactor;
+    list.push_back(d);
+    
     return list;
 }
 
 float
 Articulation::getParameter(string identifier) const
 {
-    if (identifier == "parameter") {
-        return 5; // return the ACTUAL current value of your parameter here!
+    if (identifier.size() > 5 &&
+        string(identifier.begin(), identifier.begin() + 5) == "pyin-") {
+        string pyinParam(identifier.begin() + 5, identifier.end());
+        cerr << "<- " << pyinParam << endl;
+        return m_pyin.getParameter(pyinParam);
     }
-    return 0;
+    
+    if (identifier == "pitchAverageWindow") {
+        return m_pitchAverageWindow_ms;
+    } else if (identifier == "onsetSensitivityPitch") {
+        return m_onsetSensitivityPitch_cents;
+    } else if (identifier == "onsetSensitivityNoise") {
+        return m_onsetSensitivityNoise_percent;
+    } else if (identifier == "onsetSensitivityLevel") {
+        return m_onsetSensitivityLevel_dB;
+    } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
+        return m_onsetSensitivityNoiseTimeWindow_ms;
+    } else if (identifier == "minimumOnsetInterval") {
+        return m_minimumOnsetInterval_ms;
+    } else if (identifier == "sustainBeginThreshold") {
+        return m_sustainBeginThreshold_ms;
+    } else if (identifier == "sustainEndThreshold") {
+        return m_sustainEndThreshold_dBFS;
+    } else if (identifier == "volumeDevelopmentThreshold") {
+        return m_volumeDevelopmentThreshold_dB;
+    } else if (identifier == "scalingFactor") {
+        return m_scalingFactor;
+    }
+    
+    return 0.f;
 }
 
 void
 Articulation::setParameter(string identifier, float value) 
 {
-    if (identifier == "parameter") {
-        // set the actual value of your parameter
+    if (identifier.size() > 5 &&
+        string(identifier.begin(), identifier.begin() + 5) == "pyin-") {
+        string pyinParam(identifier.begin() + 5, identifier.end());
+        cerr << pyinParam << " -> " << value << endl;
+        m_pyin.setParameter(pyinParam, value);
+        return;
+    }
+
+    if (identifier == "pitchAverageWindow") {
+        m_pitchAverageWindow_ms = value;
+    } else if (identifier == "onsetSensitivityPitch") {
+        m_onsetSensitivityPitch_cents = value;
+    } else if (identifier == "onsetSensitivityNoise") {
+        m_onsetSensitivityNoise_percent = value;
+    } else if (identifier == "onsetSensitivityLevel") {
+        m_onsetSensitivityLevel_dB = value;
+    } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
+        m_onsetSensitivityNoiseTimeWindow_ms = value;
+    } else if (identifier == "minimumOnsetInterval") {
+        m_minimumOnsetInterval_ms = value;
+    } else if (identifier == "sustainBeginThreshold") {
+        m_sustainBeginThreshold_ms = value;
+    } else if (identifier == "sustainEndThreshold") {
+        m_sustainEndThreshold_dBFS = value;
+    } else if (identifier == "volumeDevelopmentThreshold") {
+        m_volumeDevelopmentThreshold_dB = value;
+    } else if (identifier == "scalingFactor") {
+        m_scalingFactor = value;
     }
 }
 
@@ -151,17 +299,13 @@ Articulation::ProgramList
 Articulation::getPrograms() const
 {
     ProgramList list;
-
-    // If you have no programs, return an empty list (or simply don't
-    // implement this function or getCurrentProgram/selectProgram)
-
     return list;
 }
 
 string
 Articulation::getCurrentProgram() const
 {
-    return ""; // no programs
+    return ""; 
 }
 
 void
@@ -173,9 +317,6 @@ Articulation::OutputList
 Articulation::getOutputDescriptors() const
 {
     OutputList list;
-
-    // See OutputDescriptor documentation for the possibilities here.
-    // Every plugin must have at least one output.
 
     OutputDescriptor d;
     d.identifier = "output";
@@ -199,6 +340,11 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
     if (channels < getMinChannelCount() ||
 	channels > getMaxChannelCount()) return false;
 
+    if (!m_pyin.initialise(channels, stepSize, blockSize)) {
+        cerr << "ERROR: Articulation::initialise: pYIN initialise failed" << endl;
+        return false;
+    }
+    
     // Real initialisation work goes here!
 
     return true;
@@ -207,7 +353,7 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
 void
 Articulation::reset()
 {
-    // Clear buffers, reset stored values, etc
+    m_pyin.reset();
 }
 
 Articulation::FeatureSet
