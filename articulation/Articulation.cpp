@@ -37,7 +37,9 @@ Articulation::Articulation(float inputSampleRate) :
     m_sustainBeginThreshold_ms(default_sustainBeginThreshold_ms),
     m_sustainEndThreshold_dBFS(default_sustainEndThreshold_dBFS),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
-    m_scalingFactor(default_scalingFactor)
+    m_scalingFactor(default_scalingFactor),
+    m_blockSize(m_pyin.getPreferredBlockSize()),
+    m_stepSize(m_pyin.getPreferredStepSize())
 {
 }
 
@@ -316,19 +318,72 @@ Articulation::selectProgram(string name)
 Articulation::OutputList
 Articulation::getOutputDescriptors() const
 {
+    OutputList pyinOutputs = m_pyin.getOutputDescriptors();
+    m_pyinSmoothedPitchTrackOutput = -1;
+    for (int i = 0; i < int(pyinOutputs.size()); ++i) {
+        if (pyinOutputs[i].identifier == "smoothedpitchtrack") {
+            m_pyinSmoothedPitchTrackOutput = i;
+        }
+    }
+    if (m_pyinSmoothedPitchTrackOutput == -1) {
+        cerr << "ERROR: Articulation::getOutputDescriptors: pYIN smoothed pitch track output not found" << endl;
+        m_pyinSmoothedPitchTrackOutput = 0;
+    }
+    
     OutputList list;
-
     OutputDescriptor d;
-    d.identifier = "output";
-    d.name = "My Output";
+    
+    d.identifier = "summary";
+    d.name = "Summary";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
     d.isQuantized = false;
-    d.sampleType = OutputDescriptor::OneSamplePerStep;
+    d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
+    m_summaryOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "articulationType";
+    d.name = "Articulation Type";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.hasDuration = false;
+    m_articulationTypeOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "pitchTrack";
+    d.name = "Pitch Track";
+    d.description = "The smoothed pitch track computed by pYIN.";
+    d.unit = "Hz";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_pitchTrackOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "articulationIndex";
+    d.name = "Articulation Index";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.hasDuration = false;
+    m_articulationIndexOutput = int(list.size());
     list.push_back(d);
 
     return list;
@@ -344,6 +399,9 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         cerr << "ERROR: Articulation::initialise: pYIN initialise failed" << endl;
         return false;
     }
+
+    m_stepSize = stepSize;
+    m_blockSize = blockSize;
     
     // Real initialisation work goes here!
 
@@ -359,13 +417,22 @@ Articulation::reset()
 Articulation::FeatureSet
 Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
-    // Do actual work!
-    return FeatureSet();
+    FeatureSet fs;
+    FeatureSet pyinFeatures = m_pyin.process(inputBuffers, timestamp);
+    fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
+    
+    
+
+    return fs;
 }
 
 Articulation::FeatureSet
 Articulation::getRemainingFeatures()
 {
-    return FeatureSet();
+    FeatureSet fs;
+    FeatureSet pyinFeatures = m_pyin.getRemainingFeatures();
+    fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
+    
+    return fs;
 }
 

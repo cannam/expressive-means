@@ -74,7 +74,16 @@ protected:
     float m_sustainEndThreshold_dBFS;           // 4.2, b_2
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
-    
+
+    mutable int m_pyinSmoothedPitchTrackOutput;
+
+    mutable int m_summaryOutput;
+    mutable int m_articulationTypeOutput;
+    mutable int m_pitchTrackOutput;
+    mutable int m_articulationIndexOutput;
+
+    int m_blockSize;
+    int m_stepSize;
 };
 
 #endif
