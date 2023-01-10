@@ -9,12 +9,13 @@
     COPYING included with this distribution for more information.
 */
 
-#ifndef ARTICULATION_H
-#define ARTICULATION_H
+#ifndef EXPRESSIVE_MEANS_ARTICULATION_H
+#define EXPRESSIVE_MEANS_ARTICULATION_H
 
 #include <vamp-sdk/Plugin.h>
 
 #include "../ext/pyin/PYinVamp.h"
+#include "common/Power.h"
 
 using std::string;
 
@@ -57,6 +58,10 @@ public:
 
 protected:
     PYinVamp m_pyin;
+    Power m_power;
+
+    bool m_haveStartTime;
+    Vamp::RealTime m_startTime;
 
     // Our parameters. Currently only those with simple single
     // floating-point values are provided. Multiple floating-point
@@ -80,6 +85,7 @@ protected:
     mutable int m_summaryOutput;
     mutable int m_articulationTypeOutput;
     mutable int m_pitchTrackOutput;
+    mutable int m_powerOutput;
     mutable int m_articulationIndexOutput;
 
     int m_blockSize;

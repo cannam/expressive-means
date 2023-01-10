@@ -28,6 +28,7 @@ static const float default_scalingFactor = 10.7f;
 Articulation::Articulation(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_pyin(inputSampleRate),
+    m_haveStartTime(false),
     m_pitchAverageWindow_ms(default_pitchAverageWindow_ms),
     m_onsetSensitivityPitch_cents(default_onsetSensitivityPitch_cents),
     m_onsetSensitivityNoise_percent(default_onsetSensitivityNoise_percent),
@@ -373,6 +374,20 @@ Articulation::getOutputDescriptors() const
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
     
+    d.identifier = "power";
+    d.name = "Power";
+    d.description = "Smoothed power curve.";
+    d.unit = "dB";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_powerOutput = int(list.size());
+    list.push_back(d);
+    
     d.identifier = "articulationIndex";
     d.name = "Articulation Index";
     d.description = "";
@@ -392,14 +407,24 @@ Articulation::getOutputDescriptors() const
 bool
 Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
 {
-    if (channels < getMinChannelCount() ||
-	channels > getMaxChannelCount()) return false;
+    if (channels < getMinChannelCount() || channels > getMaxChannelCount()) {
+        cerr << "ERROR: Articulation::initialise: unsupported channel count "
+             << channels << endl;
+        return false;
+    }
 
+    if (stepSize > blockSize) {
+        cerr << "ERROR: Articulation::initialise: step size may not exceed block size" << endl;
+        return false;
+    }
+    
     if (!m_pyin.initialise(channels, stepSize, blockSize)) {
         cerr << "ERROR: Articulation::initialise: pYIN initialise failed" << endl;
         return false;
     }
 
+    m_power.initialise(stepSize, blockSize, 18, -120.0);
+    
     m_stepSize = stepSize;
     m_blockSize = blockSize;
     
@@ -412,16 +437,23 @@ void
 Articulation::reset()
 {
     m_pyin.reset();
+    m_power = Power();
+    m_haveStartTime = false;
 }
 
 Articulation::FeatureSet
 Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
+    if (!m_haveStartTime) {
+        m_startTime = timestamp;
+        m_haveStartTime = true;
+    }
+    
     FeatureSet fs;
     FeatureSet pyinFeatures = m_pyin.process(inputBuffers, timestamp);
     fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
     
-    
+    m_power.process(inputBuffers[0]);
 
     return fs;
 }
@@ -430,8 +462,19 @@ Articulation::FeatureSet
 Articulation::getRemainingFeatures()
 {
     FeatureSet fs;
+
     FeatureSet pyinFeatures = m_pyin.getRemainingFeatures();
     fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
+
+    auto smoothedPower = m_power.getSmoothedPower();
+    for (size_t i = 0; i < smoothedPower.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
+            (i * m_stepSize, m_inputSampleRate);
+        f.values.push_back(smoothedPower[i]);
+        fs[m_powerOutput].push_back(f);
+    }
     
     return fs;
 }

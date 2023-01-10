@@ -33,6 +33,12 @@ vamp_sources = [
   vamp_dir / 'src/vamp-sdk/FFT.cpp',
 ]
 
+#qmdsp_dir = 'ext/qm-dsp'
+#qmdsp_sources = [
+#  qmdsp_dir / 'dsp/signalconditioning/Filter.cpp',
+#  qmdsp_dir / 'dsp/signalconditioning/FiltFilt.cpp',
+#]
+
 pyin_dir = 'ext/pyin'
 pyin_sources = [
   pyin_dir / 'PYinVamp.cpp',
@@ -65,6 +71,7 @@ expressive_means = shared_library(
   'expressive-means',
   plugin_sources,
   vamp_sources,
+#  qmdsp_sources,
   pyin_sources,
   include_directories: [ vamp_dir ],
   link_args: [ vamp_symbol_args ],
