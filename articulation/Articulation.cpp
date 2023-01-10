@@ -400,6 +400,20 @@ Articulation::getOutputDescriptors() const
     d.hasDuration = false;
     m_articulationIndexOutput = int(list.size());
     list.push_back(d);
+    
+    d.identifier = "transient";
+    d.name = "Transient Detection Function";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_transientDfOutput = int(list.size());
+    list.push_back(d);
 
     return list;
 }
@@ -423,13 +437,15 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         return false;
     }
 
-    m_power.initialise(stepSize, blockSize, 18, -120.0);
+    m_power.initialise(blockSize, 18, -120.0);
+
+    //!!! actually want two of these, one parameterised
+    m_levelRise.initialise(m_inputSampleRate, blockSize, 100.0, 4000.0, 20.0,
+                           ceil(0.05 * m_inputSampleRate / m_stepSize));
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
     
-    // Real initialisation work goes here!
-
     return true;
 }
 
@@ -438,6 +454,7 @@ Articulation::reset()
 {
     m_pyin.reset();
     m_power = Power();
+    m_levelRise = SpectralLevelRise();
     m_haveStartTime = false;
 }
 
@@ -454,6 +471,7 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
     
     m_power.process(inputBuffers[0]);
+    m_levelRise.process(inputBuffers[0]);
 
     return fs;
 }
@@ -474,6 +492,16 @@ Articulation::getRemainingFeatures()
             (i * m_stepSize, m_inputSampleRate);
         f.values.push_back(smoothedPower[i]);
         fs[m_powerOutput].push_back(f);
+    }
+    
+    auto fractions = m_levelRise.getFractions();
+    for (size_t i = 0; i < fractions.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
+            (i * m_stepSize, m_inputSampleRate);
+        f.values.push_back(fractions[i]);
+        fs[m_transientDfOutput].push_back(f);
     }
     
     return fs;

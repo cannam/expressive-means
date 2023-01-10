@@ -16,6 +16,7 @@
 
 #include "../ext/pyin/PYinVamp.h"
 #include "common/Power.h"
+#include "common/SpectralLevelRise.h"
 
 using std::string;
 
@@ -59,6 +60,7 @@ public:
 protected:
     PYinVamp m_pyin;
     Power m_power;
+    SpectralLevelRise m_levelRise;
 
     bool m_haveStartTime;
     Vamp::RealTime m_startTime;
@@ -87,6 +89,7 @@ protected:
     mutable int m_pitchTrackOutput;
     mutable int m_powerOutput;
     mutable int m_articulationIndexOutput;
+    mutable int m_transientDfOutput; //!!! temporary (probably)
 
     int m_blockSize;
     int m_stepSize;

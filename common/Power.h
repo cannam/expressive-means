@@ -24,24 +24,24 @@
 class Power
 {
 public:
-    Power() :
-        m_stepSize(0),
-        m_blockSize(0),
-        m_filterLength(0),
-        m_threshold(0.0) {}
+    Power() : m_initialised(false) {}
     ~Power() {}
 
-    void initialise(size_t stepSize, size_t blockSize, size_t filterLength,
-                    double threshold_dB) {
-        m_stepSize = stepSize;
+    void initialise(size_t blockSize, int filterLength, double threshold_dB) {
+
+        if (m_filterLength < 1) {
+            throw std::logic_error("Power::initialise: filterLength must be > 0");
+        }
+        
         m_blockSize = blockSize;
         m_filterLength = filterLength;
         m_threshold = pow(10.0, threshold_dB / 10.0);
+        m_initialised = true;
     }
 
     void process(const float *input) {
-        if (!m_stepSize || !m_blockSize || m_threshold == 0.0) {
-            throw std::logic_error("Not properly initialised");
+        if (!m_initialised) {
+            throw std::logic_error("Power::process: Not initialised");
         }
         
         double sum = 0.0;
@@ -68,10 +68,10 @@ public:
     }
     
 private:
-    size_t m_stepSize;
     size_t m_blockSize;
-    size_t m_filterLength;
+    int m_filterLength;
     double m_threshold;
+    bool m_initialised;
     std::vector<double> m_rawPower;
 };
 
