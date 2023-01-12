@@ -33,22 +33,38 @@ public:
                     double fmin, double fmax,
                     double dB, int historyLength) {
 
-        if (!m_sampleRate) {
+        if (!sampleRate) {
             throw std::logic_error("SpectralLevelRise::initialise: sampleRate must be non-zero");
         }
         if (!blockSize) {
             throw std::logic_error("SpectralLevelRise::initialise: blockSize must be non-zero");
         }
         if (fmin < 0.0 || fmin >= sampleRate / 2.0) {
+            std::cerr << "SpectralLevelRise::initialise: fmin (" << fmin
+                      << ") is outside range 0.0 - " << sampleRate / 2.0
+                      << " (for sample rate " << sampleRate << ")" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: fmin is out of range");
         }
         if (fmax < 0.0 || fmax >= sampleRate / 2.0 || fmax < fmin) {
+            if (fmax < fmin) {
+                std::cerr << "SpectralLevelRise::initialise: fmax (" << fmax
+                          << ") is less than fmin (" << fmin << ")"
+                          << std::endl;
+            } else {
+                std::cerr << "SpectralLevelRise::initialise: fmax (" << fmax
+                          << ") is outside range 0.0 - " << sampleRate / 2.0
+                          << " (for sample rate " << sampleRate << ")" << std::endl;
+            }
             throw std::logic_error("SpectralLevelRise::initialise: fmax is out of range");
         }
         if (dB <= 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: dB (" << dB
+                      << ") should be positive" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: dB should be positive (it is a gain ratio)");
         }
         if (historyLength < 2) {
+            std::cerr << "SpectralLevelRise::initialise: historyLength ("
+                      << historyLength << ") must be at least 2" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: historyLength must be at least 2");
         }
         
@@ -62,7 +78,7 @@ public:
         m_binmin = (double(m_blockSize) * m_fmin) / m_sampleRate;
         m_binmax = (double(m_blockSize) * m_fmax) / m_sampleRate;
         m_ratio = pow(10.0, m_dB / 10.0);
-
+/*
         std::cerr << "SpectralLevelRise::initialise: "
                   << "sampleRate " << m_sampleRate
                   << ", blockSize " << m_blockSize
@@ -74,7 +90,7 @@ public:
                   << ", binmax " << m_binmax
                   << ", ratio " << m_ratio
                   << std::endl;
-        
+*/        
         // Hann window
         m_window.reserve(m_blockSize);
         for (int i = 0; i < m_blockSize; ++i) {
@@ -109,7 +125,7 @@ public:
 
         m_magHistory.push_back(magnitudes);
 
-        if (m_magHistory.size() >= m_historyLength) {
+        if (int(m_magHistory.size()) >= m_historyLength) {
             double fraction = extractFraction();
             m_fractions.push_back(fraction);
             m_magHistory.pop_front();

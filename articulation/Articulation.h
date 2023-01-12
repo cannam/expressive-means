@@ -108,14 +108,14 @@ protected:
     int msToSteps(float ms, bool odd) {
         int n = ceil((ms / 1000.0) * m_inputSampleRate / m_stepSize);
         if (odd && (n % 2 == 0)) ++n;
-        std::cerr << "msToSteps: ms " << ms << ", odd " << odd << " -> "
-                  << n << std::endl;
+//        std::cerr << "msToSteps: ms " << ms << ", odd " << odd << " -> "
+//                  << n << std::endl;
         return n;
     }
 
     double hzToPitch(double hz) {
         double p = 12.0 * (log(hz / 220.0) / log(2.0)) + 57.0;
-        std::cerr << "hzToPitch: hz " << hz << " -> " << p << std::endl;
+//        std::cerr << "hzToPitch: hz " << hz << " -> " << p << std::endl;
         return p;
     }
 };

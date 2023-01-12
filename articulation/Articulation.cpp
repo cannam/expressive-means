@@ -70,33 +70,25 @@ Articulation::getName() const
 string
 Articulation::getDescription() const
 {
-    // Return something helpful here!
     return "";
 }
 
 string
 Articulation::getMaker() const
 {
-    // Your name here
-    return "";
+    return "Frithjof Vollmer and Chris Cannam";
 }
 
 int
 Articulation::getPluginVersion() const
 {
-    // Increment this each time you release a version that behaves
-    // differently from the previous one
     return 1;
 }
 
 string
 Articulation::getCopyright() const
 {
-    // This function is not ideally named.  It does not necessarily
-    // need to say who made the plugin -- getMaker does that -- but it
-    // should indicate the terms under which it is distributed.  For
-    // example, "Copyright (year). All Rights Reserved", or "GPL"
-    return "";
+    return "GPLv2";
 }
 
 Articulation::InputDomain
@@ -242,7 +234,7 @@ Articulation::getParameter(string identifier) const
     if (identifier.size() > 5 &&
         string(identifier.begin(), identifier.begin() + 5) == "pyin-") {
         string pyinParam(identifier.begin() + 5, identifier.end());
-        cerr << "<- " << pyinParam << endl;
+//        cerr << "<- " << pyinParam << endl;
         return m_pyin.getParameter(pyinParam);
     }
     
@@ -277,7 +269,7 @@ Articulation::setParameter(string identifier, float value)
     if (identifier.size() > 5 &&
         string(identifier.begin(), identifier.begin() + 5) == "pyin-") {
         string pyinParam(identifier.begin() + 5, identifier.end());
-        cerr << pyinParam << " -> " << value << endl;
+//        cerr << pyinParam << " -> " << value << endl;
         m_pyin.setParameter(pyinParam, value);
         return;
     }
@@ -319,7 +311,7 @@ Articulation::getCurrentProgram() const
 }
 
 void
-Articulation::selectProgram(string name)
+Articulation::selectProgram(string)
 {
 }
 
@@ -478,8 +470,23 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         return false;
     }
 
+    if (m_inputSampleRate < 8000.0) {
+        cerr << "ERROR: Articulation::initialise: sample rate ("
+             << m_inputSampleRate << ") is too low, it must be at least 8kHz"
+             << endl;
+        return false;
+    }
+    
+    if (m_inputSampleRate > 192000.0) {
+        cerr << "ERROR: Articulation::initialise: sample rate ("
+             << m_inputSampleRate << ") is too high, maximum is 192kHz"
+             << endl;
+        return false;
+    }
+    
     if (stepSize > blockSize) {
-        cerr << "ERROR: Articulation::initialise: step size may not exceed block size" << endl;
+        cerr << "ERROR: Articulation::initialise: step size (" << stepSize
+             << ") may not exceed block size (" << blockSize << ")" << endl;
         return false;
     }
 
@@ -507,6 +514,7 @@ Articulation::reset()
     m_onsetLevelRise = SpectralLevelRise();
     m_noiseRatioLevelRise = SpectralLevelRise();
     m_haveStartTime = false;
+    m_pitch.clear();
 
     m_power.initialise(m_blockSize, 18, -120.0);
 
@@ -608,7 +616,7 @@ Articulation::getRemainingFeatures()
     vector<double> riseFractions = m_onsetLevelRise.getFractions();
 
     set<int> allOnsets = pitchOnsets;
-    for (int i = 0; i < riseFractions.size(); ++i) {
+    for (int i = 0; i < int(riseFractions.size()); ++i) {
         if (riseFractions[i] > m_onsetSensitivityNoise_percent / 100.0) {
             allOnsets.insert(i + (m_blockSize / m_stepSize)/2);
         }
@@ -634,7 +642,7 @@ Articulation::getRemainingFeatures()
         fs[m_filteredPitchOutput].push_back(f);
     }
     
-    for (int i = 0; i < pitchOnsetDf.size(); ++i) {
+    for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
