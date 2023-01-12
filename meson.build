@@ -10,7 +10,7 @@ project(
         'warning_level=3',
         'buildtype=release',
     ],
-    meson_version: '>= 0.60.0'
+    meson_version: '>= 0.53.0'
 )
 
 conf = configuration_data()
