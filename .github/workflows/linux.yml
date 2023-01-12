@@ -19,5 +19,9 @@ jobs:
       run: meson setup build
     - name: make
       run: ninja -C build
-
+    - name: archive
+      uses: actions/upload-artifact@v3
+      with:
+        name: plugin
+        path: build/expressive-means.so
 
