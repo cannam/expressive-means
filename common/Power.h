@@ -28,11 +28,10 @@ public:
     ~Power() {}
 
     void initialise(size_t blockSize, int filterLength, double threshold_dB) {
-
-        if (m_filterLength < 1) {
+        if (filterLength < 1) {
+            std::cerr << "Power::initialise: invalid filterLength " << filterLength << std::endl;
             throw std::logic_error("Power::initialise: filterLength must be > 0");
         }
-        
         m_blockSize = blockSize;
         m_filterLength = filterLength;
         m_threshold = pow(10.0, threshold_dB / 10.0);

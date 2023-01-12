@@ -11,8 +11,15 @@
 
 #include "Articulation.h"
 
+#include "../ext/qm-dsp/maths/MedianFilter.h"
+
+#include <vector>
+#include <set>
+
 using std::cerr;
 using std::endl;
+using std::vector;
+using std::set;
 
 static const float default_pitchAverageWindow_ms = 250.f;
 static const float default_onsetSensitivityPitch_cents = 20.f;
@@ -374,20 +381,6 @@ Articulation::getOutputDescriptors() const
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
     
-    d.identifier = "power";
-    d.name = "Power";
-    d.description = "Smoothed power curve.";
-    d.unit = "dB";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_powerOutput = int(list.size());
-    list.push_back(d);
-    
     d.identifier = "articulationIndex";
     d.name = "Articulation Index";
     d.description = "";
@@ -400,9 +393,52 @@ Articulation::getOutputDescriptors() const
     d.hasDuration = false;
     m_articulationIndexOutput = int(list.size());
     list.push_back(d);
+
+#ifdef WITH_DEBUG_OUTPUTS
+    d.identifier = "power";
+    d.name = "[Debug] Power";
+    d.description = "Smoothed power curve.";
+    d.unit = "dB";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_powerOutput = int(list.size());
+    list.push_back(d);
     
-    d.identifier = "transient";
-    d.name = "Transient Detection Function";
+    d.identifier = "filteredPitch";
+    d.name = "[Debug] Filtered Pitch";
+    d.description = "Re-filtered pitch track.";
+    d.unit = "MIDI units";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_filteredPitchOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "pitchdf";
+    d.name = "[Debug] Pitch Onset Detection Function";
+    d.description = "";
+    d.unit = "semitones";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_pitchOnsetDfOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "transientdf";
+    d.name = "[Debug] Transient Onset Detection Function";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -412,9 +448,24 @@ Articulation::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::FixedSampleRate;
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
-    m_transientDfOutput = int(list.size());
+    m_transientOnsetDfOutput = int(list.size());
     list.push_back(d);
 
+    d.identifier = "onsets";
+    d.name = "[Debug] Onsets Labelled by Cause";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_onsetOutput = int(list.size());
+    list.push_back(d);
+#endif
+    
     return list;
 }
 
@@ -431,20 +482,18 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         cerr << "ERROR: Articulation::initialise: step size may not exceed block size" << endl;
         return false;
     }
+
+    m_pyin.setParameter("outputunvoiced", 2); // As negative frequencies
     
     if (!m_pyin.initialise(channels, stepSize, blockSize)) {
         cerr << "ERROR: Articulation::initialise: pYIN initialise failed" << endl;
         return false;
     }
-
-    m_power.initialise(blockSize, 18, -120.0);
-
-    //!!! actually want two of these, one parameterised
-    m_levelRise.initialise(m_inputSampleRate, blockSize, 100.0, 4000.0, 20.0,
-                           ceil(0.05 * m_inputSampleRate / m_stepSize));
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
+
+    reset();
     
     return true;
 }
@@ -453,9 +502,27 @@ void
 Articulation::reset()
 {
     m_pyin.reset();
+
     m_power = Power();
-    m_levelRise = SpectralLevelRise();
+    m_onsetLevelRise = SpectralLevelRise();
+    m_noiseRatioLevelRise = SpectralLevelRise();
     m_haveStartTime = false;
+
+    m_power.initialise(m_blockSize, 18, -120.0);
+
+    int onsetLevelRiseHistoryLength =
+        msToSteps(m_onsetSensitivityNoiseTimeWindow_ms, false);
+    if (onsetLevelRiseHistoryLength < 2) {
+        onsetLevelRiseHistoryLength = 2;
+    }
+    
+    m_onsetLevelRise.initialise
+        (m_inputSampleRate, m_blockSize, 100.0, 4000.0,
+         m_onsetSensitivityLevel_dB, onsetLevelRiseHistoryLength);
+
+    m_noiseRatioLevelRise.initialise
+        (m_inputSampleRate, m_blockSize, 100.0, 4000.0,
+         20.0, ceil(0.05 * m_inputSampleRate / m_stepSize));
 }
 
 Articulation::FeatureSet
@@ -468,10 +535,19 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     
     FeatureSet fs;
     FeatureSet pyinFeatures = m_pyin.process(inputBuffers, timestamp);
-    fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
+    for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
+        double hz = f.values[0];
+        if (hz > 0.0) {
+            fs[m_pitchTrackOutput].push_back(f);
+            m_pitch.push_back(hzToPitch(hz));
+        } else {
+            m_pitch.push_back(0.0);
+        }
+    }
     
     m_power.process(inputBuffers[0]);
-    m_levelRise.process(inputBuffers[0]);
+    m_onsetLevelRise.process(inputBuffers[0]);
+    m_noiseRatioLevelRise.process(inputBuffers[0]);
 
     return fs;
 }
@@ -482,9 +558,88 @@ Articulation::getRemainingFeatures()
     FeatureSet fs;
 
     FeatureSet pyinFeatures = m_pyin.getRemainingFeatures();
-    fs[m_pitchTrackOutput] = pyinFeatures[m_pyinSmoothedPitchTrackOutput];
+    for (const auto &f : pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
+        double hz = f.values[0];
+        if (hz > 0.0) {
+            fs[m_pitchTrackOutput].push_back(f);
+            m_pitch.push_back(hzToPitch(hz));
+        } else {
+            m_pitch.push_back(0.0);
+        }
+    }
 
-    auto smoothedPower = m_power.getSmoothedPower();
+    /*
+    int pitchFilterLength = msToSteps(m_pitchAverageWindow_ms, true);
+    int halfLength = pitchFilterLength/2;
+    int n = m_pitch.size();
+    vector<double> filteredPitch = MedianFilter<double>::filter
+        (pitchFilterLength, m_pitch);
+    */
+
+    int pitchFilterLength = msToSteps(m_pitchAverageWindow_ms, true);
+    int halfLength = pitchFilterLength/2;
+    MeanFilter pitchFilter(pitchFilterLength);
+    int n = m_pitch.size();
+    vector<double> filteredPitch(n, 0.0);
+    pitchFilter.filter(m_pitch.data(), filteredPitch.data(), n);
+    
+    vector<double> pitchOnsetDf;
+    for (int i = 0; i + halfLength < n; ++i) {
+        pitchOnsetDf.push_back(fabsf(m_pitch[i] - filteredPitch[i + halfLength]));
+    }
+
+    set<int> pitchOnsets;
+    int minimumOnsetSteps = msToSteps(m_minimumOnsetInterval_ms, false);
+    int lastBelowThreshold = -minimumOnsetSteps;
+    double threshold = m_onsetSensitivityPitch_cents / 100.0;
+    for (int i = 0; i + halfLength < n; ++i) {
+        if (pitchOnsetDf[i] < threshold) {
+            if (i > lastBelowThreshold + minimumOnsetSteps) {
+                pitchOnsets.insert(i);
+            }
+            lastBelowThreshold = i;
+        }
+    }
+    
+    vector<double> smoothedPower = m_power.getSmoothedPower();
+    vector<double> riseFractions = m_onsetLevelRise.getFractions();
+
+    set<int> allOnsets = pitchOnsets;
+    for (int i = 0; i < riseFractions.size(); ++i) {
+        if (riseFractions[i] > m_onsetSensitivityNoise_percent / 100.0) {
+            allOnsets.insert(i + (m_blockSize / m_stepSize)/2);
+        }
+    }
+
+    vector<int> onsets;
+    int prevP = -minimumOnsetSteps;
+    for (auto p: allOnsets) {
+        if (p < prevP + minimumOnsetSteps) {
+            continue;
+        }
+        onsets.push_back(p);
+        prevP = p;
+    }
+    
+#ifdef WITH_DEBUG_OUTPUTS
+    for (int i = 0; i < n; ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
+            (i * m_stepSize, m_inputSampleRate);
+        f.values.push_back(filteredPitch[i]);
+        fs[m_filteredPitchOutput].push_back(f);
+    }
+    
+    for (int i = 0; i < pitchOnsetDf.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
+            (i * m_stepSize, m_inputSampleRate);
+        f.values.push_back(pitchOnsetDf[i]);
+        fs[m_pitchOnsetDfOutput].push_back(f);
+    }
+    
     for (size_t i = 0; i < smoothedPower.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
@@ -494,15 +649,28 @@ Articulation::getRemainingFeatures()
         fs[m_powerOutput].push_back(f);
     }
     
-    auto fractions = m_levelRise.getFractions();
-    for (size_t i = 0; i < fractions.size(); ++i) {
+    for (size_t i = 0; i < riseFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
             (i * m_stepSize, m_inputSampleRate);
-        f.values.push_back(fractions[i]);
-        fs[m_transientDfOutput].push_back(f);
+        f.values.push_back(riseFractions[i]);
+        fs[m_transientOnsetDfOutput].push_back(f);
     }
+
+    for (auto p: onsets) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
+            (p * m_stepSize, m_inputSampleRate);
+        if (pitchOnsets.find(p) != pitchOnsets.end()) {
+            f.label = "Pitch Change";
+        } else {
+            f.label = "Spectral Rise";
+        }
+        fs[m_onsetOutput].push_back(f);
+    }
+#endif
     
     return fs;
 }

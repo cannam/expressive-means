@@ -5,6 +5,9 @@
     },
     "pyin": {
       "pin": "a7d9c6142f8f"
+    },
+    "qm-dsp": {
+      "pin": "e34a3cc188332ed7c33cd9257ef164de5b587191"
     }
   }
 }

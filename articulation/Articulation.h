@@ -18,6 +18,8 @@
 #include "common/Power.h"
 #include "common/SpectralLevelRise.h"
 
+#define WITH_DEBUG_OUTPUTS 1
+
 using std::string;
 
 class Articulation : public Vamp::Plugin
@@ -60,10 +62,13 @@ public:
 protected:
     PYinVamp m_pyin;
     Power m_power;
-    SpectralLevelRise m_levelRise;
+    SpectralLevelRise m_onsetLevelRise;
+    SpectralLevelRise m_noiseRatioLevelRise;
 
     bool m_haveStartTime;
     Vamp::RealTime m_startTime;
+
+    std::vector<double> m_pitch;
 
     // Our parameters. Currently only those with simple single
     // floating-point values are provided. Multiple floating-point
@@ -87,12 +92,32 @@ protected:
     mutable int m_summaryOutput;
     mutable int m_articulationTypeOutput;
     mutable int m_pitchTrackOutput;
-    mutable int m_powerOutput;
     mutable int m_articulationIndexOutput;
-    mutable int m_transientDfOutput; //!!! temporary (probably)
+
+#ifdef WITH_DEBUG_OUTPUTS
+    mutable int m_powerOutput;
+    mutable int m_filteredPitchOutput;
+    mutable int m_pitchOnsetDfOutput;
+    mutable int m_transientOnsetDfOutput;
+    mutable int m_onsetOutput;
+#endif
 
     int m_blockSize;
     int m_stepSize;
+
+    int msToSteps(float ms, bool odd) {
+        int n = ceil((ms / 1000.0) * m_inputSampleRate / m_stepSize);
+        if (odd && (n % 2 == 0)) ++n;
+        std::cerr << "msToSteps: ms " << ms << ", odd " << odd << " -> "
+                  << n << std::endl;
+        return n;
+    }
+
+    double hzToPitch(double hz) {
+        double p = 12.0 * (log(hz / 220.0) / log(2.0)) + 57.0;
+        std::cerr << "hzToPitch: hz " << hz << " -> " << p << std::endl;
+        return p;
+    }
 };
 
 #endif

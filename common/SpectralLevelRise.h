@@ -84,7 +84,7 @@ public:
         m_initialised = true;
     }
 
-    double process(const float *timeDomain) {
+    void process(const float *timeDomain) {
         if (!m_initialised) {
             throw std::logic_error("SpectralLevelRise::process: Not initialised");
         }
@@ -109,15 +109,17 @@ public:
 
         m_magHistory.push_back(magnitudes);
 
-        if (m_magHistory.size() > m_historyLength) {
+        if (m_magHistory.size() >= m_historyLength) {
+            double fraction = extractFraction();
+            m_fractions.push_back(fraction);
             m_magHistory.pop_front();
         }
-
-        double fraction = extractFraction();
-        m_fractions.push_back(fraction);
-        return fraction;
     }
 
+    int getHistoryLength() const {
+        return m_historyLength;
+    }
+    
     std::vector<double> getFractions() const {
         return m_fractions;
     }
