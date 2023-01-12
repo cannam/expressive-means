@@ -16,11 +16,15 @@ jobs:
     - name: configure
       run: meson setup build
     - name: make
-      run: ninja -C build
+      run: |
+        ninja -C build
+        cp build/expressive-means.dylib .
     - name: archive
       uses: actions/upload-artifact@v3
       with:
         name: plugin
-        path: build/expressive-means.dylib
+        path: |
+          expressive-means.dylib
+          expressive-means.cat
 
 
