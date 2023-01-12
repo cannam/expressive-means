@@ -417,7 +417,7 @@ Articulation::getOutputDescriptors() const
 
     d.identifier = "pitchdf";
     d.name = "[Debug] Pitch Onset Detection Function";
-    d.description = "";
+    d.description = "Function used to identify onsets by pitch change. Onsets are considered likely when the function is low rather than high, i.e. when it first falls below a threshold.";
     d.unit = "semitones";
     d.hasFixedBinCount = true;
     d.binCount = 1;
@@ -431,7 +431,7 @@ Articulation::getOutputDescriptors() const
 
     d.identifier = "transientdf";
     d.name = "[Debug] Transient Onset Detection Function";
-    d.description = "";
+    d.description = "Function used to identify onsets by spectral rise. Onsets are considered likely when the function exceeds a threshold.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 1;
@@ -445,7 +445,7 @@ Articulation::getOutputDescriptors() const
 
     d.identifier = "onsets";
     d.name = "[Debug] Onsets Labelled by Cause";
-    d.description = "";
+    d.description = "Identified onset locations, labelled as either Pitch Change or Spectral Rise depending on how they were identified.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 0;
@@ -617,6 +617,15 @@ Articulation::getRemainingFeatures()
 
     set<int> allOnsets = pitchOnsets;
     for (int i = 0; i < int(riseFractions.size()); ++i) {
+        // SpectralLevelRise only starts recording values once its
+        // history buffer (say length n) is full. So the value at i
+        // indicates the fraction of bins that saw a significant rise
+        // during the n steps starting at input step i. Step i is
+        // calculated from time-domain samples between sample
+        // i*stepSize and i*stepSize + blockSize, so it reflects
+        // activity around the centre of the window at i*stepSize +
+        // blockSize/2. Hence we record that step as the moment at
+        // which the onset was first apparent.
         if (riseFractions[i] > m_onsetSensitivityNoise_percent / 100.0) {
             allOnsets.insert(i + (m_blockSize / m_stepSize)/2);
         }
@@ -663,8 +672,9 @@ Articulation::getRemainingFeatures()
     for (size_t i = 0; i < riseFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
+        int j = i + (m_blockSize / m_stepSize)/2;
         f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
-            (i * m_stepSize, m_inputSampleRate);
+            (j * m_stepSize, m_inputSampleRate);
         f.values.push_back(riseFractions[i]);
         fs[m_transientOnsetDfOutput].push_back(f);
     }

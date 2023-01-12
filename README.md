@@ -77,12 +77,12 @@ Instructions for other platforms to follow.
  * macOS CI build: [![Build Status](https://github.com/cannam/expressive-means/workflows/macOS%20CI/badge.svg)](https://github.com/cannam/expressive-means/actions?query=workflow%3A%22macOS+CI%22)
 
 Note that each of these builds produces a compiled plugin as an
-artifact, so you can download them from here for testing if you
-wish. To do so, click on the build badge above for the platform you
-want, then on the run you want to obtain the build from (typically the
-most recent one, listed at the top of that page), then scroll down to
-Artifacts and click on the one called `plugin`. That should get you
-some files you can copy into your Vamp Plugins folder.
+artifact, and you can download them for testing if you wish. To do so,
+click on the build badge above for the platform you want, then on the
+run you want to obtain the build from (typically the most recent one,
+listed at the top of that page), then scroll down to Artifacts and
+click on the one called `plugin`. Unzip the downloaded archive and
+copy its contents into your Vamp Plugins folder.
 
 ## Licence
 
