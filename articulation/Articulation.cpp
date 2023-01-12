@@ -568,14 +568,12 @@ Articulation::getRemainingFeatures()
         }
     }
 
-    /*
-    int pitchFilterLength = msToSteps(m_pitchAverageWindow_ms, true);
-    int halfLength = pitchFilterLength/2;
-    int n = m_pitch.size();
-    vector<double> filteredPitch = MedianFilter<double>::filter
-        (pitchFilterLength, m_pitch);
-    */
-
+    // "If the absolute difference of a pitch and its following moving
+    // pitch average window falls below o_2" - calculate a moving mean
+    // window over the pitch curve (which is in semitones, not Hz) and
+    // compare each pitch to the mean within the window that follows
+    // it: if they are close, record an onset
+    
     int pitchFilterLength = msToSteps(m_pitchAverageWindow_ms, true);
     int halfLength = pitchFilterLength/2;
     MeanFilter pitchFilter(pitchFilterLength);
@@ -585,15 +583,20 @@ Articulation::getRemainingFeatures()
     
     vector<double> pitchOnsetDf;
     for (int i = 0; i + halfLength < n; ++i) {
-        pitchOnsetDf.push_back(fabsf(m_pitch[i] - filteredPitch[i + halfLength]));
+        pitchOnsetDf.push_back
+            (fabsf(m_pitch[i] - filteredPitch[i + halfLength]));
     }
 
     set<int> pitchOnsets;
     int minimumOnsetSteps = msToSteps(m_minimumOnsetInterval_ms, false);
     int lastBelowThreshold = -minimumOnsetSteps;
     double threshold = m_onsetSensitivityPitch_cents / 100.0;
+
     for (int i = 0; i + halfLength < n; ++i) {
+        // "absolute difference... falls below o_2":
         if (pitchOnsetDf[i] < threshold) {
+            // "subsequent onsets require o_2 to be exceeded for at
+            // least the duration of o_6 first":
             if (i > lastBelowThreshold + minimumOnsetSteps) {
                 pitchOnsets.insert(i);
             }
