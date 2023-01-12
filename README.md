@@ -44,6 +44,9 @@ $ VAMP_PATH=./build sonic-visualiser
 
 Instructions for other platforms to follow.
 
+ * Linux CI build: [![Build Status](https://github.com/cannam/expressive-means/workflows/Linux%20CI/badge.svg)](https://github.com/cannam/expressive-means/actions?query=workflow%3A%22Linux+CI%22)
+ * macOS CI build: [![Build Status](https://github.com/cannam/expressive-means/workflows/macOS%20CI/badge.svg)](https://github.com/cannam/expressive-means/actions?query=workflow%3A%22macOS+CI%22)
+
 ## Licence
 
 Expressive Means is distributed under the GNU General Public License
