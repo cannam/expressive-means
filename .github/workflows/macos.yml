@@ -1,0 +1,21 @@
+name: macOS CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: deps
+      run: brew install polyml boost meson ninja mercurial
+    - name: repoint
+      run: ./repoint install
+    - name: configure
+      run: meson setup build
+    - name: make
+      run: ninja -C build
+
+

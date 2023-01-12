@@ -1,0 +1,23 @@
+name: Linux CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git mercurial mlton libboost-math-dev meson ninja-build
+    - name: repoint
+      run: ./repoint install
+    - name: configure
+      run: meson setup build
+    - name: make
+      run: ninja -C build
+
+
