@@ -19,61 +19,89 @@
 #include <iostream>
 #include <deque>
 
-// Calculate and return the fraction of spectral bins in a given
-// frequency range whose magnitudes have risen by more than the given
-// ratio within the given number of steps.
-
+/** Calculate and return the fraction of spectral bins in a given
+ *  frequency range whose magnitudes have risen by more than the given
+ *  ratio within the given number of steps.
+ */
 class SpectralLevelRise
 {
 public:
     SpectralLevelRise() : m_initialised(false) {}
     ~SpectralLevelRise() {}
 
-    void initialise(double sampleRate, int blockSize,
-                    double fmin, double fmax,
-                    double dB, int historyLength) {
+    struct Parameters {
+        double sampleRate;
+        int blockSize;
+        double fmin;
+        double fmax;
+        double dB;
+        int historyLength;
+        Parameters() :
+            sampleRate(48000.0),
+            blockSize(2048),
+            fmin(100.0),
+            fmax(4000.0),
+            dB(20.0),
+            historyLength(20)
+        {}
+    };
+    
+    void initialise(Parameters parameters) {
 
-        if (!sampleRate) {
+        if (!parameters.sampleRate) {
             throw std::logic_error("SpectralLevelRise::initialise: sampleRate must be non-zero");
         }
-        if (!blockSize) {
+        if (!parameters.blockSize) {
             throw std::logic_error("SpectralLevelRise::initialise: blockSize must be non-zero");
         }
-        if (fmin < 0.0 || fmin >= sampleRate / 2.0) {
-            std::cerr << "SpectralLevelRise::initialise: fmin (" << fmin
-                      << ") is outside range 0.0 - " << sampleRate / 2.0
-                      << " (for sample rate " << sampleRate << ")" << std::endl;
+        if (parameters.fmin < 0.0 ||
+            parameters.fmin >= parameters.sampleRate / 2.0) {
+            std::cerr << "SpectralLevelRise::initialise: fmin ("
+                      << parameters.fmin
+                      << ") is outside range 0.0 - "
+                      << parameters.sampleRate / 2.0
+                      << " (for sample rate "
+                      << parameters.sampleRate << ")" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: fmin is out of range");
         }
-        if (fmax < 0.0 || fmax >= sampleRate / 2.0 || fmax < fmin) {
-            if (fmax < fmin) {
-                std::cerr << "SpectralLevelRise::initialise: fmax (" << fmax
-                          << ") is less than fmin (" << fmin << ")"
+        if (parameters.fmax < 0.0 ||
+            parameters.fmax >= parameters.sampleRate / 2.0 ||
+            parameters.fmax < parameters.fmin) {
+            if (parameters.fmax < parameters.fmin) {
+                std::cerr << "SpectralLevelRise::initialise: fmax ("
+                          << parameters.fmax
+                          << ") is less than fmin ("
+                          << parameters.fmin << ")"
                           << std::endl;
             } else {
-                std::cerr << "SpectralLevelRise::initialise: fmax (" << fmax
-                          << ") is outside range 0.0 - " << sampleRate / 2.0
-                          << " (for sample rate " << sampleRate << ")" << std::endl;
+                std::cerr << "SpectralLevelRise::initialise: fmax ("
+                          << parameters.fmax
+                          << ") is outside range 0.0 - "
+                          << parameters.sampleRate / 2.0
+                          << " (for sample rate "
+                          << parameters.sampleRate << ")" << std::endl;
             }
             throw std::logic_error("SpectralLevelRise::initialise: fmax is out of range");
         }
-        if (dB <= 0.0) {
-            std::cerr << "SpectralLevelRise::initialise: dB (" << dB
+        if (parameters.dB <= 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: dB ("
+                      << parameters.dB
                       << ") should be positive" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: dB should be positive (it is a gain ratio)");
         }
-        if (historyLength < 2) {
+        if (parameters.historyLength < 2) {
             std::cerr << "SpectralLevelRise::initialise: historyLength ("
-                      << historyLength << ") must be at least 2" << std::endl;
+                      << parameters.historyLength
+                      << ") must be at least 2" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: historyLength must be at least 2");
         }
         
-        m_sampleRate = sampleRate;
-        m_blockSize = blockSize;
-        m_fmin = fmin;
-        m_fmax = fmax;
-        m_dB = dB;
-        m_historyLength = historyLength;
+        m_sampleRate = parameters.sampleRate;
+        m_blockSize = parameters.blockSize;
+        m_fmin = parameters.fmin;
+        m_fmax = parameters.fmax;
+        m_dB = parameters.dB;
+        m_historyLength = parameters.historyLength;
 
         m_binmin = (double(m_blockSize) * m_fmin) / m_sampleRate;
         m_binmax = (double(m_blockSize) * m_fmax) / m_sampleRate;

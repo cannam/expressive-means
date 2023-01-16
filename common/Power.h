@@ -18,23 +18,39 @@
 #include <cmath>
 #include <iostream>
 
-// Filtered power calculation, somewhat like Mazurka MzPowerCurve's
-// smoothedpower output
-
+/** Filtered power calculation, somewhat like Mazurka MzPowerCurve's
+ *  smoothedpower output
+ */
 class Power
 {
 public:
     Power() : m_initialised(false) {}
     ~Power() {}
 
-    void initialise(size_t blockSize, int filterLength, double threshold_dB) {
-        if (filterLength < 1) {
-            std::cerr << "Power::initialise: invalid filterLength " << filterLength << std::endl;
+    struct Parameters {
+        int blockSize;
+        int filterLength;
+        double threshold_dB;
+        Parameters() :
+            blockSize(2048),
+            filterLength(18),
+            threshold_dB(-120.0) { }
+    };
+
+    void initialise(Parameters parameters) {
+        if (parameters.blockSize < 1) {
+            std::cerr << "Power::initialise: invalid blockSize "
+                      << parameters.blockSize << std::endl;
+            throw std::logic_error("Power::initialise: blockSize must be > 0");
+        }            
+        if (parameters.filterLength < 1) {
+            std::cerr << "Power::initialise: invalid filterLength "
+                      << parameters.filterLength << std::endl;
             throw std::logic_error("Power::initialise: filterLength must be > 0");
         }
-        m_blockSize = blockSize;
-        m_filterLength = filterLength;
-        m_threshold = pow(10.0, threshold_dB / 10.0);
+        m_blockSize = parameters.blockSize;
+        m_filterLength = parameters.filterLength;
+        m_threshold = pow(10.0, parameters.threshold_dB / 10.0);
         m_initialised = true;
     }
 

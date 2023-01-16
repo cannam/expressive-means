@@ -516,21 +516,30 @@ Articulation::reset()
     m_haveStartTime = false;
     m_pitch.clear();
 
-    m_power.initialise(m_blockSize, 18, -120.0);
+    Power::Parameters powerParams;
+    powerParams.blockSize = m_blockSize;
+    m_power.initialise(powerParams);
 
     int onsetLevelRiseHistoryLength =
         msToSteps(m_onsetSensitivityNoiseTimeWindow_ms, false);
     if (onsetLevelRiseHistoryLength < 2) {
         onsetLevelRiseHistoryLength = 2;
     }
-    
-    m_onsetLevelRise.initialise
-        (m_inputSampleRate, m_blockSize, 100.0, 4000.0,
-         m_onsetSensitivityLevel_dB, onsetLevelRiseHistoryLength);
 
-    m_noiseRatioLevelRise.initialise
-        (m_inputSampleRate, m_blockSize, 100.0, 4000.0,
-         20.0, ceil(0.05 * m_inputSampleRate / m_stepSize));
+    SpectralLevelRise::Parameters levelRiseParams;
+    levelRiseParams.sampleRate = m_inputSampleRate;
+    levelRiseParams.blockSize = m_blockSize;
+    levelRiseParams.fmin = 100.0;
+    levelRiseParams.fmax = 4000.0;
+    levelRiseParams.dB = m_onsetSensitivityLevel_dB;
+    levelRiseParams.historyLength = onsetLevelRiseHistoryLength;
+    
+    m_onsetLevelRise.initialise(levelRiseParams);
+
+    levelRiseParams.dB = 20.0;
+    levelRiseParams.historyLength = ceil(0.05 * m_inputSampleRate / m_stepSize);
+    
+    m_noiseRatioLevelRise.initialise(levelRiseParams);
 }
 
 Articulation::FeatureSet
