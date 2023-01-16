@@ -67,12 +67,12 @@ public:
         Parameters() :
             stepSize(256),
             blockSize(2048),
-            pitchAverageWindow_ms(250.f),
-            onsetSensitivityPitch_cents(20.f),
-            onsetSensitivityNoise_percent(10.f),
-            onsetSensitivityLevel_dB(20.f),
-            onsetSensitivityNoiseTimeWindow_ms(50.f),
-            minimumOnsetInterval_ms(200.f)
+            pitchAverageWindow_ms(150.f),
+            onsetSensitivityPitch_cents(15.f),
+            onsetSensitivityNoise_percent(40.f),
+            onsetSensitivityLevel_dB(8.f),
+            onsetSensitivityNoiseTimeWindow_ms(100.f),
+            minimumOnsetInterval_ms(100.f)
         {}
     };
 
