@@ -54,6 +54,13 @@ public:
         m_initialised = true;
     }
 
+    void reset() {
+        if (!m_initialised) {
+            throw std::logic_error("Power::reset: Never initialised");
+        }
+        m_rawPower.clear();
+    }
+    
     void process(const float *input) {
         if (!m_initialised) {
             throw std::logic_error("Power::process: Not initialised");

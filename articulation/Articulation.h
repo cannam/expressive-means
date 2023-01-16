@@ -14,9 +14,7 @@
 
 #include <vamp-sdk/Plugin.h>
 
-#include "../ext/pyin/PYinVamp.h"
-#include "common/Power.h"
-#include "common/SpectralLevelRise.h"
+#include "common/CoreFeatures.h"
 
 #define WITH_DEBUG_OUTPUTS 1
 
@@ -60,16 +58,17 @@ public:
     FeatureSet getRemainingFeatures();
 
 protected:
-    PYinVamp m_pyin;
-    Power m_power;
-    SpectralLevelRise m_onsetLevelRise;
-    SpectralLevelRise m_noiseRatioLevelRise;
-
+    int m_stepSize;
+    int m_blockSize;
+    
     bool m_haveStartTime;
     Vamp::RealTime m_startTime;
+    
+    CoreFeatures m_coreFeatures;
 
-    std::vector<double> m_pitch;
-
+    float m_pyinThresholdDistribution;
+    float m_pyinLowAmpSuppression;
+    
     // Our parameters. Currently only those with simple single
     // floating-point values are provided. Multiple floating-point
     // values (e.g. 3.1, a_1.x impulse noise ratio boundaries) could
@@ -87,8 +86,6 @@ protected:
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
 
-    mutable int m_pyinSmoothedPitchTrackOutput;
-
     mutable int m_summaryOutput;
     mutable int m_articulationTypeOutput;
     mutable int m_pitchTrackOutput;
@@ -101,23 +98,6 @@ protected:
     mutable int m_transientOnsetDfOutput;
     mutable int m_onsetOutput;
 #endif
-
-    int m_blockSize;
-    int m_stepSize;
-
-    int msToSteps(float ms, bool odd) {
-        int n = ceil((ms / 1000.0) * m_inputSampleRate / m_stepSize);
-        if (odd && (n % 2 == 0)) ++n;
-//        std::cerr << "msToSteps: ms " << ms << ", odd " << odd << " -> "
-//                  << n << std::endl;
-        return n;
-    }
-
-    double hzToPitch(double hz) {
-        double p = 12.0 * (log(hz / 220.0) / log(2.0)) + 57.0;
-//        std::cerr << "hzToPitch: hz " << hz << " -> " << p << std::endl;
-        return p;
-    }
 };
 
 #endif

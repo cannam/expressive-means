@@ -128,6 +128,15 @@ public:
         m_initialised = true;
     }
 
+    void reset() {
+        if (!m_initialised) {
+            throw std::logic_error("SpectralLevelRise::reset: Never initialised");
+        }
+
+        m_magHistory.clear();
+        m_fractions.clear();
+    }
+    
     void process(const float *timeDomain) {
         if (!m_initialised) {
             throw std::logic_error("SpectralLevelRise::process: Not initialised");

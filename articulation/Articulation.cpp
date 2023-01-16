@@ -21,12 +21,8 @@ using std::endl;
 using std::vector;
 using std::set;
 
-static const float default_pitchAverageWindow_ms = 250.f;
-static const float default_onsetSensitivityPitch_cents = 20.f;
-static const float default_onsetSensitivityNoise_percent = 10.f;
-static const float default_onsetSensitivityLevel_dB = 20.f;
-static const float default_onsetSensitivityNoiseTimeWindow_ms = 50.f;
-static const float default_minimumOnsetInterval_ms = 200.f;
+static const CoreFeatures::Parameters defaultCoreParams;
+
 static const float default_sustainBeginThreshold_ms = 50.f;
 static const float default_sustainEndThreshold_dBFS = -45.f;
 static const float default_volumeDevelopmentThreshold_dB = 2.f;
@@ -34,20 +30,26 @@ static const float default_scalingFactor = 10.7f;
 
 Articulation::Articulation(float inputSampleRate) :
     Plugin(inputSampleRate),
-    m_pyin(inputSampleRate),
+    m_stepSize(0),
+    m_blockSize(0),
     m_haveStartTime(false),
-    m_pitchAverageWindow_ms(default_pitchAverageWindow_ms),
-    m_onsetSensitivityPitch_cents(default_onsetSensitivityPitch_cents),
-    m_onsetSensitivityNoise_percent(default_onsetSensitivityNoise_percent),
-    m_onsetSensitivityLevel_dB(default_onsetSensitivityLevel_dB),
-    m_onsetSensitivityNoiseTimeWindow_ms(default_onsetSensitivityNoiseTimeWindow_ms),
-    m_minimumOnsetInterval_ms(default_minimumOnsetInterval_ms),
+    m_coreFeatures(inputSampleRate),
+    m_pyinThresholdDistribution(defaultCoreParams.pyinParameters.thresholdDistribution),
+    m_pyinLowAmpSuppression(defaultCoreParams.pyinParameters.lowAmplitudeSuppressionThreshold),
+    m_pitchAverageWindow_ms(defaultCoreParams.pitchAverageWindow_ms),
+    m_onsetSensitivityPitch_cents(defaultCoreParams.onsetSensitivityPitch_cents),
+    m_onsetSensitivityNoise_percent(defaultCoreParams.onsetSensitivityNoise_percent),
+    m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
+    m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
+    m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
     m_sustainBeginThreshold_ms(default_sustainBeginThreshold_ms),
     m_sustainEndThreshold_dBFS(default_sustainEndThreshold_dBFS),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
-    m_blockSize(m_pyin.getPreferredBlockSize()),
-    m_stepSize(m_pyin.getPreferredStepSize())
+    m_summaryOutput(-1),
+    m_articulationTypeOutput(-1),
+    m_pitchTrackOutput(-1),
+    m_articulationIndexOutput(-1)
 {
 }
 
@@ -100,13 +102,13 @@ Articulation::getInputDomain() const
 size_t
 Articulation::getPreferredBlockSize() const
 {
-    return m_pyin.getPreferredBlockSize();
+    return m_coreFeatures.getPreferredBlockSize();
 }
 
 size_t 
 Articulation::getPreferredStepSize() const
 {
-    return m_pyin.getPreferredStepSize();
+    return m_coreFeatures.getPreferredStepSize();
 }
 
 size_t
@@ -126,31 +128,27 @@ Articulation::getParameterDescriptors() const
 {
     ParameterList list;
 
-    ParameterList pyinParams = m_pyin.getParameterDescriptors();
+    ParameterList pyinParams = m_coreFeatures.getPYinParameterDescriptors();
     for (auto d: pyinParams) {
-        // I think these ones are not relevant to us? Check this
-        if (d.identifier == "fixedlag" ||
-            d.identifier == "outputunvoiced" ||
-            d.identifier == "onsetsensitivity" ||
-            d.identifier == "prunethresh") {
-            continue;
+        if (d.identifier == "threshdistr" ||
+            d.identifier == "lowampsuppression") {
+            d.identifier = "pyin-" + d.identifier;
+            d.name = "pYIN: " + d.name;
+            list.push_back(d);
         }
-        d.identifier = "pyin-" + d.identifier;
-        d.name = "pYIN: " + d.name;
-        list.push_back(d);
     }
-
+    
     ParameterDescriptor d;
 
     d.description = "";
     d.isQuantized = false;
-
+    
     d.identifier = "pitchAverageWindow";
     d.name = "Moving pitch average window";
     d.unit = "ms";
     d.minValue = 20.f;
     d.maxValue = 1000.f;
-    d.defaultValue = default_pitchAverageWindow_ms;
+    d.defaultValue = defaultCoreParams.pitchAverageWindow_ms;
     list.push_back(d);
 
     d.identifier = "onsetSensitivityPitch";
@@ -158,7 +156,7 @@ Articulation::getParameterDescriptors() const
     d.unit = "cents";
     d.minValue = 0.f;
     d.maxValue = 100.f;
-    d.defaultValue = default_onsetSensitivityPitch_cents;
+    d.defaultValue = defaultCoreParams.onsetSensitivityPitch_cents;
     list.push_back(d);
     
     d.identifier = "onsetSensitivityNoise";
@@ -166,7 +164,7 @@ Articulation::getParameterDescriptors() const
     d.unit = "%";
     d.minValue = 0.f;
     d.maxValue = 100.f;
-    d.defaultValue = default_onsetSensitivityNoise_percent;
+    d.defaultValue = defaultCoreParams.onsetSensitivityNoise_percent;
     list.push_back(d);
     
     d.identifier = "onsetSensitivityLevel";
@@ -174,7 +172,7 @@ Articulation::getParameterDescriptors() const
     d.unit = "dB";
     d.minValue = 0.f;
     d.maxValue = 100.f;
-    d.defaultValue = default_onsetSensitivityLevel_dB;
+    d.defaultValue = defaultCoreParams.onsetSensitivityLevel_dB;
     list.push_back(d);
     
     d.identifier = "onsetSensitivityNoiseTimeWindow";
@@ -182,7 +180,7 @@ Articulation::getParameterDescriptors() const
     d.unit = "ms";
     d.minValue = 20.f;
     d.maxValue = 500.f;
-    d.defaultValue = default_onsetSensitivityNoiseTimeWindow_ms;
+    d.defaultValue = defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms;
     list.push_back(d);
     
     d.identifier = "minimumOnsetInterval";
@@ -190,7 +188,7 @@ Articulation::getParameterDescriptors() const
     d.unit = "ms";
     d.minValue = 0.f;
     d.maxValue = 1000.f;
-    d.defaultValue = default_minimumOnsetInterval_ms;
+    d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
     list.push_back(d);
     
     d.identifier = "sustainBeginThreshold";
@@ -231,14 +229,11 @@ Articulation::getParameterDescriptors() const
 float
 Articulation::getParameter(string identifier) const
 {
-    if (identifier.size() > 5 &&
-        string(identifier.begin(), identifier.begin() + 5) == "pyin-") {
-        string pyinParam(identifier.begin() + 5, identifier.end());
-//        cerr << "<- " << pyinParam << endl;
-        return m_pyin.getParameter(pyinParam);
-    }
-    
-    if (identifier == "pitchAverageWindow") {
+    if (identifier == "pyin-threshdistr") {
+        return m_pyinThresholdDistribution;
+    } else if (identifier == "pyin-lowampsuppression") {
+        return m_pyinLowAmpSuppression;
+    } else if (identifier == "pitchAverageWindow") {
         return m_pitchAverageWindow_ms;
     } else if (identifier == "onsetSensitivityPitch") {
         return m_onsetSensitivityPitch_cents;
@@ -266,15 +261,11 @@ Articulation::getParameter(string identifier) const
 void
 Articulation::setParameter(string identifier, float value) 
 {
-    if (identifier.size() > 5 &&
-        string(identifier.begin(), identifier.begin() + 5) == "pyin-") {
-        string pyinParam(identifier.begin() + 5, identifier.end());
-//        cerr << pyinParam << " -> " << value << endl;
-        m_pyin.setParameter(pyinParam, value);
-        return;
-    }
-
-    if (identifier == "pitchAverageWindow") {
+    if (identifier == "pyin-threshdistr") {
+        m_pyinThresholdDistribution = value;
+    } else if (identifier == "pyin-lowampsuppression") {
+        m_pyinLowAmpSuppression = value;
+    } else if (identifier == "pitchAverageWindow") {
         m_pitchAverageWindow_ms = value;
     } else if (identifier == "onsetSensitivityPitch") {
         m_onsetSensitivityPitch_cents = value;
@@ -318,18 +309,6 @@ Articulation::selectProgram(string)
 Articulation::OutputList
 Articulation::getOutputDescriptors() const
 {
-    OutputList pyinOutputs = m_pyin.getOutputDescriptors();
-    m_pyinSmoothedPitchTrackOutput = -1;
-    for (int i = 0; i < int(pyinOutputs.size()); ++i) {
-        if (pyinOutputs[i].identifier == "smoothedpitchtrack") {
-            m_pyinSmoothedPitchTrackOutput = i;
-        }
-    }
-    if (m_pyinSmoothedPitchTrackOutput == -1) {
-        cerr << "ERROR: Articulation::getOutputDescriptors: pYIN smoothed pitch track output not found" << endl;
-        m_pyinSmoothedPitchTrackOutput = 0;
-    }
-    
     OutputList list;
     OutputDescriptor d;
     
@@ -490,17 +469,61 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         return false;
     }
 
-    m_pyin.setParameter("outputunvoiced", 2); // As negative frequencies
-    
-    if (!m_pyin.initialise(channels, stepSize, blockSize)) {
-        cerr << "ERROR: Articulation::initialise: pYIN initialise failed" << endl;
-        return false;
+    if (m_summaryOutput < 0) {
+        (void)getOutputDescriptors(); // initialise output indices
     }
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
+    m_haveStartTime = false;
 
-    reset();
+    try {
+        CoreFeatures::PYinParameters pyinParams;
+        pyinParams.thresholdDistribution = m_pyinThresholdDistribution;
+        pyinParams.lowAmplitudeSuppressionThreshold = m_pyinLowAmpSuppression;
+    
+        Power::Parameters powerParams;
+        powerParams.blockSize = m_blockSize;
+
+        int onsetLevelRiseHistoryLength =
+            m_coreFeatures.msToSteps(m_onsetSensitivityNoiseTimeWindow_ms,
+                                         m_stepSize, false);
+        if (onsetLevelRiseHistoryLength < 2) {
+            onsetLevelRiseHistoryLength = 2;
+        }
+
+        SpectralLevelRise::Parameters onsetLevelRiseParameters;
+        onsetLevelRiseParameters.sampleRate = m_inputSampleRate;
+        onsetLevelRiseParameters.blockSize = m_blockSize;
+        onsetLevelRiseParameters.dB = m_onsetSensitivityLevel_dB;
+        onsetLevelRiseParameters.historyLength = onsetLevelRiseHistoryLength;
+
+        SpectralLevelRise::Parameters noiseRatioLevelRiseParameters;
+        noiseRatioLevelRiseParameters.sampleRate = m_inputSampleRate;
+        noiseRatioLevelRiseParameters.blockSize = m_blockSize;
+        noiseRatioLevelRiseParameters.dB = 20.0;
+        noiseRatioLevelRiseParameters.historyLength =
+            ceil(0.05 * m_inputSampleRate / m_stepSize);
+
+        CoreFeatures::Parameters fParams;
+        fParams.pyinParameters = pyinParams;
+        fParams.powerParameters = powerParams;
+        fParams.onsetLevelRiseParameters = onsetLevelRiseParameters;
+        fParams.noiseRatioLevelRiseParameters = noiseRatioLevelRiseParameters;
+        fParams.stepSize = m_stepSize;
+        fParams.blockSize = m_blockSize;
+        fParams.pitchAverageWindow_ms = m_pitchAverageWindow_ms;
+        fParams.onsetSensitivityPitch_cents = m_onsetSensitivityPitch_cents;
+        fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
+        fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
+        fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
+
+        m_coreFeatures.initialise(fParams);
+    
+    } catch (const std::logic_error &e) {
+        cerr << "ERROR: Articulation::initialise: Feature extractor initialisation failed: " << e.what() << endl;
+        return false;
+    }
     
     return true;
 }
@@ -508,38 +531,8 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
 void
 Articulation::reset()
 {
-    m_pyin.reset();
-
-    m_power = Power();
-    m_onsetLevelRise = SpectralLevelRise();
-    m_noiseRatioLevelRise = SpectralLevelRise();
     m_haveStartTime = false;
-    m_pitch.clear();
-
-    Power::Parameters powerParams;
-    powerParams.blockSize = m_blockSize;
-    m_power.initialise(powerParams);
-
-    int onsetLevelRiseHistoryLength =
-        msToSteps(m_onsetSensitivityNoiseTimeWindow_ms, false);
-    if (onsetLevelRiseHistoryLength < 2) {
-        onsetLevelRiseHistoryLength = 2;
-    }
-
-    SpectralLevelRise::Parameters levelRiseParams;
-    levelRiseParams.sampleRate = m_inputSampleRate;
-    levelRiseParams.blockSize = m_blockSize;
-    levelRiseParams.fmin = 100.0;
-    levelRiseParams.fmax = 4000.0;
-    levelRiseParams.dB = m_onsetSensitivityLevel_dB;
-    levelRiseParams.historyLength = onsetLevelRiseHistoryLength;
-    
-    m_onsetLevelRise.initialise(levelRiseParams);
-
-    levelRiseParams.dB = 20.0;
-    levelRiseParams.historyLength = ceil(0.05 * m_inputSampleRate / m_stepSize);
-    
-    m_noiseRatioLevelRise.initialise(levelRiseParams);
+    m_coreFeatures.reset();
 }
 
 Articulation::FeatureSet
@@ -549,24 +542,9 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
         m_startTime = timestamp;
         m_haveStartTime = true;
     }
-    
-    FeatureSet fs;
-    FeatureSet pyinFeatures = m_pyin.process(inputBuffers, timestamp);
-    for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
-        double hz = f.values[0];
-        if (hz > 0.0) {
-            fs[m_pitchTrackOutput].push_back(f);
-            m_pitch.push_back(hzToPitch(hz));
-        } else {
-            m_pitch.push_back(0.0);
-        }
-    }
-    
-    m_power.process(inputBuffers[0]);
-    m_onsetLevelRise.process(inputBuffers[0]);
-    m_noiseRatioLevelRise.process(inputBuffers[0]);
 
-    return fs;
+    m_coreFeatures.process(inputBuffers[0], timestamp);
+    return {};
 }
 
 Articulation::FeatureSet
@@ -574,125 +552,69 @@ Articulation::getRemainingFeatures()
 {
     FeatureSet fs;
 
-    FeatureSet pyinFeatures = m_pyin.getRemainingFeatures();
-    for (const auto &f : pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
-        double hz = f.values[0];
-        if (hz > 0.0) {
-            fs[m_pitchTrackOutput].push_back(f);
-            m_pitch.push_back(hzToPitch(hz));
-        } else {
-            m_pitch.push_back(0.0);
-        }
-    }
+    m_coreFeatures.finish();
 
-    // "If the absolute difference of a pitch and its following moving
-    // pitch average window falls below o_2" - calculate a moving mean
-    // window over the pitch curve (which is in semitones, not Hz) and
-    // compare each pitch to the mean within the window that follows
-    // it: if they are close, record an onset
-    
-    int pitchFilterLength = msToSteps(m_pitchAverageWindow_ms, true);
-    int halfLength = pitchFilterLength/2;
-    MeanFilter pitchFilter(pitchFilterLength);
-    int n = m_pitch.size();
-    vector<double> filteredPitch(n, 0.0);
-    pitchFilter.filter(m_pitch.data(), filteredPitch.data(), n);
-    
-    vector<double> pitchOnsetDf;
-    for (int i = 0; i + halfLength < n; ++i) {
-        pitchOnsetDf.push_back
-            (fabsf(m_pitch[i] - filteredPitch[i + halfLength]));
-    }
+    auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
+    auto pyinTimestamps = m_coreFeatures.getPYinTimestamps();
 
-    set<int> pitchOnsets;
-    int minimumOnsetSteps = msToSteps(m_minimumOnsetInterval_ms, false);
-    int lastBelowThreshold = -minimumOnsetSteps;
-    double threshold = m_onsetSensitivityPitch_cents / 100.0;
-
-    for (int i = 0; i + halfLength < n; ++i) {
-        // "absolute difference... falls below o_2":
-        if (pitchOnsetDf[i] < threshold) {
-            // "subsequent onsets require o_2 to be exceeded for at
-            // least the duration of o_6 first":
-            if (i > lastBelowThreshold + minimumOnsetSteps) {
-                pitchOnsets.insert(i);
-            }
-            lastBelowThreshold = i;
-        }
-    }
-    
-    vector<double> smoothedPower = m_power.getSmoothedPower();
-    vector<double> riseFractions = m_onsetLevelRise.getFractions();
-
-    set<int> allOnsets = pitchOnsets;
-    for (int i = 0; i < int(riseFractions.size()); ++i) {
-        // SpectralLevelRise only starts recording values once its
-        // history buffer (say length n) is full. So the value at i
-        // indicates the fraction of bins that saw a significant rise
-        // during the n steps starting at input step i. Step i is
-        // calculated from time-domain samples between sample
-        // i*stepSize and i*stepSize + blockSize, so it reflects
-        // activity around the centre of the window at i*stepSize +
-        // blockSize/2. Hence we record that step as the moment at
-        // which the onset was first apparent.
-        if (riseFractions[i] > m_onsetSensitivityNoise_percent / 100.0) {
-            allOnsets.insert(i + (m_blockSize / m_stepSize)/2);
-        }
-    }
-
-    vector<int> onsets;
-    int prevP = -minimumOnsetSteps;
-    for (auto p: allOnsets) {
-        if (p < prevP + minimumOnsetSteps) {
-            continue;
-        }
-        onsets.push_back(p);
-        prevP = p;
+    for (int i = 0; i < int(pyinPitch.size()); ++i) {
+        if (pyinPitch[i] <= 0) continue;
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = pyinTimestamps[i];
+        f.values.push_back(pyinPitch[i]);
+        fs[m_pitchTrackOutput].push_back(f);
     }
     
 #ifdef WITH_DEBUG_OUTPUTS
-    for (int i = 0; i < n; ++i) {
+    auto timeForStep = [&](int i) {
+        return m_startTime + Vamp::RealTime::frame2RealTime
+            (i * m_stepSize, m_inputSampleRate);
+    };
+    
+    auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
+    for (int i = 0; i < int(filteredPitch.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
-            (i * m_stepSize, m_inputSampleRate);
+        f.timestamp = timeForStep(i);
         f.values.push_back(filteredPitch[i]);
         fs[m_filteredPitchOutput].push_back(f);
     }
     
+    auto pitchOnsetDf = m_coreFeatures.getPitchOnsetDF();
     for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
-            (i * m_stepSize, m_inputSampleRate);
+        f.timestamp = timeForStep(i);
         f.values.push_back(pitchOnsetDf[i]);
         fs[m_pitchOnsetDfOutput].push_back(f);
     }
     
+    auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
     for (size_t i = 0; i < smoothedPower.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
-            (i * m_stepSize, m_inputSampleRate);
+        f.timestamp = timeForStep(i);
         f.values.push_back(smoothedPower[i]);
         fs[m_powerOutput].push_back(f);
     }
     
+    auto riseFractions = m_coreFeatures.getOnsetLevelRiseFractions();
     for (size_t i = 0; i < riseFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
         int j = i + (m_blockSize / m_stepSize)/2;
-        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
-            (j * m_stepSize, m_inputSampleRate);
+        f.timestamp = timeForStep(j);
         f.values.push_back(riseFractions[i]);
         fs[m_transientOnsetDfOutput].push_back(f);
     }
 
+    auto onsets = m_coreFeatures.getMergedOnsets();
+    auto pitchOnsets = m_coreFeatures.getPitchOnsets();
     for (auto p: onsets) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = m_startTime + Vamp::RealTime::frame2RealTime
-            (p * m_stepSize, m_inputSampleRate);
+        f.timestamp = timeForStep(p);
         if (pitchOnsets.find(p) != pitchOnsets.end()) {
             f.label = "Pitch Change";
         } else {
