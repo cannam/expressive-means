@@ -218,18 +218,30 @@ public:
         }
     
         std::vector<double> riseFractions = m_onsetLevelRise.getFractions();
+        double upperThreshold = m_onsetSensitivityNoise_percent / 100.0;
+        double lowerThreshold = upperThreshold / 2.0;
+        bool aboveThreshold = false;
         for (int i = 0; i < int(riseFractions.size()); ++i) {
-            // SpectralLevelRise only starts recording values once its
-            // history buffer (say length n) is full. So the value at
-            // i indicates the fraction of bins that saw a significant
-            // rise during the n steps starting at input step i. Step
-            // i is calculated from time-domain samples between sample
-            // i*stepSize and i*stepSize + blockSize, so it reflects
-            // activity around the centre of the window at i*stepSize
-            // + blockSize/2. Hence we record that step as the moment
-            // at which the onset was first apparent.
-            if (riseFractions[i] > m_onsetSensitivityNoise_percent / 100.0) {
-                m_levelRiseOnsets.insert(i + (m_blockSize / m_stepSize)/2);
+            // Watch for the level to rise above threshold, then wait
+            // for it to fall again and identify that moment as the
+            // onset.
+            //            
+            // NB SpectralLevelRise only starts recording values once
+            // its history buffer (say length n) is full. So the value
+            // at i indicates the fraction of bins that saw a
+            // significant rise during the n steps starting at input
+            // step i. Step i is calculated from time-domain samples
+            // between sample i*stepSize and i*stepSize + blockSize,
+            // so it reflects activity around the centre of the window
+            // at i*stepSize + blockSize/2.
+            //
+            if (riseFractions[i] > upperThreshold) {
+                aboveThreshold = true;
+            } else if (riseFractions[i] < lowerThreshold) {
+                if (aboveThreshold) {
+                    m_levelRiseOnsets.insert(i + (m_blockSize / m_stepSize)/2);
+                    aboveThreshold = false;
+                }
             }
         }
         
