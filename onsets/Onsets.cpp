@@ -371,6 +371,7 @@ Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
         fParams.blockSize = m_blockSize;
         fParams.pitchAverageWindow_ms = m_pitchAverageWindow_ms;
         fParams.onsetSensitivityPitch_cents = m_onsetSensitivityPitch_cents;
+        fParams.onsetSensitivityNoise_percent = m_onsetSensitivityNoise_percent;
         fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
         fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
         fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
