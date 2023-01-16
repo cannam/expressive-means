@@ -174,9 +174,13 @@ public:
             m_pyinTimestamps.push_back(f.timestamp);
         }
 
+        double prevHz = 0.0;
         for (auto hz : m_pyinPitchHz) {
             if (hz > 0.0) {
                 m_pitch.push_back(hzToPitch(hz));
+                prevHz = hz;
+            } else if (prevHz > 0.0) {
+                m_pitch.push_back(hzToPitch(prevHz));
             } else {
                 m_pitch.push_back(0.0);
             }
