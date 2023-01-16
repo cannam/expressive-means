@@ -23,6 +23,7 @@ cpp = meson.get_compiler('cpp')
 
 plugin_sources = [
   'articulation/Articulation.cpp',
+  'onsets/Onsets.cpp',
   'libmain.cpp',
 ]
 

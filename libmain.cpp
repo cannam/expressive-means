@@ -14,7 +14,9 @@
 #include <vamp-sdk/PluginAdapter.h>
 
 #include "articulation/Articulation.h"
+#include "onsets/Onsets.h"
 
+static Vamp::PluginAdapter<Onsets> onsetsPluginAdapter;
 static Vamp::PluginAdapter<Articulation> articulationPluginAdapter;
 
 const VampPluginDescriptor *
@@ -23,7 +25,8 @@ vampGetPluginDescriptor(unsigned int version, unsigned int index)
     if (version < 1) return 0;
 
     switch (index) {
-    case  0: return articulationPluginAdapter.getDescriptor();
+    case  0: return onsetsPluginAdapter.getDescriptor();
+    case  1: return articulationPluginAdapter.getDescriptor();
     default: return 0;
     }
 }

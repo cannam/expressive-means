@@ -1,6 +1,6 @@
 
 /*
-    Expressive Means Articulation
+    Expressive Means Onsets
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -9,7 +9,7 @@
     COPYING included with this distribution for more information.
 */
 
-#include "Articulation.h"
+#include "Onsets.h"
 
 #include <vector>
 #include <set>
@@ -21,12 +21,7 @@ using std::set;
 
 static const CoreFeatures::Parameters defaultCoreParams;
 
-static const float default_sustainBeginThreshold_ms = 50.f;
-static const float default_sustainEndThreshold_dBFS = -45.f;
-static const float default_volumeDevelopmentThreshold_dB = 2.f;
-static const float default_scalingFactor = 10.7f;
-
-Articulation::Articulation(float inputSampleRate) :
+Onsets::Onsets(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
@@ -40,89 +35,84 @@ Articulation::Articulation(float inputSampleRate) :
     m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
-    m_sustainBeginThreshold_ms(default_sustainBeginThreshold_ms),
-    m_sustainEndThreshold_dBFS(default_sustainEndThreshold_dBFS),
-    m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
-    m_scalingFactor(default_scalingFactor),
-    m_summaryOutput(-1),
-    m_articulationTypeOutput(-1),
-    m_pitchTrackOutput(-1),
-    m_articulationIndexOutput(-1)
+    m_onsetOutput(-1),
+    m_pitchOnsetDfOutput(-1),
+    m_transientOnsetDfOutput(-1)
 {
 }
 
-Articulation::~Articulation()
+Onsets::~Onsets()
 {
 }
 
 string
-Articulation::getIdentifier() const
+Onsets::getIdentifier() const
 {
-    return "articulation";
+    return "onsets";
 }
 
 string
-Articulation::getName() const
+Onsets::getName() const
 {
-    return "Expressive Means: Articulation";
+    return "Expressive Means: Onsets";
 }
 
 string
-Articulation::getDescription() const
+Onsets::getDescription() const
 {
     return "";
 }
 
 string
-Articulation::getMaker() const
+Onsets::getMaker() const
 {
     return "Frithjof Vollmer and Chris Cannam";
 }
 
 int
-Articulation::getPluginVersion() const
+Onsets::getPluginVersion() const
 {
     return 1;
 }
 
 string
-Articulation::getCopyright() const
+Onsets::getCopyright() const
 {
     return "GPLv2";
 }
 
-Articulation::InputDomain
-Articulation::getInputDomain() const
+Onsets::InputDomain
+Onsets::getInputDomain() const
 {
     return TimeDomain;
 }
 
 size_t
-Articulation::getPreferredBlockSize() const
+Onsets::getPreferredBlockSize() const
 {
     return m_coreFeatures.getPreferredBlockSize();
 }
 
 size_t 
-Articulation::getPreferredStepSize() const
+Onsets::getPreferredStepSize() const
 {
     return m_coreFeatures.getPreferredStepSize();
 }
 
 size_t
-Articulation::getMinChannelCount() const
+Onsets::getMinChannelCount() const
 {
     return 1;
 }
 
 size_t
-Articulation::getMaxChannelCount() const
+Onsets::getMaxChannelCount() const
 {
     return 1;
 }
 
-Articulation::ParameterList
-Articulation::getParameterDescriptors() const
+Onsets::ParameterList
+Onsets::getParameterDescriptors() const
 {
     ParameterList list;
 
@@ -189,43 +179,11 @@ Articulation::getParameterDescriptors() const
     d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
     list.push_back(d);
     
-    d.identifier = "sustainBeginThreshold";
-    d.name = "Sustain phase begin threshold";
-    d.unit = "ms";
-    d.minValue = 0.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = default_sustainBeginThreshold_ms;
-    list.push_back(d);
-    
-    d.identifier = "sustainEndThreshold";
-    d.name = "Sustain phase end threshold";
-    d.unit = "dBFS";
-    d.minValue = -80.f;
-    d.maxValue = 0.f;
-    d.defaultValue = default_sustainEndThreshold_dBFS;
-    list.push_back(d);
-    
-    d.identifier = "volumeDevelopmentThreshold";
-    d.name = "Volume development threshold";
-    d.unit = "dB";
-    d.minValue = 0.f;
-    d.maxValue = 10.f;
-    d.defaultValue = default_volumeDevelopmentThreshold_dB;
-    list.push_back(d);
-    
-    d.identifier = "scalingFactor";
-    d.name = "Scaling factor";
-    d.unit = "";
-    d.minValue = 1.f;
-    d.maxValue = 30.f;
-    d.defaultValue = default_scalingFactor;
-    list.push_back(d);
-    
     return list;
 }
 
 float
-Articulation::getParameter(string identifier) const
+Onsets::getParameter(string identifier) const
 {
     if (identifier == "pyin-threshdistr") {
         return m_pyinThresholdDistribution;
@@ -243,21 +201,13 @@ Articulation::getParameter(string identifier) const
         return m_onsetSensitivityNoiseTimeWindow_ms;
     } else if (identifier == "minimumOnsetInterval") {
         return m_minimumOnsetInterval_ms;
-    } else if (identifier == "sustainBeginThreshold") {
-        return m_sustainBeginThreshold_ms;
-    } else if (identifier == "sustainEndThreshold") {
-        return m_sustainEndThreshold_dBFS;
-    } else if (identifier == "volumeDevelopmentThreshold") {
-        return m_volumeDevelopmentThreshold_dB;
-    } else if (identifier == "scalingFactor") {
-        return m_scalingFactor;
     }
     
     return 0.f;
 }
 
 void
-Articulation::setParameter(string identifier, float value) 
+Onsets::setParameter(string identifier, float value) 
 {
     if (identifier == "pyin-threshdistr") {
         m_pyinThresholdDistribution = value;
@@ -275,125 +225,49 @@ Articulation::setParameter(string identifier, float value)
         m_onsetSensitivityNoiseTimeWindow_ms = value;
     } else if (identifier == "minimumOnsetInterval") {
         m_minimumOnsetInterval_ms = value;
-    } else if (identifier == "sustainBeginThreshold") {
-        m_sustainBeginThreshold_ms = value;
-    } else if (identifier == "sustainEndThreshold") {
-        m_sustainEndThreshold_dBFS = value;
-    } else if (identifier == "volumeDevelopmentThreshold") {
-        m_volumeDevelopmentThreshold_dB = value;
-    } else if (identifier == "scalingFactor") {
-        m_scalingFactor = value;
     }
 }
 
-Articulation::ProgramList
-Articulation::getPrograms() const
+Onsets::ProgramList
+Onsets::getPrograms() const
 {
     ProgramList list;
     return list;
 }
 
 string
-Articulation::getCurrentProgram() const
+Onsets::getCurrentProgram() const
 {
     return ""; 
 }
 
 void
-Articulation::selectProgram(string)
+Onsets::selectProgram(string)
 {
 }
 
-Articulation::OutputList
-Articulation::getOutputDescriptors() const
+Onsets::OutputList
+Onsets::getOutputDescriptors() const
 {
     OutputList list;
     OutputDescriptor d;
-    
-    d.identifier = "summary";
-    d.name = "Summary";
-    d.description = "";
-    d.unit = "";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
-    d.hasDuration = false;
-    m_summaryOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "articulationType";
-    d.name = "Articulation Type";
-    d.description = "";
+
+    d.identifier = "onsets";
+    d.name = "Onsets";
+    d.description = "Identified onset locations, labelled as either Pitch Change or Spectral Rise depending on how they were identified.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
     d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
-    d.hasDuration = false;
-    m_articulationTypeOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "pitchTrack";
-    d.name = "Pitch Track";
-    d.description = "The smoothed pitch track computed by pYIN.";
-    d.unit = "Hz";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
     d.sampleType = OutputDescriptor::FixedSampleRate;
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
-    m_pitchTrackOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "articulationIndex";
-    d.name = "Articulation Index";
-    d.description = "";
-    d.unit = "";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
-    d.hasDuration = false;
-    m_articulationIndexOutput = int(list.size());
-    list.push_back(d);
-
-#ifdef WITH_DEBUG_OUTPUTS
-    d.identifier = "power";
-    d.name = "[Debug] Power";
-    d.description = "Smoothed power curve.";
-    d.unit = "dB";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_powerOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "filteredPitch";
-    d.name = "[Debug] Filtered Pitch";
-    d.description = "Re-filtered pitch track.";
-    d.unit = "MIDI units";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_filteredPitchOutput = int(list.size());
+    m_onsetOutput = int(list.size());
     list.push_back(d);
 
     d.identifier = "pitchdf";
-    d.name = "[Debug] Pitch Onset Detection Function";
+    d.name = "Pitch Onset Detection Function";
     d.description = "Function used to identify onsets by pitch change. Onsets are considered likely when the function is low rather than high, i.e. when it first falls below a threshold.";
     d.unit = "semitones";
     d.hasFixedBinCount = true;
@@ -407,7 +281,7 @@ Articulation::getOutputDescriptors() const
     list.push_back(d);
 
     d.identifier = "transientdf";
-    d.name = "[Debug] Transient Onset Detection Function";
+    d.name = "Transient Onset Detection Function";
     d.description = "Function used to identify onsets by spectral rise. Onsets are considered likely when the function exceeds a threshold.";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -419,55 +293,40 @@ Articulation::getOutputDescriptors() const
     d.hasDuration = false;
     m_transientOnsetDfOutput = int(list.size());
     list.push_back(d);
-
-    d.identifier = "onsets";
-    d.name = "[Debug] Onsets Labelled by Cause";
-    d.description = "Identified onset locations, labelled as either Pitch Change or Spectral Rise depending on how they were identified.";
-    d.unit = "";
-    d.hasFixedBinCount = true;
-    d.binCount = 0;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_onsetOutput = int(list.size());
-    list.push_back(d);
-#endif
     
     return list;
 }
 
 bool
-Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
+Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
 {
     if (channels < getMinChannelCount() || channels > getMaxChannelCount()) {
-        cerr << "ERROR: Articulation::initialise: unsupported channel count "
+        cerr << "ERROR: Onsets::initialise: unsupported channel count "
              << channels << endl;
         return false;
     }
 
     if (m_inputSampleRate < 8000.0) {
-        cerr << "ERROR: Articulation::initialise: sample rate ("
+        cerr << "ERROR: Onsets::initialise: sample rate ("
              << m_inputSampleRate << ") is too low, it must be at least 8kHz"
              << endl;
         return false;
     }
     
     if (m_inputSampleRate > 192000.0) {
-        cerr << "ERROR: Articulation::initialise: sample rate ("
+        cerr << "ERROR: Onsets::initialise: sample rate ("
              << m_inputSampleRate << ") is too high, maximum is 192kHz"
              << endl;
         return false;
     }
     
     if (stepSize > blockSize) {
-        cerr << "ERROR: Articulation::initialise: step size (" << stepSize
+        cerr << "ERROR: Onsets::initialise: step size (" << stepSize
              << ") may not exceed block size (" << blockSize << ")" << endl;
         return false;
     }
 
-    if (m_summaryOutput < 0) {
+    if (m_onsetOutput < 0) {
         (void)getOutputDescriptors(); // initialise output indices
     }
     
@@ -519,7 +378,7 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         m_coreFeatures.initialise(fParams);
     
     } catch (const std::logic_error &e) {
-        cerr << "ERROR: Articulation::initialise: Feature extractor initialisation failed: " << e.what() << endl;
+        cerr << "ERROR: Onsets::initialise: Feature extractor initialisation failed: " << e.what() << endl;
         return false;
     }
     
@@ -527,14 +386,14 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
 }
 
 void
-Articulation::reset()
+Onsets::reset()
 {
     m_haveStartTime = false;
     m_coreFeatures.reset();
 }
 
-Articulation::FeatureSet
-Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
+Onsets::FeatureSet
+Onsets::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
     if (!m_haveStartTime) {
         m_startTime = timestamp;
@@ -545,39 +404,17 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     return {};
 }
 
-Articulation::FeatureSet
-Articulation::getRemainingFeatures()
+Onsets::FeatureSet
+Onsets::getRemainingFeatures()
 {
     FeatureSet fs;
 
     m_coreFeatures.finish();
 
-    auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-    auto pyinTimestamps = m_coreFeatures.getPYinTimestamps();
-
-    for (int i = 0; i < int(pyinPitch.size()); ++i) {
-        if (pyinPitch[i] <= 0) continue;
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = pyinTimestamps[i];
-        f.values.push_back(pyinPitch[i]);
-        fs[m_pitchTrackOutput].push_back(f);
-    }
-    
-#ifdef WITH_DEBUG_OUTPUTS
     auto timeForStep = [&](int i) {
         return m_startTime + Vamp::RealTime::frame2RealTime
             (i * m_stepSize, m_inputSampleRate);
     };
-    
-    auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
-    for (int i = 0; i < int(filteredPitch.size()); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = timeForStep(i);
-        f.values.push_back(filteredPitch[i]);
-        fs[m_filteredPitchOutput].push_back(f);
-    }
     
     auto pitchOnsetDf = m_coreFeatures.getPitchOnsetDF();
     for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
@@ -586,15 +423,6 @@ Articulation::getRemainingFeatures()
         f.timestamp = timeForStep(i);
         f.values.push_back(pitchOnsetDf[i]);
         fs[m_pitchOnsetDfOutput].push_back(f);
-    }
-    
-    auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
-    for (size_t i = 0; i < smoothedPower.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = timeForStep(i);
-        f.values.push_back(smoothedPower[i]);
-        fs[m_powerOutput].push_back(f);
     }
     
     auto riseFractions = m_coreFeatures.getOnsetLevelRiseFractions();
@@ -620,7 +448,6 @@ Articulation::getRemainingFeatures()
         }
         fs[m_onsetOutput].push_back(f);
     }
-#endif
     
     return fs;
 }
