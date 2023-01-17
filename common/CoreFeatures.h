@@ -141,6 +141,7 @@ public:
         m_levelRiseOnsets.clear();
         m_allOnsets.clear();
         m_mergedOnsets.clear();
+        m_onsetOffsets.clear();
     }
     
     void
@@ -263,6 +264,28 @@ public:
 
         m_rawPower = m_power.getRawPower();
         m_smoothedPower = m_power.getSmoothedPower();
+        n = m_smoothedPower.size();
+
+        for (auto i = m_mergedOnsets.begin(); i != m_mergedOnsets.end(); ++i) {
+            int p = *i;
+            int limit = n;
+            auto j = i;
+            if (++j != m_mergedOnsets.end()) {
+                limit = *j; // stop at the next onset
+            }
+            int q = p + minimumOnsetSteps;
+            while (q < limit) {
+                if (m_smoothedPower[q] < m_smoothedPower[p]) {
+                    break;
+                }
+                ++q;
+            }
+            if (q > limit) {
+                m_onsetOffsets[p] = limit;
+            } else {
+                m_onsetOffsets[p] = q;
+            }
+        }
         
         m_finished = true;
     }
@@ -339,6 +362,12 @@ public:
         return m_mergedOnsets;
     }
 
+    std::map<int, int>
+    getOnsetOffsets() const {
+        assertFinished();
+        return m_onsetOffsets;
+    }
+    
     PYinVamp::ParameterList
     getPYinParameterDescriptors() const {
         return m_pyin.getParameterDescriptors();
@@ -390,6 +419,7 @@ private:
     std::set<int> m_levelRiseOnsets;
     std::set<int> m_allOnsets;
     std::set<int> m_mergedOnsets;
+    std::map<int, int> m_onsetOffsets;
 
     void assertFinished() const {
         if (!m_finished) {

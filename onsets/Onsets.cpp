@@ -36,6 +36,7 @@ Onsets::Onsets(float inputSampleRate) :
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
     m_onsetOutput(-1),
+    m_spanOutput(-1),
     m_pitchOnsetDfOutput(-1),
     m_transientOnsetDfOutput(-1)
 {
@@ -266,6 +267,20 @@ Onsets::getOutputDescriptors() const
     m_onsetOutput = int(list.size());
     list.push_back(d);
 
+    d.identifier = "spans";
+    d.name = "Spans";
+    d.description = "Identified note onsets with estimated duration.";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = true;
+    m_spanOutput = int(list.size());
+    list.push_back(d);
+
     d.identifier = "pitchdf";
     d.name = "Pitch Onset Detection Function";
     d.description = "Function used to identify onsets by pitch change. Onsets are considered likely when the function is low rather than high, i.e. when it first falls below a threshold.";
@@ -436,18 +451,33 @@ Onsets::getRemainingFeatures()
         fs[m_transientOnsetDfOutput].push_back(f);
     }
 
-    auto onsets = m_coreFeatures.getMergedOnsets();
     auto pitchOnsets = m_coreFeatures.getPitchOnsets();
-    for (auto p: onsets) {
+    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
+
+    for (auto pq : onsetOffsets) {
+        int p = pq.first;
+        int q = pq.second;
+
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = timeForStep(p);
+        f.hasDuration = false;
         if (pitchOnsets.find(p) != pitchOnsets.end()) {
             f.label = "Pitch Change";
         } else {
             f.label = "Spectral Rise";
         }
         fs[m_onsetOutput].push_back(f);
+
+        f.hasDuration = true;
+        f.duration = timeForStep(q) - f.timestamp;
+        f.label = "";
+        if (pitchOnsets.find(p) != pitchOnsets.end()) {
+            f.values.push_back(1);
+        } else {
+            f.values.push_back(2);
+        }
+        fs[m_spanOutput].push_back(f);
     }
     
     return fs;

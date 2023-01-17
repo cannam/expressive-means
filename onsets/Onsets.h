@@ -77,6 +77,7 @@ protected:
     float m_minimumOnsetInterval_ms;
 
     mutable int m_onsetOutput;
+    mutable int m_spanOutput;
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
 };
