@@ -35,6 +35,7 @@ Onsets::Onsets(float inputSampleRate) :
     m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
+    m_noteDurationThreshold_dB(defaultCoreParams.noteDurationThreshold_dB),
     m_onsetOutput(-1),
     m_spanOutput(-1),
     m_pitchOnsetDfOutput(-1),
@@ -180,6 +181,14 @@ Onsets::getParameterDescriptors() const
     d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
     list.push_back(d);
     
+    d.identifier = "noteDurationThreshold";
+    d.name = "Note duration level drop threshold";
+    d.unit = "dB";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = defaultCoreParams.noteDurationThreshold_dB;
+    list.push_back(d);
+    
     return list;
 }
 
@@ -202,6 +211,8 @@ Onsets::getParameter(string identifier) const
         return m_onsetSensitivityNoiseTimeWindow_ms;
     } else if (identifier == "minimumOnsetInterval") {
         return m_minimumOnsetInterval_ms;
+    } else if (identifier == "noteDurationThreshold") {
+        return m_noteDurationThreshold_dB;
     }
     
     return 0.f;
@@ -226,6 +237,8 @@ Onsets::setParameter(string identifier, float value)
         m_onsetSensitivityNoiseTimeWindow_ms = value;
     } else if (identifier == "minimumOnsetInterval") {
         m_minimumOnsetInterval_ms = value;
+    } else if (identifier == "noteDurationThreshold") {
+        m_noteDurationThreshold_dB = value;
     }
 }
 
@@ -269,7 +282,7 @@ Onsets::getOutputDescriptors() const
 
     d.identifier = "spans";
     d.name = "Spans";
-    d.description = "Identified note onsets with estimated duration.";
+    d.description = "Identified note onsets with estimated duration. Features have value 1 for notes identified via pitch change or 2 for spectral rise. Offsets are determined using the \"Note duration level drop threshold\" parameter.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 1;
@@ -390,6 +403,7 @@ Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
         fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
         fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
         fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
+        fParams.noteDurationThreshold_dB = m_noteDurationThreshold_dB;
 
         m_coreFeatures.initialise(fParams);
     

@@ -64,6 +64,7 @@ public:
         float onsetSensitivityLevel_dB;             // 2.4, o_4
         float onsetSensitivityNoiseTimeWindow_ms;   // 2.5, o_5
         float minimumOnsetInterval_ms;              // 2.6, o_6
+        float noteDurationThreshold_dB;             // 2.7, o_7
         Parameters() :
             stepSize(256),
             blockSize(2048),
@@ -72,7 +73,8 @@ public:
             onsetSensitivityNoise_percent(40.f),
             onsetSensitivityLevel_dB(8.f),
             onsetSensitivityNoiseTimeWindow_ms(100.f),
-            minimumOnsetInterval_ms(100.f)
+            minimumOnsetInterval_ms(100.f),
+            noteDurationThreshold_dB(6.f)
         {}
     };
 
@@ -115,6 +117,7 @@ public:
         m_onsetSensitivityLevel_dB = parameters.onsetSensitivityLevel_dB;
         m_onsetSensitivityNoiseTimeWindow_ms = parameters.onsetSensitivityNoiseTimeWindow_ms;
         m_minimumOnsetInterval_ms = parameters.minimumOnsetInterval_ms;
+        m_noteDurationThreshold_dB = parameters.noteDurationThreshold_dB;
         
         m_initialised = true;
     };
@@ -273,9 +276,14 @@ public:
             if (++j != m_mergedOnsets.end()) {
                 limit = *j; // stop at the next onset
             }
-            int q = p + minimumOnsetSteps;
+            int q = p + 1;
+            std::cerr << "power " << m_smoothedPower[p] << ", threshold "
+                      << m_noteDurationThreshold_dB
+                      << ", gives target power " << m_smoothedPower[p] - m_noteDurationThreshold_dB
+                      << std::endl;
             while (q < limit) {
-                if (m_smoothedPower[q] < m_smoothedPower[p]) {
+                if (m_smoothedPower[q] <
+                    m_smoothedPower[p] - m_noteDurationThreshold_dB) {
                     break;
                 }
                 ++q;
@@ -406,6 +414,7 @@ private:
     float m_onsetSensitivityLevel_dB;           // 2.4, o_4
     float m_onsetSensitivityNoiseTimeWindow_ms; // 2.5, o_5
     float m_minimumOnsetInterval_ms;            // 2.6, o_6
+    float m_noteDurationThreshold_dB;           // 2.7, o_7
     
     int m_pyinSmoothedPitchTrackOutput;
     std::vector<double> m_pyinPitchHz;
