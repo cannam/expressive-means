@@ -1,6 +1,6 @@
 
 /*
-    Expressive Means Portamento
+    Expressive Means Pitch Vibrato
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -9,7 +9,7 @@
     COPYING included with this distribution for more information.
 */
 
-#include "Portamento.h"
+#include "PitchVibrato.h"
 
 #include <vector>
 #include <set>
@@ -21,7 +21,7 @@ using std::set;
 
 static const CoreFeatures::Parameters defaultCoreParams;
 
-Portamento::Portamento(float inputSampleRate) :
+PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
@@ -35,87 +35,87 @@ Portamento::Portamento(float inputSampleRate) :
     m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms)
-    /* ,
+    /*,
     m_summaryOutput(-1),
-    m_portamentoTypeOutput(-1),
+    m_pitchvibratoTypeOutput(-1),
     m_pitchTrackOutput(-1),
-    m_portamentoIndexOutput(-1)
+    m_pitchvibratoIndexOutput(-1)
     */
 {
 }
 
-Portamento::~Portamento()
+PitchVibrato::~PitchVibrato()
 {
 }
 
 string
-Portamento::getIdentifier() const
+PitchVibrato::getIdentifier() const
 {
-    return "portamento";
+    return "pitch-vibrato";
 }
 
 string
-Portamento::getName() const
+PitchVibrato::getName() const
 {
-    return "Expressive Means: Portamento";
+    return "Expressive Means: Pitch Vibrato";
 }
 
 string
-Portamento::getDescription() const
+PitchVibrato::getDescription() const
 {
     return "";
 }
 
 string
-Portamento::getMaker() const
+PitchVibrato::getMaker() const
 {
     return "Frithjof Vollmer and Chris Cannam";
 }
 
 int
-Portamento::getPluginVersion() const
+PitchVibrato::getPluginVersion() const
 {
     return 1;
 }
 
 string
-Portamento::getCopyright() const
+PitchVibrato::getCopyright() const
 {
     return "GPLv2";
 }
 
-Portamento::InputDomain
-Portamento::getInputDomain() const
+PitchVibrato::InputDomain
+PitchVibrato::getInputDomain() const
 {
     return TimeDomain;
 }
 
 size_t
-Portamento::getPreferredBlockSize() const
+PitchVibrato::getPreferredBlockSize() const
 {
     return m_coreFeatures.getPreferredBlockSize();
 }
 
 size_t 
-Portamento::getPreferredStepSize() const
+PitchVibrato::getPreferredStepSize() const
 {
     return m_coreFeatures.getPreferredStepSize();
 }
 
 size_t
-Portamento::getMinChannelCount() const
+PitchVibrato::getMinChannelCount() const
 {
     return 1;
 }
 
 size_t
-Portamento::getMaxChannelCount() const
+PitchVibrato::getMaxChannelCount() const
 {
     return 1;
 }
 
-Portamento::ParameterList
-Portamento::getParameterDescriptors() const
+PitchVibrato::ParameterList
+PitchVibrato::getParameterDescriptors() const
 {
     ParameterList list;
 
@@ -186,7 +186,7 @@ Portamento::getParameterDescriptors() const
 }
 
 float
-Portamento::getParameter(string identifier) const
+PitchVibrato::getParameter(string identifier) const
 {
     if (identifier == "pyin-threshdistr") {
         return m_pyinThresholdDistribution;
@@ -210,7 +210,7 @@ Portamento::getParameter(string identifier) const
 }
 
 void
-Portamento::setParameter(string identifier, float value) 
+PitchVibrato::setParameter(string identifier, float value) 
 {
     if (identifier == "pyin-threshdistr") {
         m_pyinThresholdDistribution = value;
@@ -231,26 +231,26 @@ Portamento::setParameter(string identifier, float value)
     }
 }
 
-Portamento::ProgramList
-Portamento::getPrograms() const
+PitchVibrato::ProgramList
+PitchVibrato::getPrograms() const
 {
     ProgramList list;
     return list;
 }
 
 string
-Portamento::getCurrentProgram() const
+PitchVibrato::getCurrentProgram() const
 {
     return ""; 
 }
 
 void
-Portamento::selectProgram(string)
+PitchVibrato::selectProgram(string)
 {
 }
 
-Portamento::OutputList
-Portamento::getOutputDescriptors() const
+PitchVibrato::OutputList
+PitchVibrato::getOutputDescriptors() const
 {
     OutputList list;
     OutputDescriptor d;
@@ -268,8 +268,8 @@ Portamento::getOutputDescriptors() const
     m_summaryOutput = int(list.size());
     list.push_back(d);
     
-    d.identifier = "portamentoType";
-    d.name = "Portamento Type";
+    d.identifier = "pitchvibratoType";
+    d.name = "Pitch Vibrato Type";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -278,7 +278,7 @@ Portamento::getOutputDescriptors() const
     d.isQuantized = false;
     d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
-    m_portamentoTypeOutput = int(list.size());
+    m_pitchvibratoTypeOutput = int(list.size());
     list.push_back(d);
     
     d.identifier = "pitchTrack";
@@ -295,8 +295,8 @@ Portamento::getOutputDescriptors() const
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
     
-    d.identifier = "portamentoIndex";
-    d.name = "Portamento Index";
+    d.identifier = "pitchvibratoIndex";
+    d.name = "Pitch Vibrato Index";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -305,7 +305,7 @@ Portamento::getOutputDescriptors() const
     d.isQuantized = false;
     d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
-    m_portamentoIndexOutput = int(list.size());
+    m_pitchvibratoIndexOutput = int(list.size());
     list.push_back(d);
 */
     
@@ -313,30 +313,30 @@ Portamento::getOutputDescriptors() const
 }
 
 bool
-Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
+PitchVibrato::initialise(size_t channels, size_t stepSize, size_t blockSize)
 {
     if (channels < getMinChannelCount() || channels > getMaxChannelCount()) {
-        cerr << "ERROR: Portamento::initialise: unsupported channel count "
+        cerr << "ERROR: PitchVibrato::initialise: unsupported channel count "
              << channels << endl;
         return false;
     }
 
     if (m_inputSampleRate < 8000.0) {
-        cerr << "ERROR: Portamento::initialise: sample rate ("
+        cerr << "ERROR: PitchVibrato::initialise: sample rate ("
              << m_inputSampleRate << ") is too low, it must be at least 8kHz"
              << endl;
         return false;
     }
     
     if (m_inputSampleRate > 192000.0) {
-        cerr << "ERROR: Portamento::initialise: sample rate ("
+        cerr << "ERROR: PitchVibrato::initialise: sample rate ("
              << m_inputSampleRate << ") is too high, maximum is 192kHz"
              << endl;
         return false;
     }
     
     if (stepSize > blockSize) {
-        cerr << "ERROR: Portamento::initialise: step size (" << stepSize
+        cerr << "ERROR: PitchVibrato::initialise: step size (" << stepSize
              << ") may not exceed block size (" << blockSize << ")" << endl;
         return false;
     }
@@ -344,8 +344,7 @@ Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
     if (m_summaryOutput < 0) {
         (void)getOutputDescriptors(); // initialise output indices
     }
-*/
-    
+*/    
     m_stepSize = stepSize;
     m_blockSize = blockSize;
     m_haveStartTime = false;
@@ -395,7 +394,7 @@ Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
         m_coreFeatures.initialise(fParams);
     
     } catch (const std::logic_error &e) {
-        cerr << "ERROR: Portamento::initialise: Feature extractor initialisation failed: " << e.what() << endl;
+        cerr << "ERROR: PitchVibrato::initialise: Feature extractor initialisation failed: " << e.what() << endl;
         return false;
     }
     
@@ -403,14 +402,14 @@ Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
 }
 
 void
-Portamento::reset()
+PitchVibrato::reset()
 {
     m_haveStartTime = false;
     m_coreFeatures.reset();
 }
 
-Portamento::FeatureSet
-Portamento::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
+PitchVibrato::FeatureSet
+PitchVibrato::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
     if (!m_haveStartTime) {
         m_startTime = timestamp;
@@ -421,8 +420,8 @@ Portamento::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
     return {};
 }
 
-Portamento::FeatureSet
-Portamento::getRemainingFeatures()
+PitchVibrato::FeatureSet
+PitchVibrato::getRemainingFeatures()
 {
     FeatureSet fs;
 

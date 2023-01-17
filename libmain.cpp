@@ -13,11 +13,15 @@
 #include <vamp/vamp.h>
 #include <vamp-sdk/PluginAdapter.h>
 
-#include "articulation/Articulation.h"
 #include "onsets/Onsets.h"
+#include "articulation/Articulation.h"
+#include "pitch-vibrato/PitchVibrato.h"
+#include "portamento/Portamento.h"
 
 static Vamp::PluginAdapter<Onsets> onsetsPluginAdapter;
 static Vamp::PluginAdapter<Articulation> articulationPluginAdapter;
+static Vamp::PluginAdapter<PitchVibrato> pitchVibratoPluginAdapter;
+static Vamp::PluginAdapter<Portamento> portamentoPluginAdapter;
 
 const VampPluginDescriptor *
 vampGetPluginDescriptor(unsigned int version, unsigned int index)
@@ -27,6 +31,8 @@ vampGetPluginDescriptor(unsigned int version, unsigned int index)
     switch (index) {
     case  0: return onsetsPluginAdapter.getDescriptor();
     case  1: return articulationPluginAdapter.getDescriptor();
+    case  2: return pitchVibratoPluginAdapter.getDescriptor();
+    case  3: return portamentoPluginAdapter.getDescriptor();
     default: return 0;
     }
 }

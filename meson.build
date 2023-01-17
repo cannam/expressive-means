@@ -22,8 +22,10 @@ architecture = host_machine.cpu_family()
 cpp = meson.get_compiler('cpp')
 
 plugin_sources = [
-  'articulation/Articulation.cpp',
   'onsets/Onsets.cpp',
+  'articulation/Articulation.cpp',
+  'pitch-vibrato/PitchVibrato.cpp',
+  'portamento/Portamento.cpp',
   'libmain.cpp',
 ]
 
