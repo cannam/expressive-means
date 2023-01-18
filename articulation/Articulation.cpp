@@ -22,7 +22,6 @@ using std::set;
 static const CoreFeatures::Parameters defaultCoreParams;
 
 static const float default_sustainBeginThreshold_ms = 50.f;
-static const float default_sustainEndThreshold_dBFS = -45.f;
 static const float default_volumeDevelopmentThreshold_dB = 2.f;
 static const float default_scalingFactor = 10.7f;
 
@@ -41,7 +40,6 @@ Articulation::Articulation(float inputSampleRate) :
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
     m_sustainBeginThreshold_ms(default_sustainBeginThreshold_ms),
-    m_sustainEndThreshold_dBFS(default_sustainEndThreshold_dBFS),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
@@ -197,14 +195,6 @@ Articulation::getParameterDescriptors() const
     d.defaultValue = default_sustainBeginThreshold_ms;
     list.push_back(d);
     
-    d.identifier = "sustainEndThreshold";
-    d.name = "Sustain phase end threshold";
-    d.unit = "dBFS";
-    d.minValue = -80.f;
-    d.maxValue = 0.f;
-    d.defaultValue = default_sustainEndThreshold_dBFS;
-    list.push_back(d);
-    
     d.identifier = "volumeDevelopmentThreshold";
     d.name = "Volume development threshold";
     d.unit = "dB";
@@ -245,8 +235,6 @@ Articulation::getParameter(string identifier) const
         return m_minimumOnsetInterval_ms;
     } else if (identifier == "sustainBeginThreshold") {
         return m_sustainBeginThreshold_ms;
-    } else if (identifier == "sustainEndThreshold") {
-        return m_sustainEndThreshold_dBFS;
     } else if (identifier == "volumeDevelopmentThreshold") {
         return m_volumeDevelopmentThreshold_dB;
     } else if (identifier == "scalingFactor") {
@@ -277,8 +265,6 @@ Articulation::setParameter(string identifier, float value)
         m_minimumOnsetInterval_ms = value;
     } else if (identifier == "sustainBeginThreshold") {
         m_sustainBeginThreshold_ms = value;
-    } else if (identifier == "sustainEndThreshold") {
-        m_sustainEndThreshold_dBFS = value;
     } else if (identifier == "volumeDevelopmentThreshold") {
         m_volumeDevelopmentThreshold_dB = value;
     } else if (identifier == "scalingFactor") {

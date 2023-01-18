@@ -82,7 +82,6 @@ protected:
     float m_onsetSensitivityNoiseTimeWindow_ms; // 2.5, o_5
     float m_minimumOnsetInterval_ms;            // 2.6, o_6
     float m_sustainBeginThreshold_ms;           // 4.1, b_1
-    float m_sustainEndThreshold_dBFS;           // 4.2, b_2
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
 
