@@ -18,6 +18,7 @@ using std::cerr;
 using std::endl;
 using std::vector;
 using std::set;
+using std::map;
 
 static const CoreFeatures::Parameters defaultCoreParams;
 
@@ -43,6 +44,7 @@ Articulation::Articulation(float inputSampleRate) :
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
+    m_volumeDevelopmentOutput(-1),
     m_articulationTypeOutput(-1),
     m_pitchTrackOutput(-1),
     m_articulationIndexOutput(-1)
@@ -309,6 +311,19 @@ Articulation::getOutputDescriptors() const
     m_summaryOutput = int(list.size());
     list.push_back(d);
     
+    d.identifier = "volumeDevelopment";
+    d.name = "Volume Development";
+    d.description = "Coding of volume development during the sustain phase. Time and duration indicate the sustain phase for each note; values are 0 = Unclassifiable, 1 = Decreasing, 2 = De-and-Increasing, 3 = Constant, 4 = In-and-Decreasing, 5 = Increasing";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.hasDuration = true;
+    m_volumeDevelopmentOutput = int(list.size());
+    list.push_back(d);
+    
     d.identifier = "articulationType";
     d.name = "Articulation Type";
     d.description = "";
@@ -550,12 +565,89 @@ Articulation::getRemainingFeatures()
         f.values.push_back(pyinPitch[i]);
         fs[m_pitchTrackOutput].push_back(f);
     }
+
+    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
+    auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
+    int n = smoothedPower.size();
+
+    int sustainBeginSteps = m_coreFeatures.msToSteps
+        (m_sustainBeginThreshold_ms, m_stepSize, false);
+
+    struct LDRec {
+        int sustainBegin;
+        int sustainEnd;
+        LevelDevelopment development;
+    };
     
-#ifdef WITH_DEBUG_OUTPUTS
+    map<int, LDRec> onsetToLD;
+    
+    for (auto pq: onsetOffsets) {
+        int onset = pq.first;
+        int sustainBegin = onset + sustainBeginSteps;
+        int sustainEnd = pq.second - 1;
+        auto development = LevelDevelopment::Unclassifiable;
+        if (sustainEnd - sustainBegin >= 2 &&
+            sustainBegin < n &&
+            sustainEnd < n) {
+            double sbl = smoothedPower[sustainBegin];
+            double sel = smoothedPower[sustainEnd];
+            double min = 0.0, max = 0.0;
+            // sustainEnd - sustainBegin is at least 2 (checked above)
+            // so we always assign some level to min and max
+            for (int i = 1; i < sustainEnd - sustainBegin; ++i) {
+                int ix = sustainBegin + i;
+                if (i == 1 || smoothedPower[ix] > max) {
+                    max = smoothedPower[ix];
+                }
+                if (i == 1 || smoothedPower[ix] < min) {
+                    min = smoothedPower[ix];
+                }
+            }
+            std::cerr << "sbl = " << sbl << ", sel = " << sel << ", min = " << min << ", max = " << max << std::endl;
+            double threshold = m_volumeDevelopmentThreshold_dB;
+            if (sel >= sbl + threshold) {
+                if (sbl - min < threshold) {
+                    development = LevelDevelopment::Increasing;
+                } else {
+                    development = LevelDevelopment::DeAndIncreasing;
+                }
+            } else if (sel <= sbl - threshold) {
+                if (max - sbl < threshold) {
+                    development = LevelDevelopment::Decreasing;
+                } else {
+                    development = LevelDevelopment::InAndDecreasing;
+                }
+            } else {
+                development = LevelDevelopment::Constant;
+            }
+        }
+        LDRec rec;
+        rec.development = development;
+        rec.sustainBegin = sustainBegin;
+        rec.sustainEnd = sustainEnd;
+        if (development == LevelDevelopment::Unclassifiable) {
+            rec.sustainBegin = onset;
+        }
+        onsetToLD[onset] = rec;
+    }
+
     auto timeForStep = [&](int i) {
         return m_startTime + Vamp::RealTime::frame2RealTime
             (i * m_stepSize, m_inputSampleRate);
     };
+
+    for (auto pq : onsetToLD) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = timeForStep(pq.second.sustainBegin);
+        f.hasDuration = true;
+        f.duration = timeForStep(pq.second.sustainEnd) - f.timestamp;
+        f.values.push_back(static_cast<int>(pq.second.development));
+        f.label = developmentToString(pq.second.development);
+        fs[m_volumeDevelopmentOutput].push_back(f);
+    }
+    
+#ifdef WITH_DEBUG_OUTPUTS
     
     auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
     for (int i = 0; i < int(filteredPitch.size()); ++i) {
@@ -575,7 +667,6 @@ Articulation::getRemainingFeatures()
         fs[m_pitchOnsetDfOutput].push_back(f);
     }
     
-    auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
     for (size_t i = 0; i < smoothedPower.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;

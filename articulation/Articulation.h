@@ -86,10 +86,27 @@ protected:
     float m_scalingFactor;                      // 6, s
 
     mutable int m_summaryOutput;
+    mutable int m_volumeDevelopmentOutput;
     mutable int m_articulationTypeOutput;
     mutable int m_pitchTrackOutput;
     mutable int m_articulationIndexOutput;
 
+    enum class LevelDevelopment {
+        Unclassifiable,
+        Decreasing, DeAndIncreasing, Constant, InAndDecreasing, Increasing
+    };
+
+    std::string developmentToString(LevelDevelopment d) {
+        switch (d) {
+        case LevelDevelopment::Unclassifiable: return "Unclassifiable";
+        case LevelDevelopment::Decreasing: return "Decreasing";
+        case LevelDevelopment::DeAndIncreasing: return "De-and-Increasing";
+        case LevelDevelopment::Constant: return "Constant";
+        case LevelDevelopment::InAndDecreasing: return "In-And-Decreasing";
+        case LevelDevelopment::Increasing: return "Increasing";
+        }
+    }
+    
 #ifdef WITH_DEBUG_OUTPUTS
     mutable int m_powerOutput;
     mutable int m_filteredPitchOutput;
