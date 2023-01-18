@@ -48,7 +48,8 @@ Articulation::Articulation(float inputSampleRate) :
     m_articulationTypeOutput(-1),
     m_pitchTrackOutput(-1),
     m_articulationIndexOutput(-1),
-    m_noiseRatioOutput(-1)
+    m_noiseRatioOutput(-1),
+    m_relativeDurationOutput(-1)
 {
 }
 
@@ -436,6 +437,20 @@ Articulation::getOutputDescriptors() const
     m_noiseRatioOutput = int(list.size());
     list.push_back(d);
 
+    d.identifier = "relativeduration";
+    d.name = "[Debug] Relative Sound Duration";
+    d.description = "Ratio of note duration (onset to offset) to inter-onset interval (onset to following onset) for each note.";
+    d.unit = "%";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_relativeDurationOutput = int(list.size());
+    list.push_back(d);
+
     d.identifier = "onsets";
     d.name = "[Debug] Onsets Labelled by Cause";
     d.description = "Identified onset locations, labelled as either Pitch Change or Spectral Rise depending on how they were identified.";
@@ -649,6 +664,23 @@ Articulation::getRemainingFeatures()
         onsetToLD[onset] = rec;
     }
 
+    map<int, double> onsetToRelativeDuration;
+    for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
+        int onset = itr->first;
+        int offset = itr->second;
+        int following = n;
+        auto probe = itr;
+        if (++probe != onsetOffsets.end()) {
+            following = probe->first;
+        }
+        if (following > onset) {
+            onsetToRelativeDuration[onset] = 
+                double(offset - onset) / double(following - onset);
+        } else {
+            onsetToRelativeDuration[onset] = 1.0;
+        }
+    }
+
     auto timeForStep = [&](int i) {
         return m_startTime + Vamp::RealTime::frame2RealTime
             (i * m_stepSize, m_inputSampleRate);
@@ -659,7 +691,7 @@ Articulation::getRemainingFeatures()
         f.hasTimestamp = true;
         f.timestamp = timeForStep(pq.second.sustainBegin);
         f.hasDuration = true;
-        f.duration = timeForStep(pq.second.sustainEnd) - f.timestamp;
+        f.duration = timeForStep(pq.second.sustainEnd + 1) - f.timestamp;
         f.values.push_back(static_cast<int>(pq.second.development));
         f.label = developmentToString(pq.second.development);
         fs[m_volumeDevelopmentOutput].push_back(f);
@@ -726,6 +758,18 @@ Articulation::getRemainingFeatures()
         }
         fs[m_onsetOutput].push_back(f);
     }
+
+    for (auto pq: onsetToRelativeDuration) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = timeForStep(pq.first);
+        f.hasDuration = true;
+        f.duration = timeForStep(onsetOffsets.at(pq.first)) - f.timestamp;
+        f.values.push_back(pq.second);
+        f.label = "";
+        fs[m_relativeDurationOutput].push_back(f);
+    }
+    
 #endif
     
     return fs;

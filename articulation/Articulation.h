@@ -86,12 +86,6 @@ protected:
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
 
-    mutable int m_summaryOutput;
-    mutable int m_volumeDevelopmentOutput;
-    mutable int m_articulationTypeOutput;
-    mutable int m_pitchTrackOutput;
-    mutable int m_articulationIndexOutput;
-
     enum class LevelDevelopment {
         Unclassifiable,
         Decreasing, DeAndIncreasing, Constant, InAndDecreasing, Increasing
@@ -107,6 +101,12 @@ protected:
         case LevelDevelopment::Increasing: return "Increasing";
         }
     }
+
+    mutable int m_summaryOutput;
+    mutable int m_volumeDevelopmentOutput;
+    mutable int m_articulationTypeOutput;
+    mutable int m_pitchTrackOutput;
+    mutable int m_articulationIndexOutput;
     
 #ifdef WITH_DEBUG_OUTPUTS
     mutable int m_powerOutput;
@@ -114,6 +114,7 @@ protected:
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
     mutable int m_noiseRatioOutput;
+    mutable int m_relativeDurationOutput;
     mutable int m_onsetOutput;
 #endif
 };
