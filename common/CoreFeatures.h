@@ -70,7 +70,7 @@ public:
             blockSize(2048),
             pitchAverageWindow_ms(150.f),
             onsetSensitivityPitch_cents(15.f),
-            onsetSensitivityNoise_percent(40.f),
+            onsetSensitivityNoise_percent(24.f),
             onsetSensitivityLevel_dB(8.f),
             onsetSensitivityNoiseTimeWindow_ms(100.f),
             minimumOnsetInterval_ms(100.f),
