@@ -47,7 +47,8 @@ Articulation::Articulation(float inputSampleRate) :
     m_volumeDevelopmentOutput(-1),
     m_articulationTypeOutput(-1),
     m_pitchTrackOutput(-1),
-    m_articulationIndexOutput(-1)
+    m_articulationIndexOutput(-1),
+    m_noiseRatioOutput(-1)
 {
 }
 
@@ -410,7 +411,7 @@ Articulation::getOutputDescriptors() const
     d.identifier = "transientdf";
     d.name = "[Debug] Transient Onset Detection Function";
     d.description = "Function used to identify onsets by spectral rise. Onsets are considered likely when the function exceeds a threshold.";
-    d.unit = "";
+    d.unit = "%";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
@@ -419,6 +420,20 @@ Articulation::getOutputDescriptors() const
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_transientOnsetDfOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "noiseratio";
+    d.name = "[Debug] Noise Ratio";
+    d.description = "Noise ratio based on spectral level rise with constant configuration (disregarding onset parameters).";
+    d.unit = "%";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_noiseRatioOutput = int(list.size());
     list.push_back(d);
 
     d.identifier = "onsets";
@@ -497,18 +512,10 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         onsetLevelRiseParameters.dB = m_onsetSensitivityLevel_dB;
         onsetLevelRiseParameters.historyLength = onsetLevelRiseHistoryLength;
 
-        SpectralLevelRise::Parameters noiseRatioLevelRiseParameters;
-        noiseRatioLevelRiseParameters.sampleRate = m_inputSampleRate;
-        noiseRatioLevelRiseParameters.blockSize = m_blockSize;
-        noiseRatioLevelRiseParameters.dB = 20.0;
-        noiseRatioLevelRiseParameters.historyLength =
-            ceil(0.05 * m_inputSampleRate / m_stepSize);
-
         CoreFeatures::Parameters fParams;
         fParams.pyinParameters = pyinParams;
         fParams.powerParameters = powerParams;
         fParams.onsetLevelRiseParameters = onsetLevelRiseParameters;
-        fParams.noiseRatioLevelRiseParameters = noiseRatioLevelRiseParameters;
         fParams.stepSize = m_stepSize;
         fParams.blockSize = m_blockSize;
         fParams.pitchAverageWindow_ms = m_pitchAverageWindow_ms;
@@ -519,6 +526,15 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
 
         m_coreFeatures.initialise(fParams);
+
+        SpectralLevelRise::Parameters noiseRatioLevelRiseParameters;
+        noiseRatioLevelRiseParameters.sampleRate = m_inputSampleRate;
+        noiseRatioLevelRiseParameters.blockSize = m_blockSize;
+        noiseRatioLevelRiseParameters.dB = 20.0;
+        noiseRatioLevelRiseParameters.historyLength =
+            ceil(0.05 * m_inputSampleRate / m_stepSize);
+
+        m_noiseRatioLevelRise.initialise(noiseRatioLevelRiseParameters);
     
     } catch (const std::logic_error &e) {
         cerr << "ERROR: Articulation::initialise: Feature extractor initialisation failed: " << e.what() << endl;
@@ -533,6 +549,7 @@ Articulation::reset()
 {
     m_haveStartTime = false;
     m_coreFeatures.reset();
+    m_noiseRatioLevelRise.reset();
 }
 
 Articulation::FeatureSet
@@ -544,6 +561,7 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     }
 
     m_coreFeatures.process(inputBuffers[0], timestamp);
+    m_noiseRatioLevelRise.process(inputBuffers[0]);
     return {};
 }
 
@@ -681,8 +699,18 @@ Articulation::getRemainingFeatures()
         f.hasTimestamp = true;
         int j = i + (m_blockSize / m_stepSize)/2;
         f.timestamp = timeForStep(j);
-        f.values.push_back(riseFractions[i]);
+        f.values.push_back(riseFractions[i] * 100.f);
         fs[m_transientOnsetDfOutput].push_back(f);
+    }
+
+    auto noiseRatioFractions = m_noiseRatioLevelRise.getFractions();
+    for (size_t i = 0; i < noiseRatioFractions.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        int j = i + (m_blockSize / m_stepSize)/2;
+        f.timestamp = timeForStep(j);
+        f.values.push_back(noiseRatioFractions[i] * 100.f);
+        fs[m_noiseRatioOutput].push_back(f);
     }
 
     auto onsets = m_coreFeatures.getMergedOnsets();

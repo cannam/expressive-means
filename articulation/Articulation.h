@@ -65,6 +65,7 @@ protected:
     Vamp::RealTime m_startTime;
     
     CoreFeatures m_coreFeatures;
+    SpectralLevelRise m_noiseRatioLevelRise;
 
     float m_pyinThresholdDistribution;
     float m_pyinLowAmpSuppression;
@@ -112,6 +113,7 @@ protected:
     mutable int m_filteredPitchOutput;
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
+    mutable int m_noiseRatioOutput;
     mutable int m_onsetOutput;
 #endif
 };

@@ -383,18 +383,10 @@ Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
         onsetLevelRiseParameters.dB = m_onsetSensitivityLevel_dB;
         onsetLevelRiseParameters.historyLength = onsetLevelRiseHistoryLength;
 
-        SpectralLevelRise::Parameters noiseRatioLevelRiseParameters;
-        noiseRatioLevelRiseParameters.sampleRate = m_inputSampleRate;
-        noiseRatioLevelRiseParameters.blockSize = m_blockSize;
-        noiseRatioLevelRiseParameters.dB = 20.0;
-        noiseRatioLevelRiseParameters.historyLength =
-            ceil(0.05 * m_inputSampleRate / m_stepSize);
-
         CoreFeatures::Parameters fParams;
         fParams.pyinParameters = pyinParams;
         fParams.powerParameters = powerParams;
         fParams.onsetLevelRiseParameters = onsetLevelRiseParameters;
-        fParams.noiseRatioLevelRiseParameters = noiseRatioLevelRiseParameters;
         fParams.stepSize = m_stepSize;
         fParams.blockSize = m_blockSize;
         fParams.pitchAverageWindow_ms = m_pitchAverageWindow_ms;

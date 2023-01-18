@@ -55,7 +55,6 @@ public:
         PYinParameters pyinParameters;
         Power::Parameters powerParameters;
         SpectralLevelRise::Parameters onsetLevelRiseParameters;
-        SpectralLevelRise::Parameters noiseRatioLevelRiseParameters;
         int stepSize;
         int blockSize;
         float pitchAverageWindow_ms;                // 2.1, o_1
@@ -106,8 +105,6 @@ public:
         
         m_power.initialise(parameters.powerParameters);
         m_onsetLevelRise.initialise(parameters.onsetLevelRiseParameters);
-        m_noiseRatioLevelRise.initialise
-            (parameters.noiseRatioLevelRiseParameters);
 
         m_stepSize = parameters.stepSize;
         m_blockSize = parameters.blockSize;
@@ -131,7 +128,6 @@ public:
         m_pyin.reset();
         m_power.reset();
         m_onsetLevelRise.reset();
-        m_noiseRatioLevelRise.reset();
 
         m_pyinPitchHz.clear();
         m_pyinTimestamps.clear();
@@ -164,7 +160,6 @@ public:
 
         m_power.process(input);
         m_onsetLevelRise.process(input);
-        m_noiseRatioLevelRise.process(input);
     }
 
     void
@@ -346,12 +341,6 @@ public:
         return m_onsetLevelRise.getFractions();
     }
 
-    std::vector<double>
-    getNoiseRatioLevelRiseFractions() const {
-        assertFinished();
-        return m_noiseRatioLevelRise.getFractions();
-    }
-
     std::set<int>
     getPitchOnsets() const {
         assertFinished();
@@ -406,7 +395,6 @@ private:
                      // have default operator= etc
     Power m_power;
     SpectralLevelRise m_onsetLevelRise;
-    SpectralLevelRise m_noiseRatioLevelRise;
 
     float m_pitchAverageWindow_ms;              // 2.1, o_1
     float m_onsetSensitivityPitch_cents;        // 2.2, o_2
