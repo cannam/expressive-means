@@ -367,8 +367,22 @@ Articulation::getOutputDescriptors() const
     list.push_back(d);
 
 #ifdef WITH_DEBUG_OUTPUTS
-    d.identifier = "power";
-    d.name = "[Debug] Power";
+    d.identifier = "rawpower";
+    d.name = "[Debug] Raw Power";
+    d.description = "Raw power curve.";
+    d.unit = "dB";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_rawPowerOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "smoothedpower";
+    d.name = "[Debug] Smoothed Power";
     d.description = "Smoothed power curve.";
     d.unit = "dB";
     d.hasFixedBinCount = true;
@@ -378,7 +392,7 @@ Articulation::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::FixedSampleRate;
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
-    m_powerOutput = int(list.size());
+    m_smoothedPowerOutput = int(list.size());
     list.push_back(d);
     
     d.identifier = "filteredPitch";
@@ -698,6 +712,8 @@ Articulation::getRemainingFeatures()
     }
     
 #ifdef WITH_DEBUG_OUTPUTS
+    auto rawPower = m_coreFeatures.getRawPower_dB();
+    int halfBlock = (m_blockSize / m_stepSize) / 2;
     
     auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
     for (int i = 0; i < int(filteredPitch.size()); ++i) {
@@ -717,20 +733,27 @@ Articulation::getRemainingFeatures()
         fs[m_pitchOnsetDfOutput].push_back(f);
     }
     
+    for (size_t i = 0; i < rawPower.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = timeForStep(i + halfBlock);
+        f.values.push_back(rawPower[i]);
+        fs[m_rawPowerOutput].push_back(f);
+    }
+    
     for (size_t i = 0; i < smoothedPower.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i);
+        f.timestamp = timeForStep(i + halfBlock);
         f.values.push_back(smoothedPower[i]);
-        fs[m_powerOutput].push_back(f);
+        fs[m_smoothedPowerOutput].push_back(f);
     }
     
     auto riseFractions = m_coreFeatures.getOnsetLevelRiseFractions();
     for (size_t i = 0; i < riseFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        int j = i + (m_blockSize / m_stepSize)/2;
-        f.timestamp = timeForStep(j);
+        f.timestamp = timeForStep(i + halfBlock);
         f.values.push_back(riseFractions[i] * 100.f);
         fs[m_transientOnsetDfOutput].push_back(f);
     }
@@ -739,8 +762,7 @@ Articulation::getRemainingFeatures()
     for (size_t i = 0; i < noiseRatioFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        int j = i + (m_blockSize / m_stepSize)/2;
-        f.timestamp = timeForStep(j);
+        f.timestamp = timeForStep(i + halfBlock);
         f.values.push_back(noiseRatioFractions[i] * 100.f);
         fs[m_noiseRatioOutput].push_back(f);
     }

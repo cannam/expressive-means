@@ -109,7 +109,8 @@ protected:
     mutable int m_articulationIndexOutput;
     
 #ifdef WITH_DEBUG_OUTPUTS
-    mutable int m_powerOutput;
+    mutable int m_rawPowerOutput;
+    mutable int m_smoothedPowerOutput;
     mutable int m_filteredPitchOutput;
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
