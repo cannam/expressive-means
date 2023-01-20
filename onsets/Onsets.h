@@ -78,7 +78,7 @@ protected:
     float m_noteDurationThreshold_dB;
 
     mutable int m_onsetOutput;
-    mutable int m_spanOutput;
+    mutable int m_durationOutput;
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
 };

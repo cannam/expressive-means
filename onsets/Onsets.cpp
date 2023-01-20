@@ -37,7 +37,7 @@ Onsets::Onsets(float inputSampleRate) :
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
     m_noteDurationThreshold_dB(defaultCoreParams.noteDurationThreshold_dB),
     m_onsetOutput(-1),
-    m_spanOutput(-1),
+    m_durationOutput(-1),
     m_pitchOnsetDfOutput(-1),
     m_transientOnsetDfOutput(-1)
 {
@@ -280,8 +280,8 @@ Onsets::getOutputDescriptors() const
     m_onsetOutput = int(list.size());
     list.push_back(d);
 
-    d.identifier = "spans";
-    d.name = "Spans";
+    d.identifier = "durations";
+    d.name = "Durations";
     d.description = "Identified note onsets with estimated duration. Features have value 1 for notes identified via pitch change or 2 for spectral rise. Offsets are determined using the \"Note duration level drop threshold\" parameter.";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -291,7 +291,7 @@ Onsets::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::FixedSampleRate;
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = true;
-    m_spanOutput = int(list.size());
+    m_durationOutput = int(list.size());
     list.push_back(d);
 
     d.identifier = "pitchdf";
@@ -483,7 +483,7 @@ Onsets::getRemainingFeatures()
         } else {
             f.values.push_back(2);
         }
-        fs[m_spanOutput].push_back(f);
+        fs[m_durationOutput].push_back(f);
     }
     
     return fs;
