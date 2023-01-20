@@ -34,6 +34,7 @@ Onsets::Onsets(float inputSampleRate) :
     m_onsetSensitivityNoise_percent(defaultCoreParams.onsetSensitivityNoise_percent),
     m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
+    m_onsetSensitivityRawPowerThreshold_dB(defaultCoreParams.onsetSensitivityRawPowerThreshold_dB),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
     m_sustainBeginThreshold_ms(defaultCoreParams.sustainBeginThreshold_ms),
     m_noteDurationThreshold_dB(defaultCoreParams.noteDurationThreshold_dB),
@@ -174,6 +175,14 @@ Onsets::getParameterDescriptors() const
     d.defaultValue = defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms;
     list.push_back(d);
     
+    d.identifier = "onsetSensitivityRawPowerThreshold";
+    d.name = "Onset sensitivity: Raw power threshold";
+    d.unit = "dB";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = defaultCoreParams.onsetSensitivityRawPowerThreshold_dB;
+    list.push_back(d);
+    
     d.identifier = "minimumOnsetInterval";
     d.name = "Minimum onset interval";
     d.unit = "ms";
@@ -218,6 +227,8 @@ Onsets::getParameter(string identifier) const
         return m_onsetSensitivityLevel_dB;
     } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
         return m_onsetSensitivityNoiseTimeWindow_ms;
+    } else if (identifier == "onsetSensitivityRawPowerThreshold") {
+        return m_onsetSensitivityRawPowerThreshold_dB;
     } else if (identifier == "minimumOnsetInterval") {
         return m_minimumOnsetInterval_ms;
     } else if (identifier == "sustainBeginThreshold") {
@@ -246,6 +257,8 @@ Onsets::setParameter(string identifier, float value)
         m_onsetSensitivityLevel_dB = value;
     } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
         m_onsetSensitivityNoiseTimeWindow_ms = value;
+    } else if (identifier == "onsetSensitivityRawPowerThreshold") {
+        m_onsetSensitivityRawPowerThreshold_dB = value;
     } else if (identifier == "minimumOnsetInterval") {
         m_minimumOnsetInterval_ms = value;
     } else if (identifier == "sustainBeginThreshold") {
@@ -295,7 +308,7 @@ Onsets::getOutputDescriptors() const
 
     d.identifier = "durations";
     d.name = "Durations";
-    d.description = "Identified note onsets with estimated duration. Features have value 1 for notes identified via pitch change or 2 for spectral rise. Offsets are determined using the \"Note duration level drop threshold\" parameter.";
+    d.description = "Identified note onsets with estimated duration. Features have value 1 for notes identified via pitch change, 2 for spectral rise, and 3 for raw power rise. Offsets are determined using the \"Note duration level drop threshold\" parameter.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 1;
@@ -407,6 +420,7 @@ Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
         fParams.onsetSensitivityNoise_percent = m_onsetSensitivityNoise_percent;
         fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
         fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
+        fParams.onsetSensitivityRawPowerThreshold_dB = m_onsetSensitivityRawPowerThreshold_dB;
         fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
         fParams.sustainBeginThreshold_ms = m_sustainBeginThreshold_ms;
         fParams.noteDurationThreshold_dB = m_noteDurationThreshold_dB;
@@ -472,6 +486,7 @@ Onsets::getRemainingFeatures()
     }
 
     auto pitchOnsets = m_coreFeatures.getPitchOnsets();
+    auto powerOnsets = m_coreFeatures.getPowerRiseOnsets();
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
 
     for (auto pq : onsetOffsets) {
@@ -484,6 +499,8 @@ Onsets::getRemainingFeatures()
         f.hasDuration = false;
         if (pitchOnsets.find(p) != pitchOnsets.end()) {
             f.label = "Pitch Change";
+        } else if (powerOnsets.find(p) != powerOnsets.end()) {
+            f.label = "Power Rise";
         } else {
             f.label = "Spectral Rise";
         }
@@ -494,6 +511,8 @@ Onsets::getRemainingFeatures()
         f.label = "";
         if (pitchOnsets.find(p) != pitchOnsets.end()) {
             f.values.push_back(1);
+        } else if (powerOnsets.find(p) != powerOnsets.end()) {
+            f.values.push_back(3);
         } else {
             f.values.push_back(2);
         }

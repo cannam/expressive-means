@@ -62,6 +62,7 @@ public:
         float onsetSensitivityNoise_percent;        // 2.3, o_3
         float onsetSensitivityLevel_dB;             // 2.4, o_4
         float onsetSensitivityNoiseTimeWindow_ms;   // 2.5, o_5
+        float onsetSensitivityRawPowerThreshold_dB;
         float minimumOnsetInterval_ms;              // 2.6, o_6
         float sustainBeginThreshold_ms;
         float noteDurationThreshold_dB;             // 2.7, o_7
@@ -73,6 +74,7 @@ public:
             onsetSensitivityNoise_percent(24.f),
             onsetSensitivityLevel_dB(8.f),
             onsetSensitivityNoiseTimeWindow_ms(100.f),
+            onsetSensitivityRawPowerThreshold_dB(15.f),
             minimumOnsetInterval_ms(100.f),
             sustainBeginThreshold_ms(50.f),
             noteDurationThreshold_dB(6.f)
@@ -115,6 +117,7 @@ public:
         m_onsetSensitivityNoise_percent = parameters.onsetSensitivityNoise_percent;
         m_onsetSensitivityLevel_dB = parameters.onsetSensitivityLevel_dB;
         m_onsetSensitivityNoiseTimeWindow_ms = parameters.onsetSensitivityNoiseTimeWindow_ms;
+        m_onsetSensitivityRawPowerThreshold_dB = parameters.onsetSensitivityRawPowerThreshold_dB;
         m_minimumOnsetInterval_ms = parameters.minimumOnsetInterval_ms;
         m_sustainBeginThreshold_ms = parameters.sustainBeginThreshold_ms;
         m_noteDurationThreshold_dB = parameters.noteDurationThreshold_dB;
@@ -141,6 +144,7 @@ public:
         m_smoothedPower.clear();
         m_pitchOnsets.clear();
         m_levelRiseOnsets.clear();
+        m_powerRiseOnsets.clear();
         m_allOnsets.clear();
         m_mergedOnsets.clear();
         m_onsetOffsets.clear();
@@ -251,9 +255,26 @@ public:
                 }
             }
         }
+
+        m_rawPower = m_power.getRawPower();
+        int rawPowerSteps = msToSteps(50.0, m_stepSize, false);
+        for (int i = 0; i + rawPowerSteps < m_rawPower.size(); ++i) {
+            for (int j = i; j <= i + rawPowerSteps; ++j) {
+                if (m_rawPower[j] < m_rawPower[i]) {
+                    break;
+                }
+                if (m_rawPower[j] > m_rawPower[i] +
+                    m_onsetSensitivityRawPowerThreshold_dB) {
+                    // Like level rise, power is offset by half a block
+                    m_powerRiseOnsets.insert(i + (m_blockSize / m_stepSize)/2);
+                    break;
+                }
+            }
+        }
         
         m_allOnsets = m_pitchOnsets;
         m_allOnsets.insert(m_levelRiseOnsets.begin(), m_levelRiseOnsets.end());
+        m_allOnsets.insert(m_powerRiseOnsets.begin(), m_powerRiseOnsets.end());
 
         int prevP = -minimumOnsetSteps;
         for (auto p: m_allOnsets) {
@@ -264,7 +285,6 @@ public:
             prevP = p;
         }
 
-        m_rawPower = m_power.getRawPower();
         m_smoothedPower = m_power.getSmoothedPower();
         n = m_smoothedPower.size();
 
@@ -368,6 +388,12 @@ public:
     }
 
     std::set<int>
+    getPowerRiseOnsets() const {
+        assertFinished();
+        return m_powerRiseOnsets;
+    }
+
+    std::set<int>
     getMergedOnsets() const {
         assertFinished();
         return m_mergedOnsets;
@@ -415,6 +441,7 @@ private:
     float m_onsetSensitivityNoise_percent;      // 2.3, o_3
     float m_onsetSensitivityLevel_dB;           // 2.4, o_4
     float m_onsetSensitivityNoiseTimeWindow_ms; // 2.5, o_5
+    float m_onsetSensitivityRawPowerThreshold_dB;
     float m_minimumOnsetInterval_ms;            // 2.6, o_6
     float m_sustainBeginThreshold_ms;
     float m_noteDurationThreshold_dB;           // 2.7, o_7
@@ -429,6 +456,7 @@ private:
     std::vector<double> m_smoothedPower;
     std::set<int> m_pitchOnsets;
     std::set<int> m_levelRiseOnsets;
+    std::set<int> m_powerRiseOnsets;
     std::set<int> m_allOnsets;
     std::set<int> m_mergedOnsets;
     std::map<int, int> m_onsetOffsets;

@@ -74,6 +74,7 @@ protected:
     float m_onsetSensitivityNoise_percent;
     float m_onsetSensitivityLevel_dB;
     float m_onsetSensitivityNoiseTimeWindow_ms;
+    float m_onsetSensitivityRawPowerThreshold_dB;
     float m_minimumOnsetInterval_ms;
     float m_sustainBeginThreshold_ms;
     float m_noteDurationThreshold_dB;
