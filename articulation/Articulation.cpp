@@ -22,7 +22,6 @@ using std::map;
 
 static const CoreFeatures::Parameters defaultCoreParams;
 
-static const float default_sustainBeginThreshold_ms = 50.f;
 static const float default_volumeDevelopmentThreshold_dB = 2.f;
 static const float default_scalingFactor = 10.7f;
 
@@ -40,7 +39,8 @@ Articulation::Articulation(float inputSampleRate) :
     m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
     m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
     m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
-    m_sustainBeginThreshold_ms(default_sustainBeginThreshold_ms),
+    m_sustainBeginThreshold_ms(defaultCoreParams.sustainBeginThreshold_ms),
+    m_noteDurationThreshold_dB(defaultCoreParams.noteDurationThreshold_dB),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
@@ -196,7 +196,15 @@ Articulation::getParameterDescriptors() const
     d.unit = "ms";
     d.minValue = 0.f;
     d.maxValue = 1000.f;
-    d.defaultValue = default_sustainBeginThreshold_ms;
+    d.defaultValue = defaultCoreParams.sustainBeginThreshold_ms;
+    list.push_back(d);
+    
+    d.identifier = "noteDurationThreshold";
+    d.name = "Note duration level drop threshold";
+    d.unit = "dB";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = defaultCoreParams.noteDurationThreshold_dB;
     list.push_back(d);
     
     d.identifier = "volumeDevelopmentThreshold";
@@ -239,6 +247,8 @@ Articulation::getParameter(string identifier) const
         return m_minimumOnsetInterval_ms;
     } else if (identifier == "sustainBeginThreshold") {
         return m_sustainBeginThreshold_ms;
+    } else if (identifier == "noteDurationThreshold") {
+        return m_noteDurationThreshold_dB;
     } else if (identifier == "volumeDevelopmentThreshold") {
         return m_volumeDevelopmentThreshold_dB;
     } else if (identifier == "scalingFactor") {
@@ -269,6 +279,8 @@ Articulation::setParameter(string identifier, float value)
         m_minimumOnsetInterval_ms = value;
     } else if (identifier == "sustainBeginThreshold") {
         m_sustainBeginThreshold_ms = value;
+    } else if (identifier == "noteDurationThreshold") {
+        m_noteDurationThreshold_dB = value;
     } else if (identifier == "volumeDevelopmentThreshold") {
         m_volumeDevelopmentThreshold_dB = value;
     } else if (identifier == "scalingFactor") {
@@ -553,6 +565,8 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
         fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
         fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
+        fParams.sustainBeginThreshold_ms = m_sustainBeginThreshold_ms;
+        fParams.noteDurationThreshold_dB = m_noteDurationThreshold_dB;
 
         m_coreFeatures.initialise(fParams);
 
@@ -615,7 +629,7 @@ Articulation::getRemainingFeatures()
 
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
     auto rawPower = m_coreFeatures.getRawPower_dB();
-    auto smoothedPower = m_coreFeatures.getRawPower_dB();
+    auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
     int n = rawPower.size();
 
     int sustainBeginSteps = m_coreFeatures.msToSteps

@@ -50,7 +50,7 @@ public:
             lowAmplitudeSuppressionThreshold(0.1f)
         {}
     };
-    
+
     struct Parameters {
         PYinParameters pyinParameters;
         Power::Parameters powerParameters;
@@ -63,6 +63,7 @@ public:
         float onsetSensitivityLevel_dB;             // 2.4, o_4
         float onsetSensitivityNoiseTimeWindow_ms;   // 2.5, o_5
         float minimumOnsetInterval_ms;              // 2.6, o_6
+        float sustainBeginThreshold_ms;
         float noteDurationThreshold_dB;             // 2.7, o_7
         Parameters() :
             stepSize(256),
@@ -73,6 +74,7 @@ public:
             onsetSensitivityLevel_dB(8.f),
             onsetSensitivityNoiseTimeWindow_ms(100.f),
             minimumOnsetInterval_ms(100.f),
+            sustainBeginThreshold_ms(50.f),
             noteDurationThreshold_dB(6.f)
         {}
     };
@@ -114,6 +116,7 @@ public:
         m_onsetSensitivityLevel_dB = parameters.onsetSensitivityLevel_dB;
         m_onsetSensitivityNoiseTimeWindow_ms = parameters.onsetSensitivityNoiseTimeWindow_ms;
         m_minimumOnsetInterval_ms = parameters.minimumOnsetInterval_ms;
+        m_sustainBeginThreshold_ms = parameters.sustainBeginThreshold_ms;
         m_noteDurationThreshold_dB = parameters.noteDurationThreshold_dB;
         
         m_initialised = true;
@@ -204,7 +207,8 @@ public:
                 (fabsf(m_pitch[i] - m_filteredPitch[i + halfLength]));
         }
 
-        int minimumOnsetSteps = msToSteps(m_minimumOnsetInterval_ms, m_stepSize, false);
+        int minimumOnsetSteps = msToSteps
+            (m_minimumOnsetInterval_ms, m_stepSize, false);
         int lastBelowThreshold = -minimumOnsetSteps;
         double threshold = m_onsetSensitivityPitch_cents / 100.0;
 
@@ -264,6 +268,9 @@ public:
         m_smoothedPower = m_power.getSmoothedPower();
         n = m_smoothedPower.size();
 
+        int sustainBeginSteps = msToSteps
+            (m_sustainBeginThreshold_ms, m_stepSize, false);
+
         for (auto i = m_mergedOnsets.begin(); i != m_mergedOnsets.end(); ++i) {
             int p = *i;
             int limit = n;
@@ -271,14 +278,21 @@ public:
             if (++j != m_mergedOnsets.end()) {
                 limit = *j; // stop at the next onset
             }
-            int q = p + 1;
-            std::cerr << "power " << m_smoothedPower[p] << ", threshold "
-                      << m_noteDurationThreshold_dB
-                      << ", gives target power " << m_smoothedPower[p] - m_noteDurationThreshold_dB
-                      << std::endl;
+            int s = p + sustainBeginSteps;
+            if (s < n) {
+                std::cerr << "power " << m_smoothedPower[s] << ", threshold "
+                          << m_noteDurationThreshold_dB
+                          << ", gives target power "
+                          << m_smoothedPower[s] - m_noteDurationThreshold_dB
+                          << std::endl;
+            } else {
+                std::cerr << "sustain start index " << s
+                          << " out of range at end" << std::endl;
+            }
+            int q = s;
             while (q < limit) {
                 if (m_smoothedPower[q] <
-                    m_smoothedPower[p] - m_noteDurationThreshold_dB) {
+                    m_smoothedPower[s] - m_noteDurationThreshold_dB) {
                     break;
                 }
                 ++q;
@@ -402,6 +416,7 @@ private:
     float m_onsetSensitivityLevel_dB;           // 2.4, o_4
     float m_onsetSensitivityNoiseTimeWindow_ms; // 2.5, o_5
     float m_minimumOnsetInterval_ms;            // 2.6, o_6
+    float m_sustainBeginThreshold_ms;
     float m_noteDurationThreshold_dB;           // 2.7, o_7
     
     int m_pyinSmoothedPitchTrackOutput;
