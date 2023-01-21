@@ -74,9 +74,9 @@ public:
             onsetSensitivityNoise_percent(24.f),
             onsetSensitivityLevel_dB(8.f),
             onsetSensitivityNoiseTimeWindow_ms(100.f),
-            onsetSensitivityRawPowerThreshold_dB(15.f),
+            onsetSensitivityRawPowerThreshold_dB(6.f),
             minimumOnsetInterval_ms(100.f),
-            sustainBeginThreshold_ms(50.f),
+            sustainBeginThreshold_ms(60.f),
             noteDurationThreshold_dB(6.f)
         {}
     };
