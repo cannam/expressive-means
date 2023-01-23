@@ -45,6 +45,7 @@ Articulation::Articulation(float inputSampleRate) :
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
+    m_noiseTypeOutput(-1),
     m_volumeDevelopmentOutput(-1),
     m_articulationTypeOutput(-1),
     m_pitchTrackOutput(-1),
@@ -336,6 +337,19 @@ Articulation::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
     m_summaryOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "noiseType";
+    d.name = "Noise Type";
+    d.description = "Coding of transient noise for each onset. Values are 1 = Sonorous, 2 = Fricative, 3 = Plosive, 4 = Affricative";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.hasDuration = false;
+    m_noiseTypeOutput = int(list.size());
     list.push_back(d);
     
     d.identifier = "volumeDevelopment";
@@ -681,6 +695,44 @@ Articulation::getRemainingFeatures()
     auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
     int n = rawPower.size();
 
+    auto noiseRatioFractions = m_noiseRatioLevelRise.getFractions();
+    int noiseWindowSteps = m_coreFeatures.msToSteps
+        (m_onsetSensitivityNoiseTimeWindow_ms, m_stepSize, false);
+
+    struct NoiseRec {
+        double firstHalf;
+        double secondHalf;
+        double total;
+        NoiseType type;
+        NoiseRec() : firstHalf(1.0), secondHalf(1.0), total(1.0),
+                     type(NoiseType::Sonorous) { }
+    };
+    
+    map<int, NoiseRec> onsetToNoise;
+    
+    for (auto pq: onsetOffsets) {
+        int onset = pq.first;
+        NoiseRec rec;
+        if (onset >= noiseWindowSteps) {
+            double atStart = noiseRatioFractions[onset - noiseWindowSteps];
+            double atMiddle = noiseRatioFractions[onset - noiseWindowSteps/2];
+            double atEnd = noiseRatioFractions[onset];
+            rec.firstHalf = atMiddle / atStart;
+            rec.secondHalf = atEnd / atMiddle;
+            rec.total = atEnd / atStart;
+        }
+        if (rec.firstHalf > 1.3 && rec.secondHalf > 1.2) {
+            rec.type = NoiseType::Affricative;
+        } else if (rec.firstHalf > 1.3) {
+            rec.type = NoiseType::Plosive;
+        } else if (rec.total > 1.2) {
+            rec.type = NoiseType::Fricative;
+        } else {
+            rec.type = NoiseType::Sonorous;
+        }
+        onsetToNoise[onset] = rec;
+    }
+    
     int sustainBeginSteps = m_coreFeatures.msToSteps
         (m_sustainBeginThreshold_ms, m_stepSize, false);
 
@@ -749,6 +801,16 @@ Articulation::getRemainingFeatures()
             (i * m_stepSize, m_inputSampleRate);
     };
 
+    for (auto pq : onsetToNoise) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = timeForStep(pq.first);
+        f.hasDuration = false;
+        f.values.push_back(static_cast<int>(pq.second.type) + 1);
+        f.label = noiseTypeToString(pq.second.type);
+        fs[m_noiseTypeOutput].push_back(f);
+    }
+
     for (auto pq : onsetToLD) {
         Feature f;
         f.hasTimestamp = true;
@@ -806,7 +868,6 @@ Articulation::getRemainingFeatures()
         fs[m_transientOnsetDfOutput].push_back(f);
     }
 
-    auto noiseRatioFractions = m_noiseRatioLevelRise.getFractions();
     for (size_t i = 0; i < noiseRatioFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;

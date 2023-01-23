@@ -57,6 +57,23 @@ public:
 
     FeatureSet getRemainingFeatures();
 
+    enum class NoiseType {
+        Sonorous = 0,
+        Fricative = 1,
+        Plosive = 2,
+        Affricative = 3
+    };
+
+    static std::string noiseTypeToString(NoiseType t) {
+        switch (t) {
+        case NoiseType::Sonorous: return "Sonorous";
+        case NoiseType::Fricative: return "Fricative";
+        case NoiseType::Plosive: return "Plosive";
+        case NoiseType::Affricative: return "Affricative";
+        default: throw std::logic_error("unknown NoiseType");
+        }
+    }
+    
     enum class LevelDevelopment {
         Unclassifiable,
         Decreasing, DeAndIncreasing, Constant, InAndDecreasing, Increasing,
@@ -114,6 +131,7 @@ protected:
     float m_scalingFactor;                      // 6, s
     
     mutable int m_summaryOutput;
+    mutable int m_noiseTypeOutput;
     mutable int m_volumeDevelopmentOutput;
     mutable int m_articulationTypeOutput;
     mutable int m_pitchTrackOutput;
