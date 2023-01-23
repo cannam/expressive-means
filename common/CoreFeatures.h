@@ -257,6 +257,8 @@ public:
         }
 
         m_rawPower = m_power.getRawPower();
+        m_smoothedPower = m_power.getSmoothedPower();
+        
         int rawPowerSteps = msToSteps(50.0, m_stepSize, false);
         bool onsetComing = false;
         double prevDerivative = 0.0;
@@ -302,8 +304,7 @@ public:
             prevP = p;
         }
 
-        m_smoothedPower = m_power.getSmoothedPower();
-        n = m_smoothedPower.size();
+        n = m_rawPower.size();
 
         int sustainBeginSteps = msToSteps
             (m_sustainBeginThreshold_ms, m_stepSize, false);
@@ -317,10 +318,10 @@ public:
             }
             int s = p + sustainBeginSteps;
             if (s < n) {
-                std::cerr << "power " << m_smoothedPower[s] << ", threshold "
+                std::cerr << "power " << m_rawPower[s] << ", threshold "
                           << m_noteDurationThreshold_dB
                           << ", gives target power "
-                          << m_smoothedPower[s] - m_noteDurationThreshold_dB
+                          << m_rawPower[s] - m_noteDurationThreshold_dB
                           << std::endl;
             } else {
                 std::cerr << "sustain start index " << s
@@ -328,8 +329,8 @@ public:
             }
             int q = s;
             while (q < limit) {
-                if (m_smoothedPower[q] <
-                    m_smoothedPower[s] - m_noteDurationThreshold_dB) {
+                if (m_rawPower[q] <
+                    m_rawPower[s] - m_noteDurationThreshold_dB) {
                     break;
                 }
                 ++q;
