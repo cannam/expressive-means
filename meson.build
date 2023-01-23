@@ -100,6 +100,7 @@ if have_boost_unit_test
     vamp_sources,
     qmdsp_sources,
     pyin_sources,
+    include_directories: [ vamp_dir ],
     dependencies: [ boost_unit_test_dep ],
     install: false,
     build_by_default: true
