@@ -21,12 +21,20 @@ system = host_machine.system()
 architecture = host_machine.cpu_family()
 cpp = meson.get_compiler('cpp')
 
+boost_unit_test_dep = dependency('boost', modules: ['unit_test_framework'], version: '>= 1.73', required: false)
+have_boost_unit_test = boost_unit_test_dep.found()
+
 plugin_sources = [
   'onsets/Onsets.cpp',
   'articulation/Articulation.cpp',
   'pitch-vibrato/PitchVibrato.cpp',
   'portamento/Portamento.cpp',
   'libmain.cpp',
+]
+
+unit_test_sources = [
+  'test/TestArticulation.cpp',
+  'test/tests.cpp',
 ]
 
 vamp_dir = 'ext/vamp-plugin-sdk'
@@ -82,6 +90,26 @@ expressive_means = shared_library(
   install: true,
   install_dir: get_option('libdir') / 'vamp'
 )
+
+if have_boost_unit_test
+  message('Building unit tests: use "meson test -C <builddir>" to run them')
+  unit_tests = executable(
+    'tests',
+    unit_test_sources,
+    plugin_sources,
+    vamp_sources,
+    qmdsp_sources,
+    pyin_sources,
+    dependencies: [ boost_unit_test_dep ],
+    install: false,
+    build_by_default: true
+  )
+  general_test_args = [ '--log_level=message' ]
+  test('Articulation',
+       unit_tests, args: [ '--run_test=TestArticulation', general_test_args ])
+else
+  message('Not building unit tests: boost_unit_test_framework dependency not found')
+endif
 
 install_data(
   'expressive-means.cat',

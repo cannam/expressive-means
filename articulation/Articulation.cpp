@@ -622,6 +622,41 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     return {};
 }
 
+Articulation::LevelDevelopment
+Articulation::classifyLevelDevelopment(double begin,
+                                       double end,
+                                       double max,
+                                       double min,
+                                       double threshold)
+{
+    // "maxima or minima are only relevant if they exceed the
+    // threshold relative to both sustain phase begin level and offset
+    // level"
+    bool maxIsSignificant = (max > begin + threshold && max > end + threshold);
+    bool minIsSignificant = (min < begin - threshold && min < end - threshold);
+
+    if (!maxIsSignificant && !minIsSignificant) {
+        if (end > begin + threshold) {
+            return LevelDevelopment::Increasing;
+        } else if (end < begin - threshold) {
+            return LevelDevelopment::Decreasing;
+        } else {
+            return LevelDevelopment::Constant;
+        }
+    }
+
+    if (maxIsSignificant && minIsSignificant) {
+        // In-and-de-and-in-and-de-etc - but we don't have a code for these
+        return LevelDevelopment::Other;
+    }
+
+    if (maxIsSignificant) {
+        return LevelDevelopment::InAndDecreasing;
+    } else {
+        return LevelDevelopment::DeAndIncreasing;
+    }
+}
+
 Articulation::FeatureSet
 Articulation::getRemainingFeatures()
 {
@@ -679,23 +714,8 @@ Articulation::getRemainingFeatures()
                     min = rawPower[ix];
                 }
             }
-            std::cerr << "sbl = " << sbl << ", sel = " << sel << ", min = " << min << ", max = " << max << std::endl;
-            double threshold = m_volumeDevelopmentThreshold_dB;
-            if (sel >= sbl + threshold) {
-                if (sbl - min < threshold) {
-                    development = LevelDevelopment::Increasing;
-                } else {
-                    development = LevelDevelopment::DeAndIncreasing;
-                }
-            } else if (sel <= sbl - threshold) {
-                if (max - sbl < threshold) {
-                    development = LevelDevelopment::Decreasing;
-                } else {
-                    development = LevelDevelopment::InAndDecreasing;
-                }
-            } else {
-                development = LevelDevelopment::Constant;
-            }
+            development = classifyLevelDevelopment
+                (sbl, sel, max, min, m_volumeDevelopmentThreshold_dB);
         }
         LDRec rec;
         rec.development = development;

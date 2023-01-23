@@ -57,6 +57,31 @@ public:
 
     FeatureSet getRemainingFeatures();
 
+    enum class LevelDevelopment {
+        Unclassifiable,
+        Decreasing, DeAndIncreasing, Constant, InAndDecreasing, Increasing,
+        Other
+    };
+
+    static std::string developmentToString(LevelDevelopment d) {
+        switch (d) {
+        case LevelDevelopment::Unclassifiable: return "Unclassifiable";
+        case LevelDevelopment::Decreasing: return "Decreasing";
+        case LevelDevelopment::DeAndIncreasing: return "De-and-Increasing";
+        case LevelDevelopment::Constant: return "Constant";
+        case LevelDevelopment::InAndDecreasing: return "In-And-Decreasing";
+        case LevelDevelopment::Increasing: return "Increasing";
+        case LevelDevelopment::Other: return "Other";
+        default: throw std::logic_error("unknown LevelDevelopment");
+        }
+    }
+
+    static LevelDevelopment classifyLevelDevelopment(double sustainBeginPower,
+                                                     double sustainEndPower,
+                                                     double maxBetweenPower,
+                                                     double minBetweenPower,
+                                                     double threshold);
+
 protected:
     int m_stepSize;
     int m_blockSize;
@@ -87,23 +112,7 @@ protected:
     float m_noteDurationThreshold_dB;
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
-
-    enum class LevelDevelopment {
-        Unclassifiable,
-        Decreasing, DeAndIncreasing, Constant, InAndDecreasing, Increasing
-    };
-
-    std::string developmentToString(LevelDevelopment d) {
-        switch (d) {
-        case LevelDevelopment::Unclassifiable: return "Unclassifiable";
-        case LevelDevelopment::Decreasing: return "Decreasing";
-        case LevelDevelopment::DeAndIncreasing: return "De-and-Increasing";
-        case LevelDevelopment::Constant: return "Constant";
-        case LevelDevelopment::InAndDecreasing: return "In-And-Decreasing";
-        case LevelDevelopment::Increasing: return "Increasing";
-        }
-    }
-
+    
     mutable int m_summaryOutput;
     mutable int m_volumeDevelopmentOutput;
     mutable int m_articulationTypeOutput;
