@@ -258,18 +258,35 @@ public:
 
         m_rawPower = m_power.getRawPower();
         int rawPowerSteps = msToSteps(50.0, m_stepSize, false);
-        for (int i = 0; i + rawPowerSteps < m_rawPower.size(); ++i) {
-            for (int j = i; j <= i + rawPowerSteps; ++j) {
-                if (m_rawPower[j] < m_rawPower[i]) {
-                    break;
-                }
-                if (m_rawPower[j] > m_rawPower[i] +
-                    m_onsetSensitivityRawPowerThreshold_dB) {
+        bool onsetComing = false;
+        double prevDerivative = 0.0;
+        // Iterate through raw power, and when we see a rise above a
+        // certain level within the following rawPowerSteps, make note
+        // that we have an onset coming (onsetComing = true). But
+        // don't actually record the onset (insert into
+        // m_powerRiseOnsets) until we see the derivative of raw power
+        // begin to fall again, otherwise the onset appears early.
+        for (int i = 0; i + 1 < m_rawPower.size(); ++i) {
+            double derivative = m_rawPower[i+1] - m_rawPower[i];
+            if (onsetComing) {
+                if (derivative < prevDerivative) {
                     // Like level rise, power is offset by half a block
                     m_powerRiseOnsets.insert(i + (m_blockSize / m_stepSize)/2);
-                    break;
+                    onsetComing = false;
+                }
+            } else if (i + rawPowerSteps < m_rawPower.size()) {
+                for (int j = i; j <= i + rawPowerSteps; ++j) {
+                    if (m_rawPower[j] < m_rawPower[i]) {
+                        break;
+                    }
+                    if (m_rawPower[j] > m_rawPower[i] +
+                        m_onsetSensitivityRawPowerThreshold_dB) {
+                        onsetComing = true;
+                        break;
+                    }
                 }
             }
+            prevDerivative = derivative;
         }
         
         m_allOnsets = m_pitchOnsets;
