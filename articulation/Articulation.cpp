@@ -334,7 +334,7 @@ Articulation::getOutputDescriptors() const
     d.binCount = 1;
     d.hasKnownExtents = false;
     d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_summaryOutput = int(list.size());
     list.push_back(d);
@@ -360,7 +360,7 @@ Articulation::getOutputDescriptors() const
     d.binCount = 1;
     d.hasKnownExtents = false;
     d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = true;
     m_volumeDevelopmentOutput = int(list.size());
     list.push_back(d);
@@ -373,7 +373,7 @@ Articulation::getOutputDescriptors() const
     d.binCount = 0;
     d.hasKnownExtents = false;
     d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_articulationTypeOutput = int(list.size());
     list.push_back(d);
@@ -400,7 +400,7 @@ Articulation::getOutputDescriptors() const
     d.binCount = 1;
     d.hasKnownExtents = false;
     d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_articulationIndexOutput = int(list.size());
     list.push_back(d);
@@ -820,6 +820,45 @@ Articulation::getRemainingFeatures()
         f.values.push_back(static_cast<int>(pq.second.development));
         f.label = developmentToString(pq.second.development);
         fs[m_volumeDevelopmentOutput].push_back(f);
+    }
+
+    for (auto pq : onsetOffsets) {
+        auto onset = pq.first;
+        string code;
+        double index = 1.0;
+
+        NoiseType noise = onsetToNoise[onset].type;
+        code += noiseTypeToCode(noise);
+        index *= noiseTypeToFactor(noise);
+
+        LevelDevelopment development = onsetToLD[onset].development;
+        code += developmentToCode(development);
+        index *= developmentToFactor(development);
+
+        double relativeDuration = onsetToRelativeDuration[onset];
+        if (relativeDuration < 0.7) {
+            code += "S";
+            index *= 1.5;
+        } else if (relativeDuration < 0.95) {
+            code += "E";
+            index *= 1.25;
+        } else {
+            code += "L";
+            index *= 1.0;
+        }
+
+        index *= m_scalingFactor;
+        
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = timeForStep(onset);
+        f.hasDuration = false;
+        f.label = code;
+        fs[m_articulationTypeOutput].push_back(f);
+
+        f.label = "";
+        f.values.push_back(round(index));
+        fs[m_articulationIndexOutput].push_back(f);
     }
     
 #ifdef WITH_DEBUG_OUTPUTS

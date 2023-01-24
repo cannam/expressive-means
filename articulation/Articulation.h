@@ -73,6 +73,26 @@ public:
         default: throw std::logic_error("unknown NoiseType");
         }
     }
+
+    static std::string noiseTypeToCode(NoiseType t) {
+        switch (t) {
+        case NoiseType::Sonorous: return "s";
+        case NoiseType::Fricative: return "f";
+        case NoiseType::Plosive: return "p";
+        case NoiseType::Affricative: return "a";
+        default: throw std::logic_error("unknown NoiseType");
+        }
+    }
+
+    static double noiseTypeToFactor(NoiseType t) {
+        switch (t) {
+        case NoiseType::Sonorous: return 1.0;
+        case NoiseType::Fricative: return 2.0;
+        case NoiseType::Plosive: return 3.0;
+        case NoiseType::Affricative: return 5.0;
+        default: throw std::logic_error("unknown NoiseType");
+        }
+    }
     
     enum class LevelDevelopment {
         Unclassifiable,
@@ -89,6 +109,32 @@ public:
         case LevelDevelopment::InAndDecreasing: return "In-And-Decreasing";
         case LevelDevelopment::Increasing: return "Increasing";
         case LevelDevelopment::Other: return "Other";
+        default: throw std::logic_error("unknown LevelDevelopment");
+        }
+    }
+
+    static std::string developmentToCode(LevelDevelopment d) {
+        switch (d) {
+        case LevelDevelopment::Unclassifiable:  return "?";
+        case LevelDevelopment::Decreasing:      return ">";
+        case LevelDevelopment::DeAndIncreasing: return ":";
+        case LevelDevelopment::Constant:        return "=";
+        case LevelDevelopment::InAndDecreasing: return ":";
+        case LevelDevelopment::Increasing:      return "<";
+        case LevelDevelopment::Other:           return ":";
+        default: throw std::logic_error("unknown LevelDevelopment");
+        }
+    }
+
+    static double developmentToFactor(LevelDevelopment d) {
+        switch (d) {
+        case LevelDevelopment::Unclassifiable:  return 1.0;
+        case LevelDevelopment::Decreasing:      return 0.75;
+        case LevelDevelopment::DeAndIncreasing: return 1.13;
+        case LevelDevelopment::Constant:        return 1.0;
+        case LevelDevelopment::InAndDecreasing: return 1.13;
+        case LevelDevelopment::Increasing:      return 1.25;
+        case LevelDevelopment::Other:           return 1.13;
         default: throw std::logic_error("unknown LevelDevelopment");
         }
     }
