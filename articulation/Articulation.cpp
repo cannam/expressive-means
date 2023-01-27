@@ -905,14 +905,16 @@ Articulation::getRemainingFeatures()
         f.values.push_back(round(index));
         fs[m_articulationIndexOutput].push_back(f);
 
+        double max2dp = round(onsetToLD.at(onset).maxDiff * 100.0) / 100.0;
+        double min2dp = round(onsetToLD.at(onset).minDiff * 100.0) / 100.0;
+        
         ostringstream os;
         os << timeForStep(onset).toText() << " / "
            << (timeForStep(onsetToFollowingOnset.at(onset)) -
                timeForStep(onset)).toText() << "\n"
            << code << "\n"
            << int(round(onsetToNoise.at(onset).total * 100.0)) << "%\n"
-           << onsetToLD.at(onset).maxDiff << "dB / "
-           << onsetToLD.at(onset).minDiff << "dB\n"
+           << max2dp << "dB / " << min2dp << "dB\n"
            << relativeDuration << " ("
            << (timeForStep(offset) - timeForStep(onset)).toText() << ")";
         f.label = os.str();
