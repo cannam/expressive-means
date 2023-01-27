@@ -760,9 +760,27 @@ Articulation::getRemainingFeatures()
         }
         onsetToNoise[onset] = rec;
     }
+
+    map<int, int> onsetToFollowingOnset;
+    for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
+        int onset = itr->first;
+        int offset = itr->second;
+        int following = n;
+        auto probe = itr;
+        if (++probe != onsetOffsets.end()) {
+            following = probe->first;
+        }
+        if (following > onset) {
+            onsetToFollowingOnset[onset] = following;
+        } else {
+            onsetToFollowingOnset[onset] = offset;
+        }
+    }
     
     int sustainBeginSteps = m_coreFeatures.msToSteps
         (m_sustainBeginThreshold_ms, m_stepSize, false);
+    int sustainEndSteps = m_coreFeatures.msToSteps
+        (50.0, m_stepSize, false);
 
     struct LDRec {
         int sustainBegin;
@@ -773,11 +791,18 @@ Articulation::getRemainingFeatures()
     };
     
     map<int, LDRec> onsetToLD;
-    
+
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
         int sustainBegin = onset + sustainBeginSteps;
         int sustainEnd = pq.second - 1;
+        int following = onsetToFollowingOnset.at(onset);
+        if (following - sustainEndSteps > sustainBegin &&
+            sustainEnd > following - sustainEndSteps) {
+            // "Volume development is considered until note offset,
+            // but it stops 50 ms before next onset in any case"
+            sustainEnd = following - sustainEndSteps;
+        }
         auto development = LevelDevelopment::Unclassifiable;
         double minDiff = 0.0, maxDiff = 0.0;
         if (sustainEnd - sustainBegin >= 2 &&
@@ -812,22 +837,6 @@ Articulation::getRemainingFeatures()
             rec.sustainBegin = onset;
         }
         onsetToLD[onset] = rec;
-    }
-
-    map<int, int> onsetToFollowingOnset;
-    for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
-        int onset = itr->first;
-        int offset = itr->second;
-        int following = n;
-        auto probe = itr;
-        if (++probe != onsetOffsets.end()) {
-            following = probe->first;
-        }
-        if (following > onset) {
-            onsetToFollowingOnset[onset] = following;
-        } else {
-            onsetToFollowingOnset[onset] = offset;
-        }
     }
             
     map<int, double> onsetToRelativeDuration;
