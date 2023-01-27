@@ -153,7 +153,6 @@ protected:
     Vamp::RealTime m_startTime;
     
     CoreFeatures m_coreFeatures;
-    SpectralLevelRise m_noiseRatioLevelRise;
 
     float m_pyinThresholdDistribution;
     float m_pyinLowAmpSuppression;

@@ -13,12 +13,14 @@
 
 #include <vector>
 #include <set>
+#include <sstream>
 
 using std::cerr;
 using std::endl;
 using std::vector;
 using std::set;
 using std::map;
+using std::ostringstream;
 
 static const CoreFeatures::Parameters defaultCoreParams;
 
@@ -331,7 +333,7 @@ Articulation::getOutputDescriptors() const
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.isQuantized = false;
     d.sampleType = OutputDescriptor::FixedSampleRate;
@@ -569,7 +571,7 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
 
         int onsetLevelRiseHistoryLength =
             m_coreFeatures.msToSteps(m_onsetSensitivityNoiseTimeWindow_ms,
-                                         m_stepSize, false);
+                                     m_stepSize, false);
         if (onsetLevelRiseHistoryLength < 2) {
             onsetLevelRiseHistoryLength = 2;
         }
@@ -597,15 +599,6 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
         fParams.noteDurationThreshold_dB = m_noteDurationThreshold_dB;
 
         m_coreFeatures.initialise(fParams);
-
-        SpectralLevelRise::Parameters noiseRatioLevelRiseParameters;
-        noiseRatioLevelRiseParameters.sampleRate = m_inputSampleRate;
-        noiseRatioLevelRiseParameters.blockSize = m_blockSize;
-        noiseRatioLevelRiseParameters.dB = 20.0;
-        noiseRatioLevelRiseParameters.historyLength =
-            ceil(0.05 * m_inputSampleRate / m_stepSize);
-
-        m_noiseRatioLevelRise.initialise(noiseRatioLevelRiseParameters);
     
     } catch (const std::logic_error &e) {
         cerr << "ERROR: Articulation::initialise: Feature extractor initialisation failed: " << e.what() << endl;
@@ -620,7 +613,6 @@ Articulation::reset()
 {
     m_haveStartTime = false;
     m_coreFeatures.reset();
-    m_noiseRatioLevelRise.reset();
 }
 
 Articulation::FeatureSet
@@ -632,7 +624,6 @@ Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     }
 
     m_coreFeatures.process(inputBuffers[0], timestamp);
-    m_noiseRatioLevelRise.process(inputBuffers[0]);
     return {};
 }
 
@@ -695,37 +686,74 @@ Articulation::getRemainingFeatures()
     auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
     int n = rawPower.size();
 
-    auto noiseRatioFractions = m_noiseRatioLevelRise.getFractions();
-    int noiseWindowSteps = m_coreFeatures.msToSteps
-        (m_onsetSensitivityNoiseTimeWindow_ms, m_stepSize, false);
+    // "Determine spectrographic noise ratio in % at each onset on
+    // base of the "Transient Onset Detection Function" data preceding
+    // the onset of about [o5] (= noise time window parameter,
+    // i.e. 100 ms before onset).
+    // 
+    // ...the Impulse ratio parameters should then be allocated with
+    // presets as follows (other than as described in the document),
+    // in hierarchic order:
+    //
+    // [a1.a] —> >30 % over the first half of [o5] and >20% over the
+    //           second half of [o5]
+    // [a1.p] —> >30 % over half the duration of [o5] (so it's more
+    //           like a noise column) 
+    // [a1.f] —> >20 % over the full duration of [o5]
+    // [a1.s] —> below 20% 
 
     struct NoiseRec {
-        double firstHalf;
-        double secondHalf;
         double total;
         NoiseType type;
-        NoiseRec() : firstHalf(1.0), secondHalf(1.0), total(1.0),
-                     type(NoiseType::Sonorous) { }
+        NoiseRec() : total(0.0), type(NoiseType::Sonorous) { }
     };
     
     map<int, NoiseRec> onsetToNoise;
+
+    auto noiseRatioFractions = m_coreFeatures.getOnsetLevelRiseFractions();
+    int noiseWindowSteps = m_coreFeatures.msToSteps
+        (m_onsetSensitivityNoiseTimeWindow_ms, m_stepSize, false);
     
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
         NoiseRec rec;
-        if (onset >= noiseWindowSteps) {
-            double atStart = noiseRatioFractions[onset - noiseWindowSteps];
-            double atMiddle = noiseRatioFractions[onset - noiseWindowSteps/2];
-            double atEnd = noiseRatioFractions[onset];
-            rec.firstHalf = atMiddle / atStart;
-            rec.secondHalf = atEnd / atMiddle;
-            rec.total = atEnd / atStart;
+        int start = onset - noiseWindowSteps;
+        int half = noiseWindowSteps/2;
+        double lowThreshold = 0.2, highThreshold = 0.3;
+        int firstOverHighThreshold = -1;
+        int lastOverHighThreshold = -1;
+        double firstHalfMax = 0.0;
+        double secondHalfMax = 0.0;
+        if (start >= 0) {
+            for (int i = 0; i < noiseWindowSteps; ++i) {
+                auto fraction = noiseRatioFractions[start + i];
+                if (fraction > highThreshold) {
+                    if (firstOverHighThreshold == -1) {
+                        firstOverHighThreshold = fraction;
+                    }
+                    lastOverHighThreshold = fraction;
+                }
+                if (i < half) {
+                    if (fraction > firstHalfMax) {
+                        firstHalfMax = fraction;
+                    }
+                } else {
+                    if (fraction > secondHalfMax) {
+                        secondHalfMax = fraction;
+                    }
+                }
+                if (fraction > rec.total) {
+                    rec.total = fraction;
+                }
+            }
         }
-        if (rec.firstHalf > 1.3 && rec.secondHalf > 1.2) {
+        if (firstHalfMax > highThreshold &&
+            secondHalfMax > lowThreshold) {
             rec.type = NoiseType::Affricative;
-        } else if (rec.firstHalf > 1.3) {
+        } else if (rec.total > highThreshold &&
+                   (lastOverHighThreshold - firstOverHighThreshold) <= half) {
             rec.type = NoiseType::Plosive;
-        } else if (rec.total > 1.2) {
+        } else if (rec.total > lowThreshold) {
             rec.type = NoiseType::Fricative;
         } else {
             rec.type = NoiseType::Sonorous;
@@ -739,6 +767,8 @@ Articulation::getRemainingFeatures()
     struct LDRec {
         int sustainBegin;
         int sustainEnd;
+        double minDiff;
+        double maxDiff;
         LevelDevelopment development;
     };
     
@@ -749,6 +779,7 @@ Articulation::getRemainingFeatures()
         int sustainBegin = onset + sustainBeginSteps;
         int sustainEnd = pq.second - 1;
         auto development = LevelDevelopment::Unclassifiable;
+        double minDiff = 0.0, maxDiff = 0.0;
         if (sustainEnd - sustainBegin >= 2 &&
             sustainBegin < n &&
             sustainEnd < n) {
@@ -768,18 +799,22 @@ Articulation::getRemainingFeatures()
             }
             development = classifyLevelDevelopment
                 (sbl, sel, max, min, m_volumeDevelopmentThreshold_dB);
+            minDiff = min - sbl;
+            maxDiff = max - sbl;
         }
         LDRec rec;
         rec.development = development;
         rec.sustainBegin = sustainBegin;
         rec.sustainEnd = sustainEnd;
+        rec.minDiff = minDiff;
+        rec.maxDiff = maxDiff;
         if (development == LevelDevelopment::Unclassifiable) {
             rec.sustainBegin = onset;
         }
         onsetToLD[onset] = rec;
     }
 
-    map<int, double> onsetToRelativeDuration;
+    map<int, int> onsetToFollowingOnset;
     for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
         int onset = itr->first;
         int offset = itr->second;
@@ -789,11 +824,19 @@ Articulation::getRemainingFeatures()
             following = probe->first;
         }
         if (following > onset) {
-            onsetToRelativeDuration[onset] = 
-                double(offset - onset) / double(following - onset);
+            onsetToFollowingOnset[onset] = following;
         } else {
-            onsetToRelativeDuration[onset] = 1.0;
+            onsetToFollowingOnset[onset] = offset;
         }
+    }
+            
+    map<int, double> onsetToRelativeDuration;
+    for (auto pq : onsetToFollowingOnset) {
+        int onset = pq.first;
+        int following = pq.second;
+        int offset = onsetOffsets.at(pq.first);
+        onsetToRelativeDuration[onset] = 
+            double(offset - onset) / double(following - onset);
     }
 
     auto timeForStep = [&](int i) {
@@ -823,7 +866,9 @@ Articulation::getRemainingFeatures()
     }
 
     for (auto pq : onsetOffsets) {
+        
         auto onset = pq.first;
+        auto offset = pq.second;
         string code;
         double index = 1.0;
 
@@ -859,6 +904,21 @@ Articulation::getRemainingFeatures()
         f.label = "";
         f.values.push_back(round(index));
         fs[m_articulationIndexOutput].push_back(f);
+
+        ostringstream os;
+        os << timeForStep(onset).toText() << " / "
+           << (timeForStep(onsetToFollowingOnset.at(onset)) -
+               timeForStep(onset)).toText() << "\n"
+           << code << "\n"
+           << int(round(onsetToNoise.at(onset).total * 100.0)) << "%\n"
+           << onsetToLD.at(onset).maxDiff << "dB / "
+           << onsetToLD.at(onset).minDiff << "dB\n"
+           << relativeDuration << " ("
+           << (timeForStep(offset) - timeForStep(onset)).toText() << ")";
+        f.label = os.str();
+        cerr << "label = \"" << f.label << "\"" << endl;
+        f.values.clear();
+        fs[m_summaryOutput].push_back(f);
     }
     
 #ifdef WITH_DEBUG_OUTPUTS
