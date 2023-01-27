@@ -987,18 +987,20 @@ Articulation::getRemainingFeatures()
     }
 
     auto onsets = m_coreFeatures.getMergedOnsets();
-    auto pitchOnsets = m_coreFeatures.getPitchOnsets();
-    auto powerOnsets = m_coreFeatures.getPowerRiseOnsets();
-    for (auto p: onsets) {
+    for (auto pq: onsets) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(p);
-        if (pitchOnsets.find(p) != pitchOnsets.end()) {
+        f.timestamp = timeForStep(pq.first);
+        switch (pq.second) {
+        case CoreFeatures::OnsetType::Pitch:
             f.label = "Pitch Change";
-        } else if (powerOnsets.find(p) != powerOnsets.end()) {
-            f.label = "Power Rise";
-        } else {
+            break;
+        case CoreFeatures::OnsetType::SpectralLevelRise:
             f.label = "Spectral Rise";
+            break;
+        case CoreFeatures::OnsetType::PowerRise:
+            f.label = "Power Rise";
+            break;
         }
         fs[m_onsetOutput].push_back(f);
     }

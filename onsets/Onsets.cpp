@@ -485,37 +485,47 @@ Onsets::getRemainingFeatures()
         fs[m_transientOnsetDfOutput].push_back(f);
     }
 
-    auto pitchOnsets = m_coreFeatures.getPitchOnsets();
-    auto powerOnsets = m_coreFeatures.getPowerRiseOnsets();
+    auto onsets = m_coreFeatures.getMergedOnsets();
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
 
-    for (auto pq : onsetOffsets) {
-        int p = pq.first;
-        int q = pq.second;
+    for (auto pq : onsets) {
+        int onset = pq.first;
+        auto type = pq.second;
+        int offset = onsetOffsets.at(onset);
 
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(p);
+        f.timestamp = timeForStep(onset);
         f.hasDuration = false;
-        if (pitchOnsets.find(p) != pitchOnsets.end()) {
+        switch (type) {
+        case CoreFeatures::OnsetType::Pitch:
             f.label = "Pitch Change";
-        } else if (powerOnsets.find(p) != powerOnsets.end()) {
-            f.label = "Power Rise";
-        } else {
+            break;
+        case CoreFeatures::OnsetType::SpectralLevelRise:
             f.label = "Spectral Rise";
+            break;
+        case CoreFeatures::OnsetType::PowerRise:
+            f.label = "Power Rise";
+            break;
         }
         fs[m_onsetOutput].push_back(f);
 
         f.hasDuration = true;
-        f.duration = timeForStep(q) - f.timestamp;
+        f.duration = timeForStep(offset) - f.timestamp;
         f.label = "";
-        if (pitchOnsets.find(p) != pitchOnsets.end()) {
+            
+        switch (type) {
+        case CoreFeatures::OnsetType::Pitch:
             f.values.push_back(1);
-        } else if (powerOnsets.find(p) != powerOnsets.end()) {
-            f.values.push_back(3);
-        } else {
+            break;
+        case CoreFeatures::OnsetType::SpectralLevelRise:
             f.values.push_back(2);
+            break;
+        case CoreFeatures::OnsetType::PowerRise:
+            f.values.push_back(3);
+            break;
         }
+        
         fs[m_durationOutput].push_back(f);
     }
     

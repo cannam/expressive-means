@@ -19,6 +19,7 @@
 
 #include <vector>
 #include <set>
+#include <map>
 #include <memory>
 
 /** Extractor for features (pitch, onsets etc) that Expressive Means
@@ -145,10 +146,15 @@ public:
         m_pitchOnsets.clear();
         m_levelRiseOnsets.clear();
         m_powerRiseOnsets.clear();
-        m_allOnsets.clear();
         m_mergedOnsets.clear();
         m_onsetOffsets.clear();
     }
+
+    enum class OnsetType {
+        Pitch,
+        SpectralLevelRise,
+        PowerRise
+    };
     
     void
     process(const float *input, Vamp::RealTime timestamp) {
@@ -290,18 +296,53 @@ public:
             }
             prevDerivative = derivative;
         }
-        
-        m_allOnsets = m_pitchOnsets;
-        m_allOnsets.insert(m_levelRiseOnsets.begin(), m_levelRiseOnsets.end());
-        m_allOnsets.insert(m_powerRiseOnsets.begin(), m_powerRiseOnsets.end());
+
+        std::map<int, OnsetType> mergingOnsets;
+        for (auto p : m_pitchOnsets) {
+            mergingOnsets[p] = OnsetType::Pitch;
+        }
+        for (auto p : m_levelRiseOnsets) {
+            mergingOnsets[p] = OnsetType::SpectralLevelRise;
+        }
+        for (auto p : m_powerRiseOnsets) {
+            mergingOnsets[p] = OnsetType::PowerRise;
+        }
 
         int prevP = -minimumOnsetSteps;
-        for (auto p: m_allOnsets) {
+        OnsetType prevType = OnsetType::Pitch;
+        
+        for (auto pq : mergingOnsets) {
+            int p = pq.first;
+            auto type = pq.second;
+            
             if (p < prevP + minimumOnsetSteps) {
-                continue;
+
+                if (prevType == OnsetType::PowerRise &&
+                    type != OnsetType::PowerRise) {
+                    // "If a spectral rise onset follows [use minimum
+                    // onset interval, i.e. 100 ms] after a raw power
+                    // onset, return spectral rise onset only",
+                    // i.e. erase the raw power onset we previously
+                    // added. (But the motivating example for this
+                    // actually has a pitch onset following the raw
+                    // power one, not a spectral rise, so we test
+                    // above for anything other than raw power)
+                    m_mergedOnsets.erase(prevP);
+
+                } else {
+                    // An onset follows another one within the minimum
+                    // onset interval and the above rule doesn't
+                    // apply, so we don't insert this one, and also
+                    // don't update prevP and prevType because we want
+                    // it to have no effect on any following onsets
+                    continue;
+                }
             }
-            m_mergedOnsets.insert(p);
+
+            m_mergedOnsets[p] = type;
+
             prevP = p;
+            prevType = type;
         }
 
         n = m_rawPower.size();
@@ -310,11 +351,11 @@ public:
             (m_sustainBeginThreshold_ms, m_stepSize, false);
 
         for (auto i = m_mergedOnsets.begin(); i != m_mergedOnsets.end(); ++i) {
-            int p = *i;
+            int p = i->first;
             int limit = n;
             auto j = i;
             if (++j != m_mergedOnsets.end()) {
-                limit = *j; // stop at the next onset
+                limit = j->first; // stop at the next onset
             }
             int s = p + sustainBeginSteps;
             if (s < n) {
@@ -425,7 +466,7 @@ public:
         return m_powerRiseOnsets;
     }
 
-    std::set<int>
+    std::map<int, OnsetType>
     getMergedOnsets() const {
         assertFinished();
         return m_mergedOnsets;
@@ -489,8 +530,7 @@ private:
     std::set<int> m_pitchOnsets;
     std::set<int> m_levelRiseOnsets;
     std::set<int> m_powerRiseOnsets;
-    std::set<int> m_allOnsets;
-    std::set<int> m_mergedOnsets;
+    std::map<int, OnsetType> m_mergedOnsets;
     std::map<int, int> m_onsetOffsets;
 
     void assertFinished() const {
