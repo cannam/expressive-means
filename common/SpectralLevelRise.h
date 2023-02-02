@@ -187,7 +187,11 @@ public:
     
     std::vector<double> getFractions(FractionType type =
                                      FractionType::WholeWindow) const {
-        return m_fractions.at(type);
+        if (m_fractions.empty()) {
+            return {};
+        } else {
+            return m_fractions.at(type);
+        }
     }
 
 private:
@@ -218,7 +222,7 @@ private:
         int above = 0;
         int start, limit;
         switch (type) {
-        case FractionType::WholeWindow: start = 1; limit = m; break;
+        case FractionType::WholeWindow: default: start = 1; limit = m; break;
         case FractionType::FirstHalf: start = 1; limit = m/2; break;
         case FractionType::SecondHalf: start = m/2; limit = m; break;
         }

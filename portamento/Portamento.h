@@ -64,15 +64,7 @@ protected:
     
     CoreFeatures m_coreFeatures;
 
-    float m_pyinThresholdDistribution;
-    float m_pyinLowAmpSuppression;
-    
-    float m_pitchAverageWindow_ms;
-    float m_onsetSensitivityPitch_cents;
-    float m_onsetSensitivityNoise_percent;
-    float m_onsetSensitivityLevel_dB;
-    float m_onsetSensitivityNoiseTimeWindow_ms;
-    float m_minimumOnsetInterval_ms;
+    CoreFeatures::Parameters m_coreParams;
 
 /*!!!
     mutable int m_summaryOutput;

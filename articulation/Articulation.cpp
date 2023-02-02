@@ -33,17 +33,7 @@ Articulation::Articulation(float inputSampleRate) :
     m_blockSize(0),
     m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
-    m_pyinThresholdDistribution(defaultCoreParams.pyinParameters.thresholdDistribution),
-    m_pyinLowAmpSuppression(defaultCoreParams.pyinParameters.lowAmplitudeSuppressionThreshold),
-    m_pitchAverageWindow_ms(defaultCoreParams.pitchAverageWindow_ms),
-    m_onsetSensitivityPitch_cents(defaultCoreParams.onsetSensitivityPitch_cents),
-    m_onsetSensitivityNoise_percent(defaultCoreParams.onsetSensitivityNoise_percent),
-    m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
-    m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
-    m_onsetSensitivityRawPowerThreshold_dB(defaultCoreParams.onsetSensitivityRawPowerThreshold_dB),
-    m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms),
-    m_sustainBeginThreshold_ms(defaultCoreParams.sustainBeginThreshold_ms),
-    m_noteDurationThreshold_dB(defaultCoreParams.noteDurationThreshold_dB),
+    m_coreParams(defaultCoreParams),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
@@ -242,27 +232,27 @@ float
 Articulation::getParameter(string identifier) const
 {
     if (identifier == "pyin-threshdistr") {
-        return m_pyinThresholdDistribution;
+        return m_coreParams.pyinThresholdDistribution;
     } else if (identifier == "pyin-lowampsuppression") {
-        return m_pyinLowAmpSuppression;
+        return m_coreParams.pyinLowAmpSuppressionThreshold;
     } else if (identifier == "pitchAverageWindow") {
-        return m_pitchAverageWindow_ms;
+        return m_coreParams.pitchAverageWindow_ms;
     } else if (identifier == "onsetSensitivityPitch") {
-        return m_onsetSensitivityPitch_cents;
+        return m_coreParams.onsetSensitivityPitch_cents;
     } else if (identifier == "onsetSensitivityNoise") {
-        return m_onsetSensitivityNoise_percent;
+        return m_coreParams.onsetSensitivityNoise_percent;
     } else if (identifier == "onsetSensitivityLevel") {
-        return m_onsetSensitivityLevel_dB;
+        return m_coreParams.onsetSensitivityLevel_dB;
     } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        return m_onsetSensitivityNoiseTimeWindow_ms;
+        return m_coreParams.onsetSensitivityNoiseTimeWindow_ms;
     } else if (identifier == "onsetSensitivityRawPowerThreshold") {
-        return m_onsetSensitivityRawPowerThreshold_dB;
+        return m_coreParams.onsetSensitivityRawPowerThreshold_dB;
     } else if (identifier == "minimumOnsetInterval") {
-        return m_minimumOnsetInterval_ms;
+        return m_coreParams.minimumOnsetInterval_ms;
     } else if (identifier == "sustainBeginThreshold") {
-        return m_sustainBeginThreshold_ms;
+        return m_coreParams.sustainBeginThreshold_ms;
     } else if (identifier == "noteDurationThreshold") {
-        return m_noteDurationThreshold_dB;
+        return m_coreParams.noteDurationThreshold_dB;
     } else if (identifier == "volumeDevelopmentThreshold") {
         return m_volumeDevelopmentThreshold_dB;
     } else if (identifier == "scalingFactor") {
@@ -276,27 +266,27 @@ void
 Articulation::setParameter(string identifier, float value) 
 {
     if (identifier == "pyin-threshdistr") {
-        m_pyinThresholdDistribution = value;
+        m_coreParams.pyinThresholdDistribution = value;
     } else if (identifier == "pyin-lowampsuppression") {
-        m_pyinLowAmpSuppression = value;
+        m_coreParams.pyinLowAmpSuppressionThreshold = value;
     } else if (identifier == "pitchAverageWindow") {
-        m_pitchAverageWindow_ms = value;
+        m_coreParams.pitchAverageWindow_ms = value;
     } else if (identifier == "onsetSensitivityPitch") {
-        m_onsetSensitivityPitch_cents = value;
+        m_coreParams.onsetSensitivityPitch_cents = value;
     } else if (identifier == "onsetSensitivityNoise") {
-        m_onsetSensitivityNoise_percent = value;
+        m_coreParams.onsetSensitivityNoise_percent = value;
     } else if (identifier == "onsetSensitivityLevel") {
-        m_onsetSensitivityLevel_dB = value;
+        m_coreParams.onsetSensitivityLevel_dB = value;
     } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        m_onsetSensitivityNoiseTimeWindow_ms = value;
+        m_coreParams.onsetSensitivityNoiseTimeWindow_ms = value;
     } else if (identifier == "onsetSensitivityRawPowerThreshold") {
-        m_onsetSensitivityRawPowerThreshold_dB = value;
+        m_coreParams.onsetSensitivityRawPowerThreshold_dB = value;
     } else if (identifier == "minimumOnsetInterval") {
-        m_minimumOnsetInterval_ms = value;
+        m_coreParams.minimumOnsetInterval_ms = value;
     } else if (identifier == "sustainBeginThreshold") {
-        m_sustainBeginThreshold_ms = value;
+        m_coreParams.sustainBeginThreshold_ms = value;
     } else if (identifier == "noteDurationThreshold") {
-        m_noteDurationThreshold_dB = value;
+        m_coreParams.noteDurationThreshold_dB = value;
     } else if (identifier == "volumeDevelopmentThreshold") {
         m_volumeDevelopmentThreshold_dB = value;
     } else if (identifier == "scalingFactor") {
@@ -327,6 +317,11 @@ Articulation::getOutputDescriptors() const
 {
     OutputList list;
     OutputDescriptor d;
+
+    // Common to all
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
     
     d.identifier = "summary";
     d.name = "Summary";
@@ -335,8 +330,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_summaryOutput = int(list.size());
     list.push_back(d);
@@ -348,8 +341,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_noiseTypeOutput = int(list.size());
     list.push_back(d);
@@ -361,8 +352,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = true;
     m_volumeDevelopmentOutput = int(list.size());
     list.push_back(d);
@@ -374,8 +363,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_articulationTypeOutput = int(list.size());
     list.push_back(d);
@@ -387,9 +374,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
@@ -401,8 +385,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
     d.hasDuration = false;
     m_articulationIndexOutput = int(list.size());
     list.push_back(d);
@@ -415,9 +397,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_rawPowerOutput = int(list.size());
     list.push_back(d);
@@ -429,9 +408,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_smoothedPowerOutput = int(list.size());
     list.push_back(d);
@@ -443,9 +419,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_filteredPitchOutput = int(list.size());
     list.push_back(d);
@@ -457,9 +430,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_pitchOnsetDfOutput = int(list.size());
     list.push_back(d);
@@ -471,9 +441,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_transientOnsetDfOutput = int(list.size());
     list.push_back(d);
@@ -485,9 +452,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_noiseRatioOutput = int(list.size());
     list.push_back(d);
@@ -499,9 +463,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_relativeDurationOutput = int(list.size());
     list.push_back(d);
@@ -513,9 +474,6 @@ Articulation::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_onsetOutput = int(list.size());
     list.push_back(d);
@@ -562,44 +520,9 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
     m_haveStartTime = false;
 
     try {
-        CoreFeatures::PYinParameters pyinParams;
-        pyinParams.thresholdDistribution = m_pyinThresholdDistribution;
-        pyinParams.lowAmplitudeSuppressionThreshold = m_pyinLowAmpSuppression;
-    
-        Power::Parameters powerParams;
-        powerParams.blockSize = m_blockSize;
-
-        int onsetLevelRiseHistoryLength =
-            m_coreFeatures.msToSteps(m_onsetSensitivityNoiseTimeWindow_ms,
-                                     m_stepSize, false);
-        if (onsetLevelRiseHistoryLength < 2) {
-            onsetLevelRiseHistoryLength = 2;
-        }
-
-        SpectralLevelRise::Parameters onsetLevelRiseParameters;
-        onsetLevelRiseParameters.sampleRate = m_inputSampleRate;
-        onsetLevelRiseParameters.blockSize = m_blockSize;
-        onsetLevelRiseParameters.dB = m_onsetSensitivityLevel_dB;
-        onsetLevelRiseParameters.historyLength = onsetLevelRiseHistoryLength;
-
-        CoreFeatures::Parameters fParams;
-        fParams.pyinParameters = pyinParams;
-        fParams.powerParameters = powerParams;
-        fParams.onsetLevelRiseParameters = onsetLevelRiseParameters;
-        fParams.stepSize = m_stepSize;
-        fParams.blockSize = m_blockSize;
-        fParams.pitchAverageWindow_ms = m_pitchAverageWindow_ms;
-        fParams.onsetSensitivityPitch_cents = m_onsetSensitivityPitch_cents;
-        fParams.onsetSensitivityNoise_percent = m_onsetSensitivityNoise_percent;
-        fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
-        fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
-        fParams.onsetSensitivityRawPowerThreshold_dB = m_onsetSensitivityRawPowerThreshold_dB;
-        fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
-        fParams.sustainBeginThreshold_ms = m_sustainBeginThreshold_ms;
-        fParams.noteDurationThreshold_dB = m_noteDurationThreshold_dB;
-
-        m_coreFeatures.initialise(fParams);
-    
+        m_coreParams.stepSize = m_stepSize;
+        m_coreParams.blockSize = m_blockSize;
+        m_coreFeatures.initialise(m_coreParams);
     } catch (const std::logic_error &e) {
         cerr << "ERROR: Articulation::initialise: Feature extractor initialisation failed: " << e.what() << endl;
         return false;
@@ -712,7 +635,7 @@ Articulation::getRemainingFeatures()
 
     auto noiseRatioFractions = m_coreFeatures.getOnsetLevelRiseFractions();
     int noiseWindowSteps = m_coreFeatures.msToSteps
-        (m_onsetSensitivityNoiseTimeWindow_ms, m_stepSize, false);
+        (m_coreParams.onsetSensitivityNoiseTimeWindow_ms, m_stepSize, false);
     
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
@@ -778,7 +701,7 @@ Articulation::getRemainingFeatures()
     }
     
     int sustainBeginSteps = m_coreFeatures.msToSteps
-        (m_sustainBeginThreshold_ms, m_stepSize, false);
+        (m_coreParams.sustainBeginThreshold_ms, m_stepSize, false);
     int sustainEndSteps = m_coreFeatures.msToSteps
         (50.0, m_stepSize, false);
 
@@ -927,7 +850,6 @@ Articulation::getRemainingFeatures()
            << relativeDuration << " ("
            << (timeForStep(offset) - timeForStep(onset)).toText() << ")";
         f.label = os.str();
-        cerr << "label = \"" << f.label << "\"" << endl;
         f.values.clear();
         fs[m_summaryOutput].push_back(f);
     }

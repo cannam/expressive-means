@@ -42,22 +42,12 @@ public:
     size_t getPreferredStepSize() const {
         return m_pyin.getPreferredStepSize();
     }
-    
-    struct PYinParameters {
-        float thresholdDistribution;
-        float lowAmplitudeSuppressionThreshold;
-        PYinParameters() :
-            thresholdDistribution(2.f),
-            lowAmplitudeSuppressionThreshold(0.1f)
-        {}
-    };
 
     struct Parameters {
-        PYinParameters pyinParameters;
-        Power::Parameters powerParameters;
-        SpectralLevelRise::Parameters onsetLevelRiseParameters;
         int stepSize;
         int blockSize;
+        float pyinThresholdDistribution;
+        float pyinLowAmpSuppressionThreshold;
         float pitchAverageWindow_ms;                // 2.1, o_1
         float onsetSensitivityPitch_cents;          // 2.2, o_2
         float onsetSensitivityNoise_percent;        // 2.3, o_3
@@ -70,6 +60,8 @@ public:
         Parameters() :
             stepSize(256),
             blockSize(2048),
+            pyinThresholdDistribution(2.f),
+            pyinLowAmpSuppressionThreshold(0.1f),
             pitchAverageWindow_ms(150.f),
             onsetSensitivityPitch_cents(15.f),
             onsetSensitivityNoise_percent(24.f),
@@ -87,6 +79,8 @@ public:
             throw std::logic_error("Features::initialise: Already initialised");
         }
 
+        m_parameters = parameters;
+
         auto pyinOutputs = m_pyin.getOutputDescriptors();
         m_pyinSmoothedPitchTrackOutput = -1;
         for (int i = 0; i < int(pyinOutputs.size()); ++i) {
@@ -99,30 +93,31 @@ public:
         }
         
         m_pyin.setParameter("outputunvoiced", 2); // As negative frequencies
-        m_pyin.setParameter
-            ("threshdistr", parameters.pyinParameters.thresholdDistribution);
-        m_pyin.setParameter
-            ("lowampsuppression",
-             parameters.pyinParameters.lowAmplitudeSuppressionThreshold);
-        if (!m_pyin.initialise(1, parameters.stepSize, parameters.blockSize)) {
+        m_pyin.setParameter("threshdistr",
+                            m_parameters.pyinThresholdDistribution);
+        m_pyin.setParameter("lowampsuppression",
+                            m_parameters.pyinLowAmpSuppressionThreshold);
+
+        if (!m_pyin.initialise(1, m_parameters.stepSize, m_parameters.blockSize)) {
             throw std::logic_error("pYIN initialisation failed");
         }
-        
-        m_power.initialise(parameters.powerParameters);
-        m_onsetLevelRise.initialise(parameters.onsetLevelRiseParameters);
 
-        m_stepSize = parameters.stepSize;
-        m_blockSize = parameters.blockSize;
-        m_pitchAverageWindow_ms = parameters.pitchAverageWindow_ms;
-        m_onsetSensitivityPitch_cents = parameters.onsetSensitivityPitch_cents;
-        m_onsetSensitivityNoise_percent = parameters.onsetSensitivityNoise_percent;
-        m_onsetSensitivityLevel_dB = parameters.onsetSensitivityLevel_dB;
-        m_onsetSensitivityNoiseTimeWindow_ms = parameters.onsetSensitivityNoiseTimeWindow_ms;
-        m_onsetSensitivityRawPowerThreshold_dB = parameters.onsetSensitivityRawPowerThreshold_dB;
-        m_minimumOnsetInterval_ms = parameters.minimumOnsetInterval_ms;
-        m_sustainBeginThreshold_ms = parameters.sustainBeginThreshold_ms;
-        m_noteDurationThreshold_dB = parameters.noteDurationThreshold_dB;
-        
+        Power::Parameters powerParameters;
+        powerParameters.blockSize = m_parameters.blockSize;
+        m_power.initialise(powerParameters);
+
+        SpectralLevelRise::Parameters levelRiseParameters;
+        levelRiseParameters.sampleRate = m_sampleRate;
+        levelRiseParameters.blockSize = m_parameters.blockSize;
+        levelRiseParameters.dB = m_parameters.onsetSensitivityLevel_dB;
+        levelRiseParameters.historyLength =
+            msToSteps(m_parameters.onsetSensitivityNoiseTimeWindow_ms,
+                      m_parameters.stepSize, false);
+        if (levelRiseParameters.historyLength < 2) {
+            levelRiseParameters.historyLength = 2;
+        }
+        m_onsetLevelRise.initialise(levelRiseParameters);
+
         m_initialised = true;
     };
 
@@ -164,6 +159,7 @@ public:
         if (m_finished) {
             throw std::logic_error("Features::process: Already finished");
         }
+
         const float *const *iptr = &input;
         auto pyinFeatures = m_pyin.process(iptr, timestamp);
         for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
@@ -205,7 +201,8 @@ public:
         // within the window that follows it: if they are close,
         // record an onset
     
-        int pitchFilterLength = msToSteps(m_pitchAverageWindow_ms, m_stepSize, true);
+        int pitchFilterLength = msToSteps(m_parameters.pitchAverageWindow_ms,
+                                          m_parameters.stepSize, true);
         int halfLength = pitchFilterLength/2;
         MeanFilter pitchFilter(pitchFilterLength);
         int n = m_pitch.size();
@@ -217,10 +214,10 @@ public:
                 (fabsf(m_pitch[i] - m_filteredPitch[i + halfLength]));
         }
 
-        int minimumOnsetSteps = msToSteps
-            (m_minimumOnsetInterval_ms, m_stepSize, false);
+        int minimumOnsetSteps = msToSteps(m_parameters.minimumOnsetInterval_ms,
+                                          m_parameters.stepSize, false);
         int lastBelowThreshold = -minimumOnsetSteps;
-        double threshold = m_onsetSensitivityPitch_cents / 100.0;
+        double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
 
         for (int i = 0; i + halfLength < n; ++i) {
             // "absolute difference... falls below o_2":
@@ -235,7 +232,7 @@ public:
         }
     
         std::vector<double> riseFractions = m_onsetLevelRise.getFractions();
-        double upperThreshold = m_onsetSensitivityNoise_percent / 100.0;
+        double upperThreshold = m_parameters.onsetSensitivityNoise_percent / 100.0;
         double lowerThreshold = upperThreshold / 2.0;
         bool aboveThreshold = false;
         for (int i = 0; i < int(riseFractions.size()); ++i) {
@@ -256,7 +253,8 @@ public:
                 aboveThreshold = true;
             } else if (riseFractions[i] < lowerThreshold) {
                 if (aboveThreshold) {
-                    m_levelRiseOnsets.insert(i + (m_blockSize / m_stepSize)/2);
+                    m_levelRiseOnsets.insert(i + (m_parameters.blockSize /
+                                                  m_parameters.stepSize)/2);
                     aboveThreshold = false;
                 }
             }
@@ -265,7 +263,7 @@ public:
         m_rawPower = m_power.getRawPower();
         m_smoothedPower = m_power.getSmoothedPower();
         
-        int rawPowerSteps = msToSteps(50.0, m_stepSize, false);
+        int rawPowerSteps = msToSteps(50.0, m_parameters.stepSize, false);
         bool onsetComing = false;
         double prevDerivative = 0.0;
         // Iterate through raw power, and when we see a rise above a
@@ -274,21 +272,22 @@ public:
         // don't actually record the onset (insert into
         // m_powerRiseOnsets) until we see the derivative of raw power
         // begin to fall again, otherwise the onset appears early.
-        for (int i = 0; i + 1 < m_rawPower.size(); ++i) {
+        for (int i = 0; i + 1 < int(m_rawPower.size()); ++i) {
             double derivative = m_rawPower[i+1] - m_rawPower[i];
             if (onsetComing) {
                 if (derivative < prevDerivative) {
                     // Like level rise, power is offset by half a block
-                    m_powerRiseOnsets.insert(i + (m_blockSize / m_stepSize)/2);
+                    m_powerRiseOnsets.insert(i + (m_parameters.blockSize /
+                                                  m_parameters.stepSize)/2);
                     onsetComing = false;
                 }
-            } else if (i + rawPowerSteps < m_rawPower.size()) {
+            } else if (i + rawPowerSteps < int(m_rawPower.size())) {
                 for (int j = i; j <= i + rawPowerSteps; ++j) {
                     if (m_rawPower[j] < m_rawPower[i]) {
                         break;
                     }
                     if (m_rawPower[j] > m_rawPower[i] +
-                        m_onsetSensitivityRawPowerThreshold_dB) {
+                        m_parameters.onsetSensitivityRawPowerThreshold_dB) {
                         onsetComing = true;
                         break;
                     }
@@ -347,8 +346,8 @@ public:
 
         n = m_rawPower.size();
 
-        int sustainBeginSteps = msToSteps
-            (m_sustainBeginThreshold_ms, m_stepSize, false);
+        int sustainBeginSteps = msToSteps(m_parameters.sustainBeginThreshold_ms,
+                                          m_parameters.stepSize, false);
 
         for (auto i = m_mergedOnsets.begin(); i != m_mergedOnsets.end(); ++i) {
             int p = i->first;
@@ -359,11 +358,13 @@ public:
             }
             int s = p + sustainBeginSteps;
             if (s < n) {
+                /*
                 std::cerr << "power " << m_rawPower[s] << ", threshold "
-                          << m_noteDurationThreshold_dB
+                          << m_parameters.noteDurationThreshold_dB
                           << ", gives target power "
-                          << m_rawPower[s] - m_noteDurationThreshold_dB
+                          << m_rawPower[s] - m_parameters.noteDurationThreshold_dB
                           << std::endl;
+                */
             } else {
                 std::cerr << "sustain start index " << s
                           << " out of range at end" << std::endl;
@@ -371,7 +372,7 @@ public:
             int q = s;
             while (q < limit) {
                 if (m_rawPower[q] <
-                    m_rawPower[s] - m_noteDurationThreshold_dB) {
+                    m_rawPower[s] - m_parameters.noteDurationThreshold_dB) {
                     break;
                 }
                 ++q;
@@ -499,26 +500,15 @@ public:
     
 private:
     double m_sampleRate;
-    int m_stepSize;
-    int m_blockSize;
     bool m_initialised;
     bool m_finished;
-    
+    Parameters m_parameters;
+
     PYinVamp m_pyin; // Not copyable by value, though, so we can't
                      // have default operator= etc
     Power m_power;
     SpectralLevelRise m_onsetLevelRise;
 
-    float m_pitchAverageWindow_ms;              // 2.1, o_1
-    float m_onsetSensitivityPitch_cents;        // 2.2, o_2
-    float m_onsetSensitivityNoise_percent;      // 2.3, o_3
-    float m_onsetSensitivityLevel_dB;           // 2.4, o_4
-    float m_onsetSensitivityNoiseTimeWindow_ms; // 2.5, o_5
-    float m_onsetSensitivityRawPowerThreshold_dB;
-    float m_minimumOnsetInterval_ms;            // 2.6, o_6
-    float m_sustainBeginThreshold_ms;
-    float m_noteDurationThreshold_dB;           // 2.7, o_7
-    
     int m_pyinSmoothedPitchTrackOutput;
     std::vector<double> m_pyinPitchHz;
     std::vector<Vamp::RealTime> m_pyinTimestamps;

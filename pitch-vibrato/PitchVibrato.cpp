@@ -27,14 +27,7 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_blockSize(0),
     m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
-    m_pyinThresholdDistribution(defaultCoreParams.pyinParameters.thresholdDistribution),
-    m_pyinLowAmpSuppression(defaultCoreParams.pyinParameters.lowAmplitudeSuppressionThreshold),
-    m_pitchAverageWindow_ms(defaultCoreParams.pitchAverageWindow_ms),
-    m_onsetSensitivityPitch_cents(defaultCoreParams.onsetSensitivityPitch_cents),
-    m_onsetSensitivityNoise_percent(defaultCoreParams.onsetSensitivityNoise_percent),
-    m_onsetSensitivityLevel_dB(defaultCoreParams.onsetSensitivityLevel_dB),
-    m_onsetSensitivityNoiseTimeWindow_ms(defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms),
-    m_minimumOnsetInterval_ms(defaultCoreParams.minimumOnsetInterval_ms)
+    m_coreParams(defaultCoreParams)
     /*,
     m_summaryOutput(-1),
     m_pitchvibratoTypeOutput(-1),
@@ -189,21 +182,21 @@ float
 PitchVibrato::getParameter(string identifier) const
 {
     if (identifier == "pyin-threshdistr") {
-        return m_pyinThresholdDistribution;
+        return m_coreParams.pyinThresholdDistribution;
     } else if (identifier == "pyin-lowampsuppression") {
-        return m_pyinLowAmpSuppression;
+        return m_coreParams.pyinLowAmpSuppressionThreshold;
     } else if (identifier == "pitchAverageWindow") {
-        return m_pitchAverageWindow_ms;
+        return m_coreParams.pitchAverageWindow_ms;
     } else if (identifier == "onsetSensitivityPitch") {
-        return m_onsetSensitivityPitch_cents;
+        return m_coreParams.onsetSensitivityPitch_cents;
     } else if (identifier == "onsetSensitivityNoise") {
-        return m_onsetSensitivityNoise_percent;
+        return m_coreParams.onsetSensitivityNoise_percent;
     } else if (identifier == "onsetSensitivityLevel") {
-        return m_onsetSensitivityLevel_dB;
+        return m_coreParams.onsetSensitivityLevel_dB;
     } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        return m_onsetSensitivityNoiseTimeWindow_ms;
+        return m_coreParams.onsetSensitivityNoiseTimeWindow_ms;
     } else if (identifier == "minimumOnsetInterval") {
-        return m_minimumOnsetInterval_ms;
+        return m_coreParams.minimumOnsetInterval_ms;
     }
     
     return 0.f;
@@ -213,21 +206,21 @@ void
 PitchVibrato::setParameter(string identifier, float value) 
 {
     if (identifier == "pyin-threshdistr") {
-        m_pyinThresholdDistribution = value;
+        m_coreParams.pyinThresholdDistribution = value;
     } else if (identifier == "pyin-lowampsuppression") {
-        m_pyinLowAmpSuppression = value;
+        m_coreParams.pyinLowAmpSuppressionThreshold = value;
     } else if (identifier == "pitchAverageWindow") {
-        m_pitchAverageWindow_ms = value;
+        m_coreParams.pitchAverageWindow_ms = value;
     } else if (identifier == "onsetSensitivityPitch") {
-        m_onsetSensitivityPitch_cents = value;
+        m_coreParams.onsetSensitivityPitch_cents = value;
     } else if (identifier == "onsetSensitivityNoise") {
-        m_onsetSensitivityNoise_percent = value;
+        m_coreParams.onsetSensitivityNoise_percent = value;
     } else if (identifier == "onsetSensitivityLevel") {
-        m_onsetSensitivityLevel_dB = value;
+        m_coreParams.onsetSensitivityLevel_dB = value;
     } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        m_onsetSensitivityNoiseTimeWindow_ms = value;
+        m_coreParams.onsetSensitivityNoiseTimeWindow_ms = value;
     } else if (identifier == "minimumOnsetInterval") {
-        m_minimumOnsetInterval_ms = value;
+        m_coreParams.minimumOnsetInterval_ms = value;
     }
 }
 
@@ -350,41 +343,9 @@ PitchVibrato::initialise(size_t channels, size_t stepSize, size_t blockSize)
     m_haveStartTime = false;
 
     try {
-        CoreFeatures::PYinParameters pyinParams;
-        pyinParams.thresholdDistribution = m_pyinThresholdDistribution;
-        pyinParams.lowAmplitudeSuppressionThreshold = m_pyinLowAmpSuppression;
-    
-        Power::Parameters powerParams;
-        powerParams.blockSize = m_blockSize;
-
-        int onsetLevelRiseHistoryLength =
-            m_coreFeatures.msToSteps(m_onsetSensitivityNoiseTimeWindow_ms,
-                                         m_stepSize, false);
-        if (onsetLevelRiseHistoryLength < 2) {
-            onsetLevelRiseHistoryLength = 2;
-        }
-
-        SpectralLevelRise::Parameters onsetLevelRiseParameters;
-        onsetLevelRiseParameters.sampleRate = m_inputSampleRate;
-        onsetLevelRiseParameters.blockSize = m_blockSize;
-        onsetLevelRiseParameters.dB = m_onsetSensitivityLevel_dB;
-        onsetLevelRiseParameters.historyLength = onsetLevelRiseHistoryLength;
-
-        CoreFeatures::Parameters fParams;
-        fParams.pyinParameters = pyinParams;
-        fParams.powerParameters = powerParams;
-        fParams.onsetLevelRiseParameters = onsetLevelRiseParameters;
-        fParams.stepSize = m_stepSize;
-        fParams.blockSize = m_blockSize;
-        fParams.pitchAverageWindow_ms = m_pitchAverageWindow_ms;
-        fParams.onsetSensitivityPitch_cents = m_onsetSensitivityPitch_cents;
-        fParams.onsetSensitivityNoise_percent = m_onsetSensitivityNoise_percent;
-        fParams.onsetSensitivityLevel_dB = m_onsetSensitivityLevel_dB;
-        fParams.onsetSensitivityNoiseTimeWindow_ms = m_onsetSensitivityNoiseTimeWindow_ms;
-        fParams.minimumOnsetInterval_ms = m_minimumOnsetInterval_ms;
-
-        m_coreFeatures.initialise(fParams);
-    
+        m_coreParams.stepSize = m_stepSize;
+        m_coreParams.blockSize = m_blockSize;
+        m_coreFeatures.initialise(m_coreParams);
     } catch (const std::logic_error &e) {
         cerr << "ERROR: PitchVibrato::initialise: Feature extractor initialisation failed: " << e.what() << endl;
         return false;

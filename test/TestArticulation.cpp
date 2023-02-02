@@ -21,6 +21,7 @@
 std::ostream &operator<<(std::ostream &os, Articulation::LevelDevelopment ld)
 {
     os << Articulation::developmentToString(ld);
+    return os;
 }
 
 BOOST_AUTO_TEST_SUITE(TestArticulation)

@@ -153,25 +153,14 @@ protected:
     Vamp::RealTime m_startTime;
     
     CoreFeatures m_coreFeatures;
-
-    float m_pyinThresholdDistribution;
-    float m_pyinLowAmpSuppression;
     
     // Our parameters. Currently only those with simple single
     // floating-point values are provided. Multiple floating-point
     // values (e.g. 3.1, a_1.x impulse noise ratio boundaries) could
     // be added as multiple parameters; those with non-numeric values
     // (e.g. 3.2, a_2.x impulse type codes) can't.
-    
-    float m_pitchAverageWindow_ms;              // 2.1, o_1
-    float m_onsetSensitivityPitch_cents;        // 2.2, o_2
-    float m_onsetSensitivityNoise_percent;      // 2.3, o_3
-    float m_onsetSensitivityLevel_dB;           // 2.4, o_4
-    float m_onsetSensitivityNoiseTimeWindow_ms; // 2.5, o_5
-    float m_onsetSensitivityRawPowerThreshold_dB;
-    float m_minimumOnsetInterval_ms;            // 2.6, o_6
-    float m_sustainBeginThreshold_ms;           // 4.1, b_1
-    float m_noteDurationThreshold_dB;
+
+    CoreFeatures::Parameters m_coreParams;
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
     
