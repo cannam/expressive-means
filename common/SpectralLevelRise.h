@@ -19,6 +19,7 @@
 #include <iostream>
 #include <deque>
 #include <array>
+#include <map>
 
 /** Calculate and return the fraction of spectral bins in a given
  *  frequency range whose magnitudes have risen by more than the given

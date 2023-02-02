@@ -65,14 +65,14 @@ protected:
     CoreFeatures m_coreFeatures;
 
     CoreFeatures::Parameters m_coreParams;
-
-/*!!!
+    float m_glideThresholdPitch_cents;  // 3.1, g_1
+    float m_glideThresholdDuration_ms;  // 3.2, g_2
+    float m_glideThresholdProximity_ms; // 3.3, g_3
+    
     mutable int m_summaryOutput;
     mutable int m_portamentoTypeOutput;
     mutable int m_pitchTrackOutput;
     mutable int m_portamentoIndexOutput;
-*/
-
 };
 
 #endif

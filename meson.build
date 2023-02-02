@@ -25,6 +25,7 @@ boost_unit_test_dep = dependency('boost', modules: ['unit_test_framework'], vers
 have_boost_unit_test = boost_unit_test_dep.found()
 
 plugin_sources = [
+  'common/CoreFeatures.cpp',
   'onsets/Onsets.cpp',
   'articulation/Articulation.cpp',
   'pitch-vibrato/PitchVibrato.cpp',

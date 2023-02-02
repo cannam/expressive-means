@@ -19,21 +19,16 @@ using std::endl;
 using std::vector;
 using std::set;
 
-static const CoreFeatures::Parameters defaultCoreParams;
-
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
     m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
-    m_coreParams(defaultCoreParams)
-    /* ,
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
     m_portamentoIndexOutput(-1)
-    */
 {
 }
 
@@ -112,68 +107,13 @@ Portamento::getParameterDescriptors() const
 {
     ParameterList list;
 
-    ParameterList pyinParams = m_coreFeatures.getPYinParameterDescriptors();
-    for (auto d: pyinParams) {
-        if (d.identifier == "threshdistr" ||
-            d.identifier == "lowampsuppression") {
-            d.identifier = "pyin-" + d.identifier;
-            d.name = "pYIN: " + d.name;
-            list.push_back(d);
-        }
-    }
+    m_coreParams.appendVampParameterDescriptors(list);
     
     ParameterDescriptor d;
 
     d.description = "";
     d.isQuantized = false;
     
-    d.identifier = "pitchAverageWindow";
-    d.name = "Moving pitch average window";
-    d.unit = "ms";
-    d.minValue = 20.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.pitchAverageWindow_ms;
-    list.push_back(d);
-
-    d.identifier = "onsetSensitivityPitch";
-    d.name = "Onset sensitivity: Pitch";
-    d.unit = "cents";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityPitch_cents;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityNoise";
-    d.name = "Onset sensitivity: Noise";
-    d.unit = "%";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityNoise_percent;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityLevel";
-    d.name = "Onset sensitivity: Level";
-    d.unit = "dB";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityLevel_dB;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityNoiseTimeWindow";
-    d.name = "Onset sensitivity: Noise time window";
-    d.unit = "ms";
-    d.minValue = 20.f;
-    d.maxValue = 500.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms;
-    list.push_back(d);
-    
-    d.identifier = "minimumOnsetInterval";
-    d.name = "Minimum onset interval";
-    d.unit = "ms";
-    d.minValue = 0.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
-    list.push_back(d);
     
     return list;
 }
@@ -181,23 +121,11 @@ Portamento::getParameterDescriptors() const
 float
 Portamento::getParameter(string identifier) const
 {
-    if (identifier == "pyin-threshdistr") {
-        return m_coreParams.pyinThresholdDistribution;
-    } else if (identifier == "pyin-lowampsuppression") {
-        return m_coreParams.pyinLowAmpSuppressionThreshold;
-    } else if (identifier == "pitchAverageWindow") {
-        return m_coreParams.pitchAverageWindow_ms;
-    } else if (identifier == "onsetSensitivityPitch") {
-        return m_coreParams.onsetSensitivityPitch_cents;
-    } else if (identifier == "onsetSensitivityNoise") {
-        return m_coreParams.onsetSensitivityNoise_percent;
-    } else if (identifier == "onsetSensitivityLevel") {
-        return m_coreParams.onsetSensitivityLevel_dB;
-    } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        return m_coreParams.onsetSensitivityNoiseTimeWindow_ms;
-    } else if (identifier == "minimumOnsetInterval") {
-        return m_coreParams.minimumOnsetInterval_ms;
+    float value = 0.f;
+    if (m_coreParams.obtainVampParameter(identifier, value)) {
+        return value;
     }
+    
     
     return 0.f;
 }
@@ -205,23 +133,10 @@ Portamento::getParameter(string identifier) const
 void
 Portamento::setParameter(string identifier, float value) 
 {
-    if (identifier == "pyin-threshdistr") {
-        m_coreParams.pyinThresholdDistribution = value;
-    } else if (identifier == "pyin-lowampsuppression") {
-        m_coreParams.pyinLowAmpSuppressionThreshold = value;
-    } else if (identifier == "pitchAverageWindow") {
-        m_coreParams.pitchAverageWindow_ms = value;
-    } else if (identifier == "onsetSensitivityPitch") {
-        m_coreParams.onsetSensitivityPitch_cents = value;
-    } else if (identifier == "onsetSensitivityNoise") {
-        m_coreParams.onsetSensitivityNoise_percent = value;
-    } else if (identifier == "onsetSensitivityLevel") {
-        m_coreParams.onsetSensitivityLevel_dB = value;
-    } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        m_coreParams.onsetSensitivityNoiseTimeWindow_ms = value;
-    } else if (identifier == "minimumOnsetInterval") {
-        m_coreParams.minimumOnsetInterval_ms = value;
+    if (m_coreParams.acceptVampParameter(identifier, value)) {
+        return;
     }
+
 }
 
 Portamento::ProgramList
@@ -247,7 +162,12 @@ Portamento::getOutputDescriptors() const
 {
     OutputList list;
     OutputDescriptor d;
-/*!!!    
+
+    // Common to all
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    
     d.identifier = "summary";
     d.name = "Summary";
     d.description = "";
@@ -255,8 +175,6 @@ Portamento::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
     m_summaryOutput = int(list.size());
     list.push_back(d);
@@ -268,8 +186,6 @@ Portamento::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
     m_portamentoTypeOutput = int(list.size());
     list.push_back(d);
@@ -281,9 +197,6 @@ Portamento::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
@@ -295,12 +208,9 @@ Portamento::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
     m_portamentoIndexOutput = int(list.size());
     list.push_back(d);
-*/
     
     return list;
 }
@@ -333,11 +243,10 @@ Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
              << ") may not exceed block size (" << blockSize << ")" << endl;
         return false;
     }
-/*!!!
+
     if (m_summaryOutput < 0) {
         (void)getOutputDescriptors(); // initialise output indices
     }
-*/
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
@@ -383,7 +292,7 @@ Portamento::getRemainingFeatures()
 
     auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
     auto pyinTimestamps = m_coreFeatures.getPYinTimestamps();
-/*!!!
+
     for (int i = 0; i < int(pyinPitch.size()); ++i) {
         if (pyinPitch[i] <= 0) continue;
         Feature f;
@@ -392,7 +301,7 @@ Portamento::getRemainingFeatures()
         f.values.push_back(pyinPitch[i]);
         fs[m_pitchTrackOutput].push_back(f);
     }
-*/
+
     
     return fs;
 }

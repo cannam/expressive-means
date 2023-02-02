@@ -19,15 +19,12 @@ using std::endl;
 using std::vector;
 using std::set;
 
-static const CoreFeatures::Parameters defaultCoreParams;
-
 Onsets::Onsets(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
     m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
-    m_coreParams(defaultCoreParams),
     m_onsetOutput(-1),
     m_durationOutput(-1),
     m_pitchOnsetDfOutput(-1),
@@ -109,153 +106,24 @@ Onsets::ParameterList
 Onsets::getParameterDescriptors() const
 {
     ParameterList list;
-
-    ParameterList pyinParams = m_coreFeatures.getPYinParameterDescriptors();
-    for (auto d: pyinParams) {
-        if (d.identifier == "threshdistr" ||
-            d.identifier == "lowampsuppression") {
-            d.identifier = "pyin-" + d.identifier;
-            d.name = "pYIN: " + d.name;
-            list.push_back(d);
-        }
-    }
-    
-    ParameterDescriptor d;
-
-    d.description = "";
-    d.isQuantized = false;
-    
-    d.identifier = "pitchAverageWindow";
-    d.name = "Moving pitch average window";
-    d.unit = "ms";
-    d.minValue = 20.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.pitchAverageWindow_ms;
-    list.push_back(d);
-
-    d.identifier = "onsetSensitivityPitch";
-    d.name = "Onset sensitivity: Pitch";
-    d.unit = "cents";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityPitch_cents;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityNoise";
-    d.name = "Onset sensitivity: Noise";
-    d.unit = "%";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityNoise_percent;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityLevel";
-    d.name = "Onset sensitivity: Level";
-    d.unit = "dB";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityLevel_dB;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityNoiseTimeWindow";
-    d.name = "Onset sensitivity: Noise time window";
-    d.unit = "ms";
-    d.minValue = 20.f;
-    d.maxValue = 500.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityNoiseTimeWindow_ms;
-    list.push_back(d);
-    
-    d.identifier = "onsetSensitivityRawPowerThreshold";
-    d.name = "Onset sensitivity: Raw power threshold";
-    d.unit = "dB";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.onsetSensitivityRawPowerThreshold_dB;
-    list.push_back(d);
-    
-    d.identifier = "minimumOnsetInterval";
-    d.name = "Minimum onset interval";
-    d.unit = "ms";
-    d.minValue = 0.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
-    list.push_back(d);
-    
-    d.identifier = "sustainBeginThreshold";
-    d.name = "Sustain phase begin threshold";
-    d.unit = "ms";
-    d.minValue = 0.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.sustainBeginThreshold_ms;
-    list.push_back(d);
-    
-    d.identifier = "noteDurationThreshold";
-    d.name = "Note duration level drop threshold";
-    d.unit = "dB";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.noteDurationThreshold_dB;
-    list.push_back(d);
-    
+    m_coreParams.appendVampParameterDescriptors(list);
     return list;
 }
 
 float
 Onsets::getParameter(string identifier) const
 {
-    if (identifier == "pyin-threshdistr") {
-        return m_coreParams.pyinThresholdDistribution;
-    } else if (identifier == "pyin-lowampsuppression") {
-        return m_coreParams.pyinLowAmpSuppressionThreshold;
-    } else if (identifier == "pitchAverageWindow") {
-        return m_coreParams.pitchAverageWindow_ms;
-    } else if (identifier == "onsetSensitivityPitch") {
-        return m_coreParams.onsetSensitivityPitch_cents;
-    } else if (identifier == "onsetSensitivityNoise") {
-        return m_coreParams.onsetSensitivityNoise_percent;
-    } else if (identifier == "onsetSensitivityLevel") {
-        return m_coreParams.onsetSensitivityLevel_dB;
-    } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        return m_coreParams.onsetSensitivityNoiseTimeWindow_ms;
-    } else if (identifier == "onsetSensitivityRawPowerThreshold") {
-        return m_coreParams.onsetSensitivityRawPowerThreshold_dB;
-    } else if (identifier == "minimumOnsetInterval") {
-        return m_coreParams.minimumOnsetInterval_ms;
-    } else if (identifier == "sustainBeginThreshold") {
-        return m_coreParams.sustainBeginThreshold_ms;
-    } else if (identifier == "noteDurationThreshold") {
-        return m_coreParams.noteDurationThreshold_dB;
+    float value = 0.f;
+    if (m_coreParams.obtainVampParameter(identifier, value)) {
+        return value;
     }
-    
     return 0.f;
 }
 
 void
 Onsets::setParameter(string identifier, float value) 
 {
-    if (identifier == "pyin-threshdistr") {
-        m_coreParams.pyinThresholdDistribution = value;
-    } else if (identifier == "pyin-lowampsuppression") {
-        m_coreParams.pyinLowAmpSuppressionThreshold = value;
-    } else if (identifier == "pitchAverageWindow") {
-        m_coreParams.pitchAverageWindow_ms = value;
-    } else if (identifier == "onsetSensitivityPitch") {
-        m_coreParams.onsetSensitivityPitch_cents = value;
-    } else if (identifier == "onsetSensitivityNoise") {
-        m_coreParams.onsetSensitivityNoise_percent = value;
-    } else if (identifier == "onsetSensitivityLevel") {
-        m_coreParams.onsetSensitivityLevel_dB = value;
-    } else if (identifier == "onsetSensitivityNoiseTimeWindow") {
-        m_coreParams.onsetSensitivityNoiseTimeWindow_ms = value;
-    } else if (identifier == "onsetSensitivityRawPowerThreshold") {
-        m_coreParams.onsetSensitivityRawPowerThreshold_dB = value;
-    } else if (identifier == "minimumOnsetInterval") {
-        m_coreParams.minimumOnsetInterval_ms = value;
-    } else if (identifier == "sustainBeginThreshold") {
-        m_coreParams.sustainBeginThreshold_ms = value;
-    } else if (identifier == "noteDurationThreshold") {
-        m_coreParams.noteDurationThreshold_dB = value;
-    }
+    (void)m_coreParams.acceptVampParameter(identifier, value);
 }
 
 Onsets::ProgramList
