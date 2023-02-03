@@ -162,7 +162,7 @@ public:
         // See notes about timing alignment in finish() in the .cpp file
         int halfBlock = (m_parameters.blockSize / m_parameters.stepSize) / 2;
         return m_startTime + Vamp::RealTime::frame2RealTime
-            (step * m_parameters.stepSize, m_sampleRate);
+            ((step + halfBlock) * m_parameters.stepSize, m_sampleRate);
     }
     
     int msToSteps(float ms, int stepSize, bool odd) const {
