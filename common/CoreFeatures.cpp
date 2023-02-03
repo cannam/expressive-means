@@ -535,8 +535,10 @@ CoreFeatures::finish()
                     }
                 }
 
-                offsetDropDfEntries[q] =
-                    double(remaining) / double(binsAtBegin.size());
+                if (binsAtBegin.size() > 0) {
+                    offsetDropDfEntries[q] =
+                        double(remaining) / double(binsAtBegin.size());
+                }
                                                                     
                 cerr << "at step " << q << " we have " << binsHere.size()
                      << " of which " << remaining
