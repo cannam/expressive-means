@@ -762,6 +762,8 @@ Articulation::getRemainingFeatures()
         f.hasTimestamp = true;
         f.timestamp = timeForStep(i + halfBlock);
         f.values.push_back(rawPower[i]);
+        std::cerr << "raw power output at step " << i << " is " << rawPower[i]
+                  << std::endl;
         fs[m_rawPowerOutput].push_back(f);
     }
     

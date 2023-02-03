@@ -456,13 +456,12 @@ CoreFeatures::finish()
         }
         int s = p + sustainBeginSteps;
         if (s < n) {
-            /*
-              std::cerr << "power " << m_rawPower[s] << ", threshold "
-              << m_parameters.noteDurationThreshold_dB
-              << ", gives target power "
-              << m_rawPower[s] - m_parameters.noteDurationThreshold_dB
-              << std::endl;
-            */
+            std::cerr << "at sustain begin step " << s << " found power "
+                      << m_rawPower[s] << ", threshold "
+                      << m_parameters.noteDurationThreshold_dB
+                      << " gives target power "
+                      << m_rawPower[s] - m_parameters.noteDurationThreshold_dB
+                      << std::endl;
         } else {
             std::cerr << "sustain start index " << s
                       << " out of range at end" << std::endl;
@@ -471,6 +470,10 @@ CoreFeatures::finish()
         while (q < limit) {
             if (m_rawPower[q] <
                 m_rawPower[s] - m_parameters.noteDurationThreshold_dB) {
+                std::cerr << "at step " << q << " found power " << m_rawPower[q]
+                          << " which falls below target power "
+                          << m_rawPower[s] - m_parameters.noteDurationThreshold_dB
+                          << std::endl;
                 break;
             }
             ++q;
@@ -481,7 +484,7 @@ CoreFeatures::finish()
             m_onsetOffsets[p] = q;
         }
     }
-        
+    
     m_finished = true;
 }
 
