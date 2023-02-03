@@ -135,12 +135,6 @@ public:
         m_magHistory.clear();
         m_fractions.clear();
     }
-
-    enum class FractionType {
-        WholeWindow,
-        FirstHalf,
-        SecondHalf
-    };
     
     void process(const float *timeDomain) {
         if (!m_initialised) {
@@ -175,13 +169,8 @@ public:
         m_magHistory.push_back(magnitudes);
 
         if (int(m_magHistory.size()) >= m_parameters.historyLength) {
-            std::array<FractionType, 3> types { FractionType::FirstHalf,
-                                                FractionType::SecondHalf,
-                                                FractionType::WholeWindow };
-            for (auto type: types) {
-                double fraction = extractFraction(type);
-                m_fractions[type].push_back(fraction);
-            }
+            double fraction = extractFraction();
+            m_fractions.push_back(fraction);
             m_magHistory.pop_front();
         }
     }
@@ -190,13 +179,8 @@ public:
         return m_parameters.historyLength;
     }
     
-    std::vector<double> getFractions(FractionType type =
-                                     FractionType::WholeWindow) const {
-        if (m_fractions.empty()) {
-            return {};
-        } else {
-            return m_fractions.at(type);
-        }
+    std::vector<double> getFractions() const {
+        return m_fractions;
     }
 
 private:
@@ -208,10 +192,10 @@ private:
     bool m_initialised;
     std::vector<float> m_window;
     std::deque<std::vector<double>> m_magHistory;
-    std::map<FractionType, std::vector<double>> m_fractions;
+    std::vector<double> m_fractions;
     std::vector<std::vector<int>> m_binsAboveThreshold;
 
-    double extractFraction(FractionType type) const {
+    double extractFraction() const {
         // If, for a given bin i, there is a value anywhere in the
         // magnitude history (m_magHistory[j][i] for some j > 0) that
         // exceeds that at the start of the magnitude history
@@ -221,14 +205,8 @@ private:
         int m = m_magHistory.size() - 1;
         if (m < 2) return 0.0;
         int above = 0;
-        int start, limit;
-        switch (type) {
-        case FractionType::WholeWindow: default: start = 1; limit = m; break;
-        case FractionType::FirstHalf: start = 1; limit = m/2; break;
-        case FractionType::SecondHalf: start = m/2; limit = m; break;
-        }
         for (int i = 0; i < n; ++i) {
-            for (int j = start; j < limit; ++j) {
+            for (int j = 1; j < m; ++j) {
                 if (m_magHistory[j][i] > m_magHistory[0][i] * m_rise_ratio) {
                     ++above;
                     break;

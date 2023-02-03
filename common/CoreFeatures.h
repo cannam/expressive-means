@@ -134,20 +134,6 @@ public:
         return m_onsetLevelRise.getFractions();
     }
 
-    std::vector<double>
-    getOnsetLevelRiseFractionsFirstHalves() const {
-        assertFinished();
-        return m_onsetLevelRise.getFractions
-            (SpectralLevelRise::FractionType::FirstHalf);
-    }
-
-    std::vector<double>
-    getOnsetLevelRiseFractionsSecondHalves() const {
-        assertFinished();
-        return m_onsetLevelRise.getFractions
-            (SpectralLevelRise::FractionType::SecondHalf);
-    }
-
     std::set<int>
     getPitchOnsets() const {
         assertFinished();
