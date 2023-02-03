@@ -718,7 +718,8 @@ Articulation::getRemainingFeatures()
            << max2dp << "dB / " << min2dp << "dB\n"
            << relativeDuration << " ("
            << (m_coreFeatures.timeForStep(offset) -
-               m_coreFeatures.timeForStep(onset)).toText() << ")";
+               m_coreFeatures.timeForStep(onset)).toText() << ")\n"
+           << "IArt = " << index;
         f.label = os.str();
         f.values.clear();
         fs[m_summaryOutput].push_back(f);
