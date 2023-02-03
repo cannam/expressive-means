@@ -23,7 +23,6 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
-    m_haveStartTime(false),
     m_coreFeatures(inputSampleRate)
     /*,
     m_summaryOutput(-1),
@@ -257,7 +256,6 @@ PitchVibrato::initialise(size_t channels, size_t stepSize, size_t blockSize)
 */    
     m_stepSize = stepSize;
     m_blockSize = blockSize;
-    m_haveStartTime = false;
 
     try {
         m_coreParams.stepSize = m_stepSize;
@@ -274,18 +272,12 @@ PitchVibrato::initialise(size_t channels, size_t stepSize, size_t blockSize)
 void
 PitchVibrato::reset()
 {
-    m_haveStartTime = false;
     m_coreFeatures.reset();
 }
 
 PitchVibrato::FeatureSet
 PitchVibrato::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
-    if (!m_haveStartTime) {
-        m_startTime = timestamp;
-        m_haveStartTime = true;
-    }
-
     m_coreFeatures.process(inputBuffers[0], timestamp);
     return {};
 }
@@ -298,7 +290,6 @@ PitchVibrato::getRemainingFeatures()
     m_coreFeatures.finish();
 
     auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-    auto pyinTimestamps = m_coreFeatures.getPYinTimestamps();
 /*!!!
     for (int i = 0; i < int(pyinPitch.size()); ++i) {
         if (pyinPitch[i] <= 0) continue;

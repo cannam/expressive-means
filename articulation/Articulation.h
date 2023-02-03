@@ -149,9 +149,6 @@ protected:
     int m_stepSize;
     int m_blockSize;
     
-    bool m_haveStartTime;
-    Vamp::RealTime m_startTime;
-    
     CoreFeatures m_coreFeatures;
     
     // Our parameters. Currently only those with simple single

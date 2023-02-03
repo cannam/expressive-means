@@ -91,12 +91,6 @@ public:
         assertFinished();
         return m_pyinPitchHz;
     }
-
-    std::vector<Vamp::RealTime>
-    getPYinTimestamps() const {
-        assertFinished();
-        return m_pyinTimestamps;
-    }
     
     std::vector<double>
     getPitch_semis() const {
@@ -163,6 +157,13 @@ public:
         assertFinished();
         return m_onsetOffsets;
     }
+
+    Vamp::RealTime timeForStep(int step) const {
+        // See notes about timing alignment in finish() in the .cpp file
+        int halfBlock = (m_parameters.blockSize / m_parameters.stepSize) / 2;
+        return m_startTime + Vamp::RealTime::frame2RealTime
+            (step * m_parameters.stepSize, m_sampleRate);
+    }
     
     int msToSteps(float ms, int stepSize, bool odd) const {
         int n = ceil((ms / 1000.0) * m_sampleRate / stepSize);
@@ -183,6 +184,9 @@ private:
     bool m_initialised;
     bool m_finished;
     Parameters m_parameters;
+    
+    bool m_haveStartTime;
+    Vamp::RealTime m_startTime;
 
     PYinVamp m_pyin; // Not copyable by value, though, so we can't
                      // have default operator= etc
@@ -191,7 +195,6 @@ private:
 
     int m_pyinSmoothedPitchTrackOutput;
     std::vector<double> m_pyinPitchHz;
-    std::vector<Vamp::RealTime> m_pyinTimestamps;
     std::vector<double> m_pitch;
     std::vector<double> m_filteredPitch;
     std::vector<double> m_pitchOnsetDf;

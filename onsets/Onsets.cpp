@@ -23,7 +23,6 @@ Onsets::Onsets(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
-    m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
     m_onsetOutput(-1),
     m_durationOutput(-1),
@@ -244,7 +243,6 @@ Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
-    m_haveStartTime = false;
 
     try {
         m_coreParams.stepSize = m_stepSize;
@@ -261,18 +259,12 @@ Onsets::initialise(size_t channels, size_t stepSize, size_t blockSize)
 void
 Onsets::reset()
 {
-    m_haveStartTime = false;
     m_coreFeatures.reset();
 }
 
 Onsets::FeatureSet
 Onsets::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
-    if (!m_haveStartTime) {
-        m_startTime = timestamp;
-        m_haveStartTime = true;
-    }
-
     m_coreFeatures.process(inputBuffers[0], timestamp);
     return {};
 }
@@ -284,16 +276,11 @@ Onsets::getRemainingFeatures()
 
     m_coreFeatures.finish();
 
-    auto timeForStep = [&](int i) {
-        return m_startTime + Vamp::RealTime::frame2RealTime
-            (i * m_stepSize, m_inputSampleRate);
-    };
-    
     auto pitchOnsetDf = m_coreFeatures.getPitchOnsetDF();
     for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(pitchOnsetDf[i]);
         fs[m_pitchOnsetDfOutput].push_back(f);
     }
@@ -303,7 +290,7 @@ Onsets::getRemainingFeatures()
         Feature f;
         f.hasTimestamp = true;
         int j = i + (m_blockSize / m_stepSize)/2;
-        f.timestamp = timeForStep(j);
+        f.timestamp = m_coreFeatures.timeForStep(j);
         f.values.push_back(riseFractions[i]);
         fs[m_transientOnsetDfOutput].push_back(f);
     }
@@ -318,7 +305,7 @@ Onsets::getRemainingFeatures()
 
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(onset);
+        f.timestamp = m_coreFeatures.timeForStep(onset);
         f.hasDuration = false;
         switch (type) {
         case CoreFeatures::OnsetType::Pitch:
@@ -334,7 +321,7 @@ Onsets::getRemainingFeatures()
         fs[m_onsetOutput].push_back(f);
 
         f.hasDuration = true;
-        f.duration = timeForStep(offset) - f.timestamp;
+        f.duration = m_coreFeatures.timeForStep(offset) - f.timestamp;
         f.label = "";
             
         switch (type) {

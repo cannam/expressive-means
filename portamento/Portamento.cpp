@@ -23,7 +23,6 @@ Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
-    m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
@@ -250,7 +249,6 @@ Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
-    m_haveStartTime = false;
 
     try {
         m_coreParams.stepSize = m_stepSize;
@@ -267,18 +265,12 @@ Portamento::initialise(size_t channels, size_t stepSize, size_t blockSize)
 void
 Portamento::reset()
 {
-    m_haveStartTime = false;
     m_coreFeatures.reset();
 }
 
 Portamento::FeatureSet
 Portamento::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
-    if (!m_haveStartTime) {
-        m_startTime = timestamp;
-        m_haveStartTime = true;
-    }
-
     m_coreFeatures.process(inputBuffers[0], timestamp);
     return {};
 }
@@ -291,13 +283,11 @@ Portamento::getRemainingFeatures()
     m_coreFeatures.finish();
 
     auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-    auto pyinTimestamps = m_coreFeatures.getPYinTimestamps();
 
     for (int i = 0; i < int(pyinPitch.size()); ++i) {
         if (pyinPitch[i] <= 0) continue;
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = pyinTimestamps[i];
         f.values.push_back(pyinPitch[i]);
         fs[m_pitchTrackOutput].push_back(f);
     }

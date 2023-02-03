@@ -61,9 +61,6 @@ protected:
     int m_stepSize;
     int m_blockSize;
     
-    bool m_haveStartTime;
-    Vamp::RealTime m_startTime;
-    
     CoreFeatures m_coreFeatures;
     CoreFeatures::Parameters m_coreParams;
 

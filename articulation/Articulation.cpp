@@ -29,7 +29,6 @@ Articulation::Articulation(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
-    m_haveStartTime(false),
     m_coreFeatures(inputSampleRate),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
@@ -399,7 +398,6 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
     
     m_stepSize = stepSize;
     m_blockSize = blockSize;
-    m_haveStartTime = false;
 
     try {
         m_coreParams.stepSize = m_stepSize;
@@ -416,18 +414,12 @@ Articulation::initialise(size_t channels, size_t stepSize, size_t blockSize)
 void
 Articulation::reset()
 {
-    m_haveStartTime = false;
     m_coreFeatures.reset();
 }
 
 Articulation::FeatureSet
 Articulation::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 {
-    if (!m_haveStartTime) {
-        m_startTime = timestamp;
-        m_haveStartTime = true;
-    }
-
     m_coreFeatures.process(inputBuffers[0], timestamp);
     return {};
 }
@@ -475,13 +467,12 @@ Articulation::getRemainingFeatures()
     m_coreFeatures.finish();
 
     auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-    auto pyinTimestamps = m_coreFeatures.getPYinTimestamps();
 
     for (int i = 0; i < int(pyinPitch.size()); ++i) {
         if (pyinPitch[i] <= 0) continue;
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = pyinTimestamps[i];
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(pyinPitch[i]);
         fs[m_pitchTrackOutput].push_back(f);
     }
@@ -653,15 +644,10 @@ Articulation::getRemainingFeatures()
             double(offset - onset) / double(following - onset);
     }
 
-    auto timeForStep = [&](int i) {
-        return m_startTime + Vamp::RealTime::frame2RealTime
-            (i * m_stepSize, m_inputSampleRate);
-    };
-
     for (auto pq : onsetToNoise) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(pq.first);
+        f.timestamp = m_coreFeatures.timeForStep(pq.first);
         f.hasDuration = false;
         f.values.push_back(static_cast<int>(pq.second.type) + 1);
         f.label = noiseTypeToString(pq.second.type);
@@ -671,9 +657,10 @@ Articulation::getRemainingFeatures()
     for (auto pq : onsetToLD) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(pq.second.sustainBegin);
+        f.timestamp = m_coreFeatures.timeForStep(pq.second.sustainBegin);
         f.hasDuration = true;
-        f.duration = timeForStep(pq.second.sustainEnd + 1) - f.timestamp;
+        f.duration =
+            m_coreFeatures.timeForStep(pq.second.sustainEnd + 1) - f.timestamp;
         f.values.push_back(static_cast<int>(pq.second.development));
         f.label = developmentToString(pq.second.development);
         fs[m_volumeDevelopmentOutput].push_back(f);
@@ -710,7 +697,7 @@ Articulation::getRemainingFeatures()
         
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(onset);
+        f.timestamp = m_coreFeatures.timeForStep(onset);
         f.hasDuration = false;
         f.label = code;
         fs[m_articulationTypeOutput].push_back(f);
@@ -723,27 +710,26 @@ Articulation::getRemainingFeatures()
         double min2dp = round(onsetToLD.at(onset).minDiff * 100.0) / 100.0;
         
         ostringstream os;
-        os << timeForStep(onset).toText() << " / "
-           << (timeForStep(onsetToFollowingOnset.at(onset)) -
-               timeForStep(onset)).toText() << "\n"
+        os << m_coreFeatures.timeForStep(onset).toText() << " / "
+           << (m_coreFeatures.timeForStep(onsetToFollowingOnset.at(onset)) -
+               m_coreFeatures.timeForStep(onset)).toText() << "\n"
            << code << "\n"
            << int(round(onsetToNoise.at(onset).total * 100.0)) << "%\n"
            << max2dp << "dB / " << min2dp << "dB\n"
            << relativeDuration << " ("
-           << (timeForStep(offset) - timeForStep(onset)).toText() << ")";
+           << (m_coreFeatures.timeForStep(offset) -
+               m_coreFeatures.timeForStep(onset)).toText() << ")";
         f.label = os.str();
         f.values.clear();
         fs[m_summaryOutput].push_back(f);
     }
     
 #ifdef WITH_DEBUG_OUTPUTS
-    int halfBlock = (m_blockSize / m_stepSize) / 2;
-    
     auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
     for (int i = 0; i < int(filteredPitch.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(filteredPitch[i]);
         fs[m_filteredPitchOutput].push_back(f);
     }
@@ -752,7 +738,7 @@ Articulation::getRemainingFeatures()
     for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(pitchOnsetDf[i]);
         fs[m_pitchOnsetDfOutput].push_back(f);
     }
@@ -760,7 +746,7 @@ Articulation::getRemainingFeatures()
     for (size_t i = 0; i < rawPower.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i + halfBlock);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(rawPower[i]);
         std::cerr << "raw power output at step " << i << " is " << rawPower[i]
                   << std::endl;
@@ -770,7 +756,7 @@ Articulation::getRemainingFeatures()
     for (size_t i = 0; i < smoothedPower.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i + halfBlock);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(smoothedPower[i]);
         fs[m_smoothedPowerOutput].push_back(f);
     }
@@ -779,7 +765,7 @@ Articulation::getRemainingFeatures()
     for (size_t i = 0; i < riseFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i + halfBlock);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(riseFractions[i] * 100.f);
         fs[m_transientOnsetDfOutput].push_back(f);
     }
@@ -787,7 +773,7 @@ Articulation::getRemainingFeatures()
     for (size_t i = 0; i < noiseRatioFractions.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(i + halfBlock);
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(noiseRatioFractions[i] * 100.f);
         fs[m_noiseRatioOutput].push_back(f);
     }
@@ -796,7 +782,7 @@ Articulation::getRemainingFeatures()
     for (auto pq: onsets) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(pq.first);
+        f.timestamp = m_coreFeatures.timeForStep(pq.first);
         switch (pq.second) {
         case CoreFeatures::OnsetType::Pitch:
             f.label = "Pitch Change";
@@ -814,9 +800,10 @@ Articulation::getRemainingFeatures()
     for (auto pq: onsetToRelativeDuration) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = timeForStep(pq.first);
+        f.timestamp = m_coreFeatures.timeForStep(pq.first);
         f.hasDuration = true;
-        f.duration = timeForStep(onsetOffsets.at(pq.first)) - f.timestamp;
+        f.duration =
+            m_coreFeatures.timeForStep(onsetOffsets.at(pq.first)) - f.timestamp;
         f.values.push_back(pq.second);
         f.label = "";
         fs[m_relativeDurationOutput].push_back(f);

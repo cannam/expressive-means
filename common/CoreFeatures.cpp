@@ -171,6 +171,7 @@ CoreFeatures::CoreFeatures(double sampleRate) :
     m_sampleRate(sampleRate),
     m_initialised(false),
     m_finished(false),
+    m_haveStartTime(false),
     m_pyin(sampleRate)
 { }
 
@@ -193,7 +194,10 @@ CoreFeatures::initialise(Parameters parameters) {
         throw std::logic_error("pYIN smoothed pitch track output not found");
     }
         
-    m_pyin.setParameter("outputunvoiced", 2); // As negative frequencies
+    m_pyin.setParameter("outputunvoiced", 2.f); // As negative frequencies
+    m_pyin.setParameter("precisetime", 1.f); // Match timing with other features
+                                             // (see notes in finish() below)
+    
     m_pyin.setParameter("threshdistr",
                         m_parameters.pyinThresholdDistribution);
     m_pyin.setParameter("lowampsuppression",
@@ -219,6 +223,8 @@ CoreFeatures::initialise(Parameters parameters) {
     }
     m_onsetLevelRise.initialise(levelRiseParameters);
 
+    m_haveStartTime = false;
+
     m_initialised = true;
 };
 
@@ -235,7 +241,6 @@ CoreFeatures::reset()
     m_onsetLevelRise.reset();
 
     m_pyinPitchHz.clear();
-    m_pyinTimestamps.clear();
     m_pitch.clear();
     m_filteredPitch.clear();
     m_pitchOnsetDf.clear();
@@ -246,6 +251,8 @@ CoreFeatures::reset()
     m_powerRiseOnsets.clear();
     m_mergedOnsets.clear();
     m_onsetOffsets.clear();
+
+    m_haveStartTime = false;
 }
 
 void
@@ -257,11 +264,15 @@ CoreFeatures::process(const float *input, Vamp::RealTime timestamp) {
         throw std::logic_error("Features::process: Already finished");
     }
 
+    if (!m_haveStartTime) {
+        m_startTime = timestamp;
+        m_haveStartTime = true;
+    }
+
     const float *const *iptr = &input;
     auto pyinFeatures = m_pyin.process(iptr, timestamp);
     for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
         m_pyinPitchHz.push_back(f.values[0]);
-        m_pyinTimestamps.push_back(f.timestamp);
     }
 
     m_power.process(input);
@@ -274,10 +285,37 @@ CoreFeatures::finish()
     if (m_finished) {
         throw std::logic_error("Features::finish: Already finished");
     }
+
+    // It's important to make sure the timings align for the values
+    // returned by the various feature extractors.  They have the
+    // following characteristics:
+    //
+    // - pYIN pitch track frames have timings offset by blockSize/4 in
+    //   "imprecise"/"fast" mode or blockSize/2 in "precise" mode
+    //
+    // - Power frames have timings offset by blockSize/2
+    //
+    // - SpectralLevelRise starts recording values once its history
+    //   buffer (say length n) is full. So the value at i indicates
+    //   the fraction of bins that saw a significant rise during the n
+    //   steps starting at input step i. Step i is calculated from
+    //   time-domain samples between sample i*stepSize and i*stepSize
+    //   + blockSize, so it reflects activity around the centre of the
+    //   window at i*stepSize + blockSize/2
+    //
+    // So if we run pYIN in "precise" mode, the above are all aligned
+    // with one another, and result i corresponds to time i*stepSize +
+    // blockSize/2.
+    //
+    // Following this logic, we make no adjustments to the hop values
+    // in any of this code because they all align with one another,
+    // but we implement the blockSize/2 offset in our timeForStep()
+    // method and expect it to be used whenever anything wants to map
+    // from a hop number to a returned timestamp.
+    
     auto pyinFeatures = m_pyin.getRemainingFeatures();
     for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
         m_pyinPitchHz.push_back(f.values[0]);
-        m_pyinTimestamps.push_back(f.timestamp);
     }
 
     double prevHz = 0.0;
@@ -337,22 +375,11 @@ CoreFeatures::finish()
         // Watch for the level to rise above threshold, then wait
         // for it to fall again and identify that moment as the
         // onset.
-        //            
-        // NB SpectralLevelRise only starts recording values once
-        // its history buffer (say length n) is full. So the value
-        // at i indicates the fraction of bins that saw a
-        // significant rise during the n steps starting at input
-        // step i. Step i is calculated from time-domain samples
-        // between sample i*stepSize and i*stepSize + blockSize,
-        // so it reflects activity around the centre of the window
-        // at i*stepSize + blockSize/2.
-        //
         if (riseFractions[i] > upperThreshold) {
             aboveThreshold = true;
         } else if (riseFractions[i] < lowerThreshold) {
             if (aboveThreshold) {
-                m_levelRiseOnsets.insert(i + (m_parameters.blockSize /
-                                              m_parameters.stepSize)/2);
+                m_levelRiseOnsets.insert(i);
                 aboveThreshold = false;
             }
         }
@@ -374,9 +401,7 @@ CoreFeatures::finish()
         double derivative = m_rawPower[i+1] - m_rawPower[i];
         if (onsetComing) {
             if (derivative < prevDerivative) {
-                // Like level rise, power is offset by half a block
-                m_powerRiseOnsets.insert(i + (m_parameters.blockSize /
-                                              m_parameters.stepSize)/2);
+                m_powerRiseOnsets.insert(i);
                 onsetComing = false;
             }
         } else if (i + rawPowerSteps < int(m_rawPower.size())) {
