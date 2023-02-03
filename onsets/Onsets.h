@@ -69,6 +69,8 @@ protected:
     mutable int m_durationOutput;
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
+    mutable int m_rawPowerOutput;
+    mutable int m_spectralDropDfOutput;
 };
 
 #endif

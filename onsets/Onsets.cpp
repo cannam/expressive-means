@@ -150,6 +150,11 @@ Onsets::getOutputDescriptors() const
     OutputList list;
     OutputDescriptor d;
 
+    // In common
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+
     d.identifier = "onsets";
     d.name = "Onsets";
     d.description = "Identified onset locations, labelled as either Pitch Change, Spectral Rise, or Power Rise depending on how they were identified.";
@@ -157,9 +162,6 @@ Onsets::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_onsetOutput = int(list.size());
     list.push_back(d);
@@ -171,9 +173,6 @@ Onsets::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 0;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_offsetOutput = int(list.size());
     list.push_back(d);
@@ -185,9 +184,6 @@ Onsets::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = true;
     m_durationOutput = int(list.size());
     list.push_back(d);
@@ -199,25 +195,41 @@ Onsets::getOutputDescriptors() const
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_pitchOnsetDfOutput = int(list.size());
     list.push_back(d);
 
     d.identifier = "transientdf";
-    d.name = "Transient Onset Detection Function";
+    d.name = "Spectral Rise Onset Detection Function";
     d.description = "Function used to identify onsets by spectral rise. Onsets are considered likely when the function exceeds a threshold.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_transientOnsetDfOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "power";
+    d.name = "Power";
+    d.description = "Power curve used to identify onsets and offsets by power level.";
+    d.unit = "dB";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_rawPowerOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "spectraloffset";
+    d.name = "Spectral Drop Offset Detection Function";
+    d.description = "Function used to identify offsets by spectral drop.";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_spectralDropDfOutput = int(list.size());
     list.push_back(d);
     
     return list;
@@ -379,6 +391,26 @@ Onsets::getRemainingFeatures()
             break;
         }
         fs[m_offsetOutput].push_back(f);
+    }
+
+    auto rawPower = m_coreFeatures.getRawPower_dB();
+        
+    for (size_t i = 0; i < rawPower.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(i);
+        f.values.push_back(rawPower[i]);
+        fs[m_rawPowerOutput].push_back(f);
+    }
+
+    auto spectralDropDf = m_coreFeatures.getOffsetDropDF();
+        
+    for (size_t i = 0; i < rawPower.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(i);
+        f.values.push_back(spectralDropDf[i]);
+        fs[m_spectralDropDfOutput].push_back(f);
     }
     
     return fs;

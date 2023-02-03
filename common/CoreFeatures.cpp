@@ -13,6 +13,14 @@
 
 static const CoreFeatures::Parameters defaultCoreParams;
 
+using std::string;
+using std::logic_error;
+using std::vector;
+using std::map;
+using std::set;
+using std::cerr;
+using std::endl;
+
 void
 CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::ParameterList &list)
 {
@@ -106,7 +114,7 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
 }
 
 bool
-CoreFeatures::Parameters::obtainVampParameter(std::string identifier, float &value) const
+CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) const
 {
     if (identifier == "pyin-threshdistr") {
         value = pyinThresholdDistribution;
@@ -137,7 +145,7 @@ CoreFeatures::Parameters::obtainVampParameter(std::string identifier, float &val
 }
 
 bool
-CoreFeatures::Parameters::acceptVampParameter(std::string identifier, float value)
+CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
 {
     if (identifier == "pyin-threshdistr") {
         pyinThresholdDistribution = value;
@@ -178,7 +186,7 @@ CoreFeatures::CoreFeatures(double sampleRate) :
 void
 CoreFeatures::initialise(Parameters parameters) {
     if (m_initialised) {
-        throw std::logic_error("Features::initialise: Already initialised");
+        throw logic_error("Features::initialise: Already initialised");
     }
 
     m_parameters = parameters;
@@ -191,7 +199,7 @@ CoreFeatures::initialise(Parameters parameters) {
         }
     }
     if (m_pyinSmoothedPitchTrackOutput < 0) {
-        throw std::logic_error("pYIN smoothed pitch track output not found");
+        throw logic_error("pYIN smoothed pitch track output not found");
     }
         
     m_pyin.setParameter("outputunvoiced", 2.f); // As negative frequencies
@@ -204,7 +212,7 @@ CoreFeatures::initialise(Parameters parameters) {
                         m_parameters.pyinLowAmpSuppressionThreshold);
 
     if (!m_pyin.initialise(1, m_parameters.stepSize, m_parameters.blockSize)) {
-        throw std::logic_error("pYIN initialisation failed");
+        throw logic_error("pYIN initialisation failed");
     }
 
     Power::Parameters powerParameters;
@@ -232,7 +240,7 @@ void
 CoreFeatures::reset()
 {
     if (!m_initialised) {
-        throw std::logic_error("Features::reset: Never initialised");
+        throw logic_error("Features::reset: Never initialised");
     }
     m_finished = false;
 
@@ -258,10 +266,10 @@ CoreFeatures::reset()
 void
 CoreFeatures::process(const float *input, Vamp::RealTime timestamp) {
     if (!m_initialised) {
-        throw std::logic_error("Features::process: Not initialised");
+        throw logic_error("Features::process: Not initialised");
     }
     if (m_finished) {
-        throw std::logic_error("Features::process: Already finished");
+        throw logic_error("Features::process: Already finished");
     }
 
     if (!m_haveStartTime) {
@@ -283,7 +291,7 @@ void
 CoreFeatures::finish()
 {
     if (m_finished) {
-        throw std::logic_error("Features::finish: Already finished");
+        throw logic_error("Features::finish: Already finished");
     }
 
     // It's important to make sure the timings align for the values
@@ -367,7 +375,7 @@ CoreFeatures::finish()
         }
     }
     
-    std::vector<double> riseFractions = m_onsetLevelRise.getFractions();
+    vector<double> riseFractions = m_onsetLevelRise.getFractions();
     double upperThreshold = m_parameters.onsetSensitivityNoise_percent / 100.0;
     double lowerThreshold = upperThreshold / 2.0;
     bool aboveThreshold = false;
@@ -419,7 +427,7 @@ CoreFeatures::finish()
         prevDerivative = derivative;
     }
 
-    std::map<int, OnsetType> mergingOnsets;
+    map<int, OnsetType> mergingOnsets;
     for (auto p : m_pitchOnsets) {
         mergingOnsets[p] = OnsetType::Pitch;
     }
@@ -472,6 +480,8 @@ CoreFeatures::finish()
     int sustainBeginSteps = msToSteps(m_parameters.sustainBeginThreshold_ms,
                                       m_parameters.stepSize, false);
 
+    map<int, double> offsetDropDfEntries;
+    
     for (auto i = m_mergedOnsets.begin(); i != m_mergedOnsets.end(); ++i) {
         int p = i->first;
         int limit = n;
@@ -479,35 +489,76 @@ CoreFeatures::finish()
         if (++j != m_mergedOnsets.end()) {
             limit = j->first; // stop at the next onset
         }
+
+        set<int> binsAtBegin;
+        int nBinsAtBegin = 0;
+        double powerDropTarget = -100.0;
+
         int s = p + sustainBeginSteps;
+
         if (s < n) {
-            std::cerr << "at sustain begin step " << s << " found power "
-                      << m_rawPower[s] << ", threshold "
-                      << m_parameters.noteDurationThreshold_dB
-                      << " gives target power "
-                      << m_rawPower[s] - m_parameters.noteDurationThreshold_dB
-                      << std::endl;
+            auto bins = m_onsetLevelRise.getBinsAboveThresholdAt(s);
+            binsAtBegin.insert(bins.begin(), bins.end());
+            nBinsAtBegin = bins.size();
+            
+            powerDropTarget =
+                m_rawPower[s] - m_parameters.noteDurationThreshold_dB;
+
+            cerr << "at sustain begin step " << s << " found power "
+                 << m_rawPower[s] << ", threshold "
+                 << m_parameters.noteDurationThreshold_dB
+                 << " giving target power " << powerDropTarget
+                 << "; we have " << binsAtBegin.size()
+                 << " bins active" << endl;
+            
         } else {
-            std::cerr << "sustain start index " << s
-                      << " out of range at end" << std::endl;
+            cerr << "sustain start index " << s
+                 << " out of range at end" << endl;
         }
+        
         int q = s;
+        OffsetType type = OffsetType::FollowingOnsetReached;
+        
         while (q < limit) {
-            if (m_rawPower[q] <
-                m_rawPower[s] - m_parameters.noteDurationThreshold_dB) {
-                std::cerr << "at step " << q << " found power " << m_rawPower[q]
-                          << " which falls below target power "
-                          << m_rawPower[s] - m_parameters.noteDurationThreshold_dB
-                          << std::endl;
+            if (m_rawPower[q] < powerDropTarget) {
+                cerr << "at step " << q << " found power " << m_rawPower[q]
+                     << " which falls below target power "
+                     << powerDropTarget << endl;
+                type = OffsetType::PowerDrop;
                 break;
+            } else {
+                auto binsHere = m_onsetLevelRise.getBinsAboveThresholdAt(q);
+                int remaining = 0;
+                for (auto bin: binsHere) {
+                    if (binsAtBegin.find(bin) != binsAtBegin.end()) {
+                        ++remaining;
+                    }
+                }
+
+                offsetDropDfEntries[q] =
+                    double(remaining) / double(binsAtBegin.size());
+                                                                    
+                cerr << "at step " << q << " we have " << binsHere.size()
+                     << " of which " << remaining
+                     << " remain from the sustain begin step" << endl;
+                if (remaining == 0) {
+                    type = OffsetType::SpectralLevelDrop;
+                    break;
+                }
             }
+                
             ++q;
         }
         if (q >= limit) {
-            m_onsetOffsets[p] = { limit, OffsetType::FollowingOnsetReached };
+            m_onsetOffsets[p] = { limit, type };
         } else {
-            m_onsetOffsets[p] = { q, OffsetType::PowerDrop };
+            m_onsetOffsets[p] = { q, type };
         }
+    }
+
+    m_offsetDropDf = vector<double>(n, 1.0);
+    for (auto e: offsetDropDfEntries) {
+        m_offsetDropDf[e.first] = e.second;
     }
     
     m_finished = true;

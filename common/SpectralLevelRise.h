@@ -158,12 +158,15 @@ public:
         std::vector<int> aboveThreshold;
         for (int i = m_binmin; i <= m_binmax; ++i) {
             double mag = sqrt(ro[i] * ro[i] + io[i] * io[i]);
+            mag /= double(m_parameters.blockSize);
             magnitudes.push_back(mag);
             if (mag > m_threshold_ratio) {
                 aboveThreshold.push_back(i);
             }
         }
 
+        std::cerr << "counted " << aboveThreshold.size() << std::endl;
+        
         m_binsAboveThreshold.push_back(aboveThreshold);
         
         m_magHistory.push_back(magnitudes);
@@ -178,9 +181,21 @@ public:
     int getHistoryLength() const {
         return m_parameters.historyLength;
     }
+
+    int getBinCount() const {
+        return m_binmax - m_binmin + 1;
+    }
     
     std::vector<double> getFractions() const {
         return m_fractions;
+    }
+    
+    std::vector<int> getBinsAboveThresholdAt(int step) const {
+        if (step < int(m_binsAboveThreshold.size())) {
+            return m_binsAboveThreshold.at(step);
+        } else {
+            return {};
+        }
     }
 
 private:

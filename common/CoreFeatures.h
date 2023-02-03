@@ -134,6 +134,12 @@ public:
         return m_onsetLevelRise.getFractions();
     }
 
+    std::vector<double>
+    getOffsetDropDF() const {
+        assertFinished();
+        return m_offsetDropDf;
+    }
+    
     std::set<int>
     getPitchOnsets() const {
         assertFinished();
@@ -206,6 +212,7 @@ private:
     std::vector<double> m_pitchOnsetDf;
     std::vector<double> m_rawPower;
     std::vector<double> m_smoothedPower;
+    std::vector<double> m_offsetDropDf;
     std::set<int> m_pitchOnsets;
     std::set<int> m_levelRiseOnsets;
     std::set<int> m_powerRiseOnsets;
