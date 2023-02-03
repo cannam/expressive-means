@@ -81,6 +81,12 @@ public:
         PowerRise
     };
 
+    enum class OffsetType {
+        PowerDrop,
+        SpectralLevelDrop,
+        FollowingOnsetReached
+    };
+
     void initialise(Parameters parameters);
     void reset();
     void process(const float *input, Vamp::RealTime timestamp);
@@ -152,7 +158,7 @@ public:
         return m_mergedOnsets;
     }
 
-    std::map<int, int>
+    std::map<int, std::pair<int, OffsetType>>
     getOnsetOffsets() const {
         assertFinished();
         return m_onsetOffsets;
@@ -204,7 +210,7 @@ private:
     std::set<int> m_levelRiseOnsets;
     std::set<int> m_powerRiseOnsets;
     std::map<int, OnsetType> m_mergedOnsets;
-    std::map<int, int> m_onsetOffsets;
+    std::map<int, std::pair<int, OffsetType>> m_onsetOffsets;
 
     void assertFinished() const {
         if (!m_finished) {

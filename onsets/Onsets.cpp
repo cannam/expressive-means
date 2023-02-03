@@ -25,6 +25,7 @@ Onsets::Onsets(float inputSampleRate) :
     m_blockSize(0),
     m_coreFeatures(inputSampleRate),
     m_onsetOutput(-1),
+    m_offsetOutput(-1),
     m_durationOutput(-1),
     m_pitchOnsetDfOutput(-1),
     m_transientOnsetDfOutput(-1)
@@ -151,7 +152,7 @@ Onsets::getOutputDescriptors() const
 
     d.identifier = "onsets";
     d.name = "Onsets";
-    d.description = "Identified onset locations, labelled as either Pitch Change or Spectral Rise depending on how they were identified.";
+    d.description = "Identified onset locations, labelled as either Pitch Change, Spectral Rise, or Power Rise depending on how they were identified.";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 0;
@@ -161,6 +162,20 @@ Onsets::getOutputDescriptors() const
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     d.hasDuration = false;
     m_onsetOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "offsets";
+    d.name = "Offsets";
+    d.description = "Estimated offset locations, labelled as either Power Drop, Spectral Drop, or Following Onset Reached depending on how they were identified.";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_offsetOutput = int(list.size());
     list.push_back(d);
 
     d.identifier = "durations";
@@ -299,15 +314,17 @@ Onsets::getRemainingFeatures()
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
 
     for (auto pq : onsets) {
+        
         int onset = pq.first;
-        auto type = pq.second;
-        int offset = onsetOffsets.at(onset);
+        auto onsetType = pq.second;
+        
+        int offset = onsetOffsets.at(onset).first;
 
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(onset);
         f.hasDuration = false;
-        switch (type) {
+        switch (onsetType) {
         case CoreFeatures::OnsetType::Pitch:
             f.label = "Pitch Change";
             break;
@@ -324,7 +341,7 @@ Onsets::getRemainingFeatures()
         f.duration = m_coreFeatures.timeForStep(offset) - f.timestamp;
         f.label = "";
             
-        switch (type) {
+        switch (onsetType) {
         case CoreFeatures::OnsetType::Pitch:
             f.values.push_back(1);
             break;
@@ -337,6 +354,31 @@ Onsets::getRemainingFeatures()
         }
         
         fs[m_durationOutput].push_back(f);
+    }
+
+    for (auto pq : onsets) {
+        
+        int onset = pq.first;
+        
+        int offset = onsetOffsets.at(onset).first;
+        auto offsetType = onsetOffsets.at(onset).second;
+
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(offset);
+        f.hasDuration = false;
+        switch (offsetType) {
+        case CoreFeatures::OffsetType::PowerDrop:
+            f.label = "Power Drop";
+            break;
+        case CoreFeatures::OffsetType::SpectralLevelDrop:
+            f.label = "Spectral Drop";
+            break;
+        case CoreFeatures::OffsetType::FollowingOnsetReached:
+            f.label = "Following Onset Reached";
+            break;
+        }
+        fs[m_offsetOutput].push_back(f);
     }
     
     return fs;

@@ -503,10 +503,10 @@ CoreFeatures::finish()
             }
             ++q;
         }
-        if (q > limit) {
-            m_onsetOffsets[p] = limit;
+        if (q >= limit) {
+            m_onsetOffsets[p] = { limit, OffsetType::FollowingOnsetReached };
         } else {
-            m_onsetOffsets[p] = q;
+            m_onsetOffsets[p] = { q, OffsetType::PowerDrop };
         }
     }
     

@@ -560,7 +560,7 @@ Articulation::getRemainingFeatures()
     map<int, int> onsetToFollowingOnset;
     for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
         int onset = itr->first;
-        int offset = itr->second;
+        int offset = itr->second.first;
         int following = n;
         auto probe = itr;
         if (++probe != onsetOffsets.end()) {
@@ -591,7 +591,7 @@ Articulation::getRemainingFeatures()
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
         int sustainBegin = onset + sustainBeginSteps;
-        int sustainEnd = pq.second - 1;
+        int sustainEnd = pq.second.first - 1;
         int following = onsetToFollowingOnset.at(onset);
         if (following - sustainEndSteps > sustainBegin &&
             sustainEnd > following - sustainEndSteps) {
@@ -639,7 +639,7 @@ Articulation::getRemainingFeatures()
     for (auto pq : onsetToFollowingOnset) {
         int onset = pq.first;
         int following = pq.second;
-        int offset = onsetOffsets.at(pq.first);
+        int offset = onsetOffsets.at(pq.first).first;
         onsetToRelativeDuration[onset] = 
             double(offset - onset) / double(following - onset);
     }
@@ -669,7 +669,7 @@ Articulation::getRemainingFeatures()
     for (auto pq : onsetOffsets) {
         
         auto onset = pq.first;
-        auto offset = pq.second;
+        auto offset = pq.second.first;
         string code;
         double index = 1.0;
 
@@ -801,7 +801,8 @@ Articulation::getRemainingFeatures()
         f.timestamp = m_coreFeatures.timeForStep(pq.first);
         f.hasDuration = true;
         f.duration =
-            m_coreFeatures.timeForStep(onsetOffsets.at(pq.first)) - f.timestamp;
+            m_coreFeatures.timeForStep(onsetOffsets.at(pq.first).first) -
+            f.timestamp;
         f.values.push_back(pq.second);
         f.label = "";
         fs[m_relativeDurationOutput].push_back(f);

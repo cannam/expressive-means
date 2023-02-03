@@ -65,6 +65,7 @@ protected:
     CoreFeatures::Parameters m_coreParams;
 
     mutable int m_onsetOutput;
+    mutable int m_offsetOutput;
     mutable int m_durationOutput;
     mutable int m_pitchOnsetDfOutput;
     mutable int m_transientOnsetDfOutput;
