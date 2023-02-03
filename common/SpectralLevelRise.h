@@ -34,16 +34,18 @@ public:
     struct Parameters {
         double sampleRate;
         int blockSize;
-        double fmin;
-        double fmax;
-        double dB;
+        double frequencyMin_Hz;
+        double frequencyMax_Hz;
+        double rise_dB;
+        double threshold_dB;
         int historyLength;
         Parameters() :
             sampleRate(48000.0),
             blockSize(2048),
-            fmin(100.0),
-            fmax(4000.0),
-            dB(20.0),
+            frequencyMin_Hz(100.0),
+            frequencyMax_Hz(4000.0),
+            rise_dB(20.0),
+            threshold_dB(-70.0),
             historyLength(20)
         {}
     };
@@ -56,40 +58,46 @@ public:
         if (!parameters.blockSize) {
             throw std::logic_error("SpectralLevelRise::initialise: blockSize must be non-zero");
         }
-        if (parameters.fmin < 0.0 ||
-            parameters.fmin >= parameters.sampleRate / 2.0) {
-            std::cerr << "SpectralLevelRise::initialise: fmin ("
-                      << parameters.fmin
+        if (parameters.frequencyMin_Hz < 0.0 ||
+            parameters.frequencyMax_Hz >= parameters.sampleRate / 2.0) {
+            std::cerr << "SpectralLevelRise::initialise: min frequency ("
+                      << parameters.frequencyMin_Hz
                       << ") is outside range 0.0 - "
                       << parameters.sampleRate / 2.0
                       << " (for sample rate "
                       << parameters.sampleRate << ")" << std::endl;
-            throw std::logic_error("SpectralLevelRise::initialise: fmin is out of range");
+            throw std::logic_error("SpectralLevelRise::initialise: min frequency is out of range");
         }
-        if (parameters.fmax < 0.0 ||
-            parameters.fmax >= parameters.sampleRate / 2.0 ||
-            parameters.fmax < parameters.fmin) {
-            if (parameters.fmax < parameters.fmin) {
+        if (parameters.frequencyMax_Hz < 0.0 ||
+            parameters.frequencyMax_Hz >= parameters.sampleRate / 2.0 ||
+            parameters.frequencyMax_Hz < parameters.frequencyMin_Hz) {
+            if (parameters.frequencyMax_Hz < parameters.frequencyMin_Hz) {
                 std::cerr << "SpectralLevelRise::initialise: fmax ("
-                          << parameters.fmax
+                          << parameters.frequencyMax_Hz
                           << ") is less than fmin ("
-                          << parameters.fmin << ")"
+                          << parameters.frequencyMin_Hz << ")"
                           << std::endl;
             } else {
-                std::cerr << "SpectralLevelRise::initialise: fmax ("
-                          << parameters.fmax
+                std::cerr << "SpectralLevelRise::initialise: max frequency ("
+                          << parameters.frequencyMax_Hz
                           << ") is outside range 0.0 - "
                           << parameters.sampleRate / 2.0
                           << " (for sample rate "
                           << parameters.sampleRate << ")" << std::endl;
             }
-            throw std::logic_error("SpectralLevelRise::initialise: fmax is out of range");
+            throw std::logic_error("SpectralLevelRise::initialise: max frequency is out of range");
         }
-        if (parameters.dB <= 0.0) {
-            std::cerr << "SpectralLevelRise::initialise: dB ("
-                      << parameters.dB
+        if (parameters.rise_dB <= 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: rise dB ("
+                      << parameters.rise_dB
                       << ") should be positive" << std::endl;
-            throw std::logic_error("SpectralLevelRise::initialise: dB should be positive (it is a gain ratio)");
+            throw std::logic_error("SpectralLevelRise::initialise: rise dB should be positive (it is a gain ratio)");
+        }
+        if (parameters.threshold_dB > 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: threshold dB ("
+                      << parameters.threshold_dB
+                      << ") is expected to be negative" << std::endl;
+            throw std::logic_error("SpectralLevelRise::initialise: threshold dB is expected to be negative (it is a signal level)");
         }
         if (parameters.historyLength < 2) {
             std::cerr << "SpectralLevelRise::initialise: historyLength ("
@@ -97,34 +105,23 @@ public:
                       << ") must be at least 2" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: historyLength must be at least 2");
         }
-        
-        m_sampleRate = parameters.sampleRate;
-        m_blockSize = parameters.blockSize;
-        m_fmin = parameters.fmin;
-        m_fmax = parameters.fmax;
-        m_dB = parameters.dB;
-        m_historyLength = parameters.historyLength;
 
-        m_binmin = (double(m_blockSize) * m_fmin) / m_sampleRate;
-        m_binmax = (double(m_blockSize) * m_fmax) / m_sampleRate;
-        m_ratio = pow(10.0, m_dB / 10.0);
-/*
-        std::cerr << "SpectralLevelRise::initialise: "
-                  << "sampleRate " << m_sampleRate
-                  << ", blockSize " << m_blockSize
-                  << ", fmin " << m_fmin
-                  << ", fmax " << m_fmax
-                  << ", dB " << m_dB
-                  << ", historyLength " << m_historyLength
-                  << ", binmin " << m_binmin
-                  << ", binmax " << m_binmax
-                  << ", ratio " << m_ratio
-                  << std::endl;
-*/        
+        m_parameters = parameters;
+
+        m_binmin =
+            (double(m_parameters.blockSize) * m_parameters.frequencyMin_Hz) /
+            m_parameters.sampleRate;
+        m_binmax =
+            (double(m_parameters.blockSize) * m_parameters.frequencyMax_Hz) /
+            m_parameters.sampleRate;
+        m_rise_ratio = pow(10.0, m_parameters.rise_dB / 10.0);
+        m_threshold_ratio = pow(10.0, m_parameters.threshold_dB / 20.0);
+
         // Hann window
-        m_window.reserve(m_blockSize);
-        for (int i = 0; i < m_blockSize; ++i) {
-            m_window.push_back(0.5 - 0.5 * cos((2.0 * M_PI * i) / m_blockSize));
+        m_window.reserve(m_parameters.blockSize);
+        for (int i = 0; i < m_parameters.blockSize; ++i) {
+            m_window.push_back(0.5 - 0.5 * cos((2.0 * M_PI * i) /
+                                               m_parameters.blockSize));
         }
 
         m_initialised = true;
@@ -151,26 +148,33 @@ public:
         }
         
         std::vector<double> windowed;
-        windowed.reserve(m_blockSize);
-        for (int i = 0; i < m_blockSize; ++i) {
+        windowed.reserve(m_parameters.blockSize);
+        for (int i = 0; i < m_parameters.blockSize; ++i) {
             windowed.push_back(m_window[i] * timeDomain[i]);
         }
 
         // No fftshift; we don't use phase
-        std::vector<double> ro(m_blockSize, 0.0);
-        std::vector<double> io(m_blockSize, 0.0);
-        Vamp::FFT::forward(m_blockSize,
+        std::vector<double> ro(m_parameters.blockSize, 0.0);
+        std::vector<double> io(m_parameters.blockSize, 0.0);
+        Vamp::FFT::forward(m_parameters.blockSize,
                            windowed.data(), nullptr,
                            ro.data(), io.data());
 
         std::vector<double> magnitudes;
+        std::vector<int> aboveThreshold;
         for (int i = m_binmin; i <= m_binmax; ++i) {
-            magnitudes.push_back(sqrt(ro[i] * ro[i] + io[i] * io[i]));
+            double mag = sqrt(ro[i] * ro[i] + io[i] * io[i]);
+            magnitudes.push_back(mag);
+            if (mag > m_threshold_ratio) {
+                aboveThreshold.push_back(i);
+            }
         }
 
+        m_binsAboveThreshold.push_back(aboveThreshold);
+        
         m_magHistory.push_back(magnitudes);
 
-        if (int(m_magHistory.size()) >= m_historyLength) {
+        if (int(m_magHistory.size()) >= m_parameters.historyLength) {
             std::array<FractionType, 3> types { FractionType::FirstHalf,
                                                 FractionType::SecondHalf,
                                                 FractionType::WholeWindow };
@@ -183,7 +187,7 @@ public:
     }
 
     int getHistoryLength() const {
-        return m_historyLength;
+        return m_parameters.historyLength;
     }
     
     std::vector<double> getFractions(FractionType type =
@@ -196,20 +200,16 @@ public:
     }
 
 private:
-    double m_sampleRate;
-    int m_blockSize;
-    double m_fmin;
-    double m_fmax;
+    Parameters m_parameters;
     int m_binmin;
     int m_binmax;
-    double m_dB;
-    double m_ratio;
-    int m_historyLength;
+    double m_rise_ratio;
+    double m_threshold_ratio;
     bool m_initialised;
     std::vector<float> m_window;
     std::deque<std::vector<double>> m_magHistory;
-
     std::map<FractionType, std::vector<double>> m_fractions;
+    std::vector<std::vector<int>> m_binsAboveThreshold;
 
     double extractFraction(FractionType type) const {
         // If, for a given bin i, there is a value anywhere in the
@@ -229,7 +229,7 @@ private:
         }
         for (int i = 0; i < n; ++i) {
             for (int j = start; j < limit; ++j) {
-                if (m_magHistory[j][i] > m_magHistory[0][i] * m_ratio) {
+                if (m_magHistory[j][i] > m_magHistory[0][i] * m_rise_ratio) {
                     ++above;
                     break;
                 }

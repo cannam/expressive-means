@@ -210,7 +210,7 @@ CoreFeatures::initialise(Parameters parameters) {
     SpectralLevelRise::Parameters levelRiseParameters;
     levelRiseParameters.sampleRate = m_sampleRate;
     levelRiseParameters.blockSize = m_parameters.blockSize;
-    levelRiseParameters.dB = m_parameters.onsetSensitivityLevel_dB;
+    levelRiseParameters.rise_dB = m_parameters.onsetSensitivityLevel_dB;
     levelRiseParameters.historyLength =
         msToSteps(m_parameters.onsetSensitivityNoiseTimeWindow_ms,
                   m_parameters.stepSize, false);
