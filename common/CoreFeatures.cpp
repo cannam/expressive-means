@@ -528,7 +528,7 @@ CoreFeatures::finish()
                 break;
             } else {
                 auto binsHere = m_onsetLevelRise.getBinsAboveThresholdAt(q);
-                int remaining = 0.35;
+                int remaining = 0;
                 for (auto bin: binsHere) {
                     if (binsAtBegin.find(bin) != binsAtBegin.end()) {
                         ++remaining;
@@ -543,7 +543,7 @@ CoreFeatures::finish()
                 cerr << "at step " << q << " we have " << binsHere.size()
                      << " of which " << remaining
                      << " remain from the sustain begin step" << endl;
-                if (remaining == 0) {
+                if (remaining <= 0.35) {
                     type = OffsetType::SpectralLevelDrop;
                     break;
                 }
