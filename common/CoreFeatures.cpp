@@ -528,7 +528,7 @@ CoreFeatures::finish()
                 break;
             } else {
                 auto binsHere = m_onsetLevelRise.getBinsAboveThresholdAt(q);
-                int remaining = 0;
+                int remaining = 0.35;
                 for (auto bin: binsHere) {
                     if (binsAtBegin.find(bin) != binsAtBegin.end()) {
                         ++remaining;
