@@ -576,7 +576,7 @@ Articulation::getRemainingFeatures()
     int sustainBeginSteps = m_coreFeatures.msToSteps
         (m_coreParams.sustainBeginThreshold_ms, m_stepSize, false);
     int sustainEndSteps = m_coreFeatures.msToSteps
-        (70.0, m_stepSize, false);
+        (m_coreParams.minimumOnsetInterval_ms / 2.0, m_stepSize, false);
 
     struct LDRec {
         int sustainBegin;
@@ -595,8 +595,9 @@ Articulation::getRemainingFeatures()
         int following = onsetToFollowingOnset.at(onset);
         if (following - sustainEndSteps > sustainBegin &&
             sustainEnd > following - sustainEndSteps) {
-            // "Volume development is considered until note offset,
-            // but it stops 70 ms before next onset in any case"
+            // Volume development is considered until note offset, but
+            // it stops at half the minimum onset interval before next
+            // onset in any case
             sustainEnd = following - sustainEndSteps;
         }
         auto development = LevelDevelopment::Unclassifiable;
