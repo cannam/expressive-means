@@ -480,6 +480,9 @@ Articulation::getRemainingFeatures()
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
     auto rawPower = m_coreFeatures.getRawPower_dB();
     auto smoothedPower = m_coreFeatures.getSmoothedPower_dB();
+
+    const auto &analysisPower = smoothedPower;
+    
     int n = rawPower.size();
 
     // "Determine spectrographic noise ratio in % at each onset on
@@ -605,18 +608,18 @@ Articulation::getRemainingFeatures()
         if (sustainEnd - sustainBegin >= 2 &&
             sustainBegin < n &&
             sustainEnd < n) {
-            double sbl = rawPower[sustainBegin];
-            double sel = rawPower[sustainEnd];
+            double sbl = analysisPower[sustainBegin];
+            double sel = analysisPower[sustainEnd];
             double min = 0.0, max = 0.0;
             // sustainEnd - sustainBegin is at least 2 (checked above)
             // so we always assign some level to min and max
             for (int i = 1; i < sustainEnd - sustainBegin; ++i) {
                 int ix = sustainBegin + i;
-                if (i == 1 || rawPower[ix] > max) {
-                    max = rawPower[ix];
+                if (i == 1 || analysisPower[ix] > max) {
+                    max = analysisPower[ix];
                 }
-                if (i == 1 || rawPower[ix] < min) {
-                    min = rawPower[ix];
+                if (i == 1 || analysisPower[ix] < min) {
+                    min = analysisPower[ix];
                 }
             }
             development = classifyLevelDevelopment
