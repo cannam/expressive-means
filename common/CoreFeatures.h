@@ -52,6 +52,7 @@ public:
         float minimumOnsetInterval_ms;              // 2.6, o_6
         float sustainBeginThreshold_ms;
         float noteDurationThreshold_dB;             // 2.7, o_7
+        float spectralDropFloor_dB;
 
         Parameters() :
             stepSize(256),
@@ -66,7 +67,8 @@ public:
             onsetSensitivityRawPowerThreshold_dB(6.f),
             minimumOnsetInterval_ms(100.f),
             sustainBeginThreshold_ms(60.f),
-            noteDurationThreshold_dB(9.f)
+            noteDurationThreshold_dB(9.f),
+            spectralDropFloor_dB(-70.f)
         {}
 
         static void appendVampParameterDescriptors(Vamp::Plugin::ParameterList &);

@@ -81,7 +81,7 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     list.push_back(d);
     
     d.identifier = "onsetSensitivityRawPowerThreshold";
-    d.name = "Onset sensitivity: Raw power threshold";
+    d.name = "Onset sensitivity: Power rise threshold";
     d.unit = "dB";
     d.minValue = 0.f;
     d.maxValue = 100.f;
@@ -105,11 +105,19 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     list.push_back(d);
     
     d.identifier = "noteDurationThreshold";
-    d.name = "Note duration level drop threshold";
+    d.name = "Offset sensitivity: Power drop threshold";
     d.unit = "dB";
     d.minValue = 0.f;
     d.maxValue = 100.f;
     d.defaultValue = defaultCoreParams.noteDurationThreshold_dB;
+    list.push_back(d);
+    
+    d.identifier = "spectralDropFloor";
+    d.name = "Offset sensitivity: Spectral drop floor level";
+    d.unit = "dB";
+    d.minValue = -120.f;
+    d.maxValue = 0.f;
+    d.defaultValue = defaultCoreParams.spectralDropFloor_dB;
     list.push_back(d);
 }
 
@@ -138,6 +146,8 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
         value = sustainBeginThreshold_ms;
     } else if (identifier == "noteDurationThreshold") {
         value = noteDurationThreshold_dB;
+    } else if (identifier == "spectralDropFloor") {
+        value = spectralDropFloor_dB;
     } else {
         return false;
     }
@@ -169,6 +179,8 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
         sustainBeginThreshold_ms = value;
     } else if (identifier == "noteDurationThreshold") {
         noteDurationThreshold_dB = value;
+    } else if (identifier == "spectralDropFloor") {
+        spectralDropFloor_dB = value;
     } else {
         return false;
     }
@@ -497,7 +509,7 @@ CoreFeatures::finish()
         int s = p + sustainBeginSteps;
 
         if (s < n) {
-            auto bins = m_onsetLevelRise.getBinsAboveThresholdAt(s);
+            auto bins = m_onsetLevelRise.getBinsAboveFloorAt(s);
             binsAtBegin.insert(bins.begin(), bins.end());
             nBinsAtBegin = bins.size();
             
@@ -520,14 +532,18 @@ CoreFeatures::finish()
         OffsetType type = OffsetType::FollowingOnsetReached;
         
         while (q < limit) {
+
             if (m_rawPower[q] < powerDropTarget) {
+
                 cerr << "at step " << q << " found power " << m_rawPower[q]
                      << " which falls below target power "
                      << powerDropTarget << endl;
                 type = OffsetType::PowerDrop;
                 break;
-            } else {
-                auto binsHere = m_onsetLevelRise.getBinsAboveThresholdAt(q);
+
+            } else if (nBinsAtBegin > 0) {
+
+                auto binsHere = m_onsetLevelRise.getBinsAboveFloorAt(q);
                 int remaining = 0;
                 for (auto bin: binsHere) {
                     if (binsAtBegin.find(bin) != binsAtBegin.end()) {
@@ -535,15 +551,15 @@ CoreFeatures::finish()
                     }
                 }
 
-                if (binsAtBegin.size() > 0) {
-                    offsetDropDfEntries[q] =
-                        double(remaining) / double(binsAtBegin.size());
-                }
+                double df = double(remaining) / double(nBinsAtBegin);
+                offsetDropDfEntries[q] = df;
                                                                     
                 cerr << "at step " << q << " we have " << binsHere.size()
                      << " of which " << remaining
-                     << " remain from the sustain begin step" << endl;
-                if (remaining <= 0.35) {
+                     << " remain from the sustain begin step, giving df value "
+                     << df << endl;
+
+                if (df <= 0.35) {
                     type = OffsetType::SpectralLevelDrop;
                     break;
                 }

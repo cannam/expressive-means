@@ -37,7 +37,7 @@ public:
         double frequencyMin_Hz;
         double frequencyMax_Hz;
         double rise_dB;
-        double threshold_dB;
+        double floor_dB;
         int historyLength;
         Parameters() :
             sampleRate(48000.0),
@@ -45,7 +45,7 @@ public:
             frequencyMin_Hz(100.0),
             frequencyMax_Hz(4000.0),
             rise_dB(20.0),
-            threshold_dB(-70.0),
+            floor_dB(-70.0),
             historyLength(20)
         {}
     };
@@ -93,11 +93,11 @@ public:
                       << ") should be positive" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: rise dB should be positive (it is a gain ratio)");
         }
-        if (parameters.threshold_dB > 0.0) {
-            std::cerr << "SpectralLevelRise::initialise: threshold dB ("
-                      << parameters.threshold_dB
+        if (parameters.floor_dB > 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: floor dB ("
+                      << parameters.floor_dB
                       << ") is expected to be negative" << std::endl;
-            throw std::logic_error("SpectralLevelRise::initialise: threshold dB is expected to be negative (it is a signal level)");
+            throw std::logic_error("SpectralLevelRise::initialise: floor dB is expected to be negative (it is a signal level)");
         }
         if (parameters.historyLength < 2) {
             std::cerr << "SpectralLevelRise::initialise: historyLength ("
@@ -115,7 +115,7 @@ public:
             (double(m_parameters.blockSize) * m_parameters.frequencyMax_Hz) /
             m_parameters.sampleRate;
         m_rise_ratio = pow(10.0, m_parameters.rise_dB / 10.0);
-        m_threshold_ratio = pow(10.0, m_parameters.threshold_dB / 20.0);
+        m_floor_ratio = pow(10.0, m_parameters.floor_dB / 20.0);
 
         // Hann window
         m_window.reserve(m_parameters.blockSize);
@@ -155,19 +155,19 @@ public:
                            ro.data(), io.data());
 
         std::vector<double> magnitudes;
-        std::vector<int> aboveThreshold;
+        std::vector<int> aboveFloor;
         for (int i = m_binmin; i <= m_binmax; ++i) {
             double mag = sqrt(ro[i] * ro[i] + io[i] * io[i]);
             mag /= double(m_parameters.blockSize);
             magnitudes.push_back(mag);
-            if (mag > m_threshold_ratio) {
-                aboveThreshold.push_back(i);
+            if (mag > m_floor_ratio) {
+                aboveFloor.push_back(i);
             }
         }
 
-        std::cerr << "counted " << aboveThreshold.size() << std::endl;
+        std::cerr << "counted " << aboveFloor.size() << std::endl;
         
-        m_binsAboveThreshold.push_back(aboveThreshold);
+        m_binsAboveFloor.push_back(aboveFloor);
         
         m_magHistory.push_back(magnitudes);
 
@@ -190,9 +190,9 @@ public:
         return m_fractions;
     }
     
-    std::vector<int> getBinsAboveThresholdAt(int step) const {
-        if (step < int(m_binsAboveThreshold.size())) {
-            return m_binsAboveThreshold.at(step);
+    std::vector<int> getBinsAboveFloorAt(int step) const {
+        if (step < int(m_binsAboveFloor.size())) {
+            return m_binsAboveFloor.at(step);
         } else {
             return {};
         }
@@ -203,12 +203,12 @@ private:
     int m_binmin;
     int m_binmax;
     double m_rise_ratio;
-    double m_threshold_ratio;
+    double m_floor_ratio;
     bool m_initialised;
     std::vector<float> m_window;
     std::deque<std::vector<double>> m_magHistory;
     std::vector<double> m_fractions;
-    std::vector<std::vector<int>> m_binsAboveThreshold;
+    std::vector<std::vector<int>> m_binsAboveFloor;
 
     double extractFraction() const {
         // If, for a given bin i, there is a value anywhere in the
