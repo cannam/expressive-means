@@ -136,6 +136,18 @@ public:
         return m_onsetLevelRise.getFractions();
     }
 
+    int
+    getOnsetBinCount() const {
+        assertFinished();
+        return m_onsetLevelRise.getBinCount();
+    }
+    
+    std::vector<int>
+    getOnsetBinsAboveFloorAt(int step) const {
+        assertFinished();
+        return m_onsetLevelRise.getBinsAboveFloorAt(step);
+    }
+
     std::vector<double>
     getOffsetDropDF() const {
         assertFinished();

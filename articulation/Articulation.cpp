@@ -24,6 +24,8 @@ using std::ostringstream;
 
 static const float default_volumeDevelopmentThreshold_dB = 2.f;
 static const float default_scalingFactor = 10.7f;
+static const float default_impulseNoiseRatioPlosive_percent = 80.f;
+static const float default_impulseNoiseRatioFricative_percent = 30.f;
 
 Articulation::Articulation(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -32,6 +34,8 @@ Articulation::Articulation(float inputSampleRate) :
     m_coreFeatures(inputSampleRate),
     m_volumeDevelopmentThreshold_dB(default_volumeDevelopmentThreshold_dB),
     m_scalingFactor(default_scalingFactor),
+    m_impulseNoiseRatioPlosive_percent(default_impulseNoiseRatioPlosive_percent),
+    m_impulseNoiseRatioFricative_percent(default_impulseNoiseRatioFricative_percent),
     m_summaryOutput(-1),
     m_noiseTypeOutput(-1),
     m_volumeDevelopmentOutput(-1),
@@ -125,6 +129,22 @@ Articulation::getParameterDescriptors() const
     d.description = "";
     d.isQuantized = false;
     
+    d.identifier = "impulseNoiseRatioPlosive";
+    d.name = "Impulse noise ratio: Plosive";
+    d.unit = "%";
+    d.minValue = 1.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_impulseNoiseRatioPlosive_percent;
+    list.push_back(d);
+    
+    d.identifier = "impulseNoiseRatioFricative";
+    d.name = "Impulse noise ratio: Fricative";
+    d.unit = "%";
+    d.minValue = 1.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_impulseNoiseRatioFricative_percent;
+    list.push_back(d);
+    
     d.identifier = "volumeDevelopmentThreshold";
     d.name = "Volume development threshold";
     d.unit = "dB";
@@ -156,6 +176,10 @@ Articulation::getParameter(string identifier) const
         return m_volumeDevelopmentThreshold_dB;
     } else if (identifier == "scalingFactor") {
         return m_scalingFactor;
+    } else if (identifier == "impulseNoiseRatioPlosive") {
+        return m_impulseNoiseRatioPlosive_percent;
+    } else if (identifier == "impulseNoiseRatioFricative") {
+        return m_impulseNoiseRatioFricative_percent;
     }
     
     return 0.f;
@@ -172,6 +196,10 @@ Articulation::setParameter(string identifier, float value)
         m_volumeDevelopmentThreshold_dB = value;
     } else if (identifier == "scalingFactor") {
         m_scalingFactor = value;
+    } else if (identifier == "impulseNoiseRatioPlosive") {
+        m_impulseNoiseRatioPlosive_percent = value;
+    } else if (identifier == "impulseNoiseRatioFricative") {
+        m_impulseNoiseRatioFricative_percent = value;
     }
 }
 
@@ -459,6 +487,77 @@ Articulation::classifyLevelDevelopment(double begin,
     }
 }
 
+Articulation::NoiseRec
+Articulation::classifyOnsetNoise(const vector<vector<int>> &activeBinsAfterOnset,
+                                 int binCount,
+                                 double plosiveRatio,
+                                 double fricativeRatio)
+{
+    NoiseRec rec;
+    int n = activeBinsAfterOnset.size();
+    if (n < 2) return rec;
+
+    int maxConsecutiveHopsAboveP = 0;
+    int currentHopsAboveP = 0;
+
+    int maxConsecutiveHopsAboveF = 0;
+    int currentHopsAboveF = 0;
+
+    for (const auto &active: activeBinsAfterOnset) {
+        double ratio = double(active.size()) / double(binCount);
+        if (ratio > plosiveRatio) {
+            if (++currentHopsAboveP > maxConsecutiveHopsAboveP) {
+                maxConsecutiveHopsAboveP = currentHopsAboveP;
+            }
+        } else {
+            currentHopsAboveP = 0;
+        }
+        if (ratio > fricativeRatio) {
+            if (++currentHopsAboveF > maxConsecutiveHopsAboveF) {
+                maxConsecutiveHopsAboveF = currentHopsAboveF;
+            }
+        } else {
+            currentHopsAboveF = 0;
+        }
+    }
+
+    // Just for informational purposes, this % value in the Summary
+    // output now shows the relative duration of consecutive hops that
+    // have at least ratio p of bins above the floor value. This would
+    // need to exceed 50% for an onset to be classified as Affricative
+    // or Plosive.
+    rec.total = double(maxConsecutiveHopsAboveP) / double(n);
+
+    if (maxConsecutiveHopsAboveP >= n/2 && maxConsecutiveHopsAboveF >= n) {
+    
+        // at least [p] FFT bins within [o5]/2 (half the time span)
+        // and at least [f] FFT windows within [o5] (full span)
+        // following an onset exceed [L] = allocate type code "a"
+        
+        rec.type = NoiseType::Affricative;
+        
+    } else if (maxConsecutiveHopsAboveP >= n/2) {
+
+        // at least [p] FFT bins within [o5]/2 (half span) following
+        // an onset exceed [L] = allocate type code "p"
+
+        rec.type = NoiseType::Plosive;
+
+    } else if (maxConsecutiveHopsAboveF >= n) {
+        
+        // at least [f] FFT windows within [o5] (full span) following
+        // an onset exceed [L] = allocate type code "f"
+
+        rec.type = NoiseType::Fricative;
+
+    } else {
+
+        rec.type = NoiseType::Sonorous;
+    }
+
+    return rec;
+}
+
 Articulation::FeatureSet
 Articulation::getRemainingFeatures()
 {
@@ -485,28 +584,6 @@ Articulation::getRemainingFeatures()
     
     int n = rawPower.size();
 
-    // "Determine spectrographic noise ratio in % at each onset on
-    // base of the "Transient Onset Detection Function" data preceding
-    // the onset of about [o5] (= noise time window parameter,
-    // i.e. 100 ms before onset).
-    // 
-    // ...the Impulse ratio parameters should then be allocated with
-    // presets as follows (other than as described in the document),
-    // in hierarchic order:
-    //
-    // [a1.a] —> >30 % over the first half of [o5] and >20% over the
-    //           second half of [o5]
-    // [a1.p] —> >30 % over half the duration of [o5] (so it's more
-    //           like a noise column) 
-    // [a1.f] —> >20 % over the full duration of [o5]
-    // [a1.s] —> below 20% 
-
-    struct NoiseRec {
-        double total;
-        NoiseType type;
-        NoiseRec() : total(0.0), type(NoiseType::Sonorous) { }
-    };
-    
     map<int, NoiseRec> onsetToNoise;
 
     auto noiseRatioFractions = m_coreFeatures.getOnsetLevelRiseFractions();
@@ -515,48 +592,17 @@ Articulation::getRemainingFeatures()
     
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
-        NoiseRec rec;
-        int start = onset - noiseWindowSteps;
-        int half = noiseWindowSteps/2;
-        double lowThreshold = 0.2, highThreshold = 0.3;
-        int firstOverHighThreshold = -1;
-        int lastOverHighThreshold = -1;
-        double firstHalfMax = 0.0;
-        double secondHalfMax = 0.0;
-        if (start >= 0) {
-            for (int i = 0; i < noiseWindowSteps; ++i) {
-                auto fraction = noiseRatioFractions[start + i];
-                if (fraction > highThreshold) {
-                    if (firstOverHighThreshold == -1) {
-                        firstOverHighThreshold = fraction;
-                    }
-                    lastOverHighThreshold = fraction;
-                }
-                if (i < half) {
-                    if (fraction > firstHalfMax) {
-                        firstHalfMax = fraction;
-                    }
-                } else {
-                    if (fraction > secondHalfMax) {
-                        secondHalfMax = fraction;
-                    }
-                }
-                if (fraction > rec.total) {
-                    rec.total = fraction;
-                }
+        vector<vector<int>> binsAboveFloor;
+        for (int i = 0; i < noiseWindowSteps; ++i) {
+            if (i < n) {
+                binsAboveFloor.push_back
+                    (m_coreFeatures.getOnsetBinsAboveFloorAt(onset + i));
             }
         }
-        if (firstHalfMax > highThreshold &&
-            secondHalfMax > lowThreshold) {
-            rec.type = NoiseType::Affricative;
-        } else if (rec.total > highThreshold &&
-                   (lastOverHighThreshold - firstOverHighThreshold) <= half) {
-            rec.type = NoiseType::Plosive;
-        } else if (rec.total > lowThreshold) {
-            rec.type = NoiseType::Fricative;
-        } else {
-            rec.type = NoiseType::Sonorous;
-        }
+        NoiseRec rec = classifyOnsetNoise
+            (binsAboveFloor, m_coreFeatures.getOnsetBinCount(),
+             m_impulseNoiseRatioPlosive_percent / 100.0,
+             m_impulseNoiseRatioFricative_percent / 100.0);
         onsetToNoise[onset] = rec;
     }
 

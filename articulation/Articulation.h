@@ -58,14 +58,13 @@ public:
     FeatureSet getRemainingFeatures();
 
     enum class NoiseType {
-        Sonorous = 0,
-        Fricative = 1,
-        Plosive = 2,
-        Affricative = 3
+        Unclassifiable,
+        Sonorous, Fricative, Plosive, Affricative
     };
 
     static std::string noiseTypeToString(NoiseType t) {
         switch (t) {
+        case NoiseType::Unclassifiable: return "Unclassifiable";
         case NoiseType::Sonorous: return "Sonorous";
         case NoiseType::Fricative: return "Fricative";
         case NoiseType::Plosive: return "Plosive";
@@ -76,6 +75,7 @@ public:
 
     static std::string noiseTypeToCode(NoiseType t) {
         switch (t) {
+        case NoiseType::Unclassifiable: return "?";
         case NoiseType::Sonorous: return "s";
         case NoiseType::Fricative: return "f";
         case NoiseType::Plosive: return "p";
@@ -86,6 +86,7 @@ public:
 
     static double noiseTypeToFactor(NoiseType t) {
         switch (t) {
+        case NoiseType::Unclassifiable: return 1.0;
         case NoiseType::Sonorous: return 1.0;
         case NoiseType::Fricative: return 2.0;
         case NoiseType::Plosive: return 3.0;
@@ -93,7 +94,19 @@ public:
         default: throw std::logic_error("unknown NoiseType");
         }
     }
-    
+
+    struct NoiseRec {
+        double total;
+        NoiseType type;
+        NoiseRec() : total(0.0), type(NoiseType::Unclassifiable) { }
+    };
+        
+    static NoiseRec classifyOnsetNoise(const std::vector<std::vector<int>> &
+                                       activeBinsAfterOnset,
+                                       int binCount,
+                                       double plosiveRatio,
+                                       double fricativeRatio);
+
     enum class LevelDevelopment {
         Unclassifiable,
         Decreasing, DeAndIncreasing, Constant, InAndDecreasing, Increasing,
@@ -160,6 +173,8 @@ protected:
     CoreFeatures::Parameters m_coreParams;
     float m_volumeDevelopmentThreshold_dB;      // 4.3, b_3
     float m_scalingFactor;                      // 6, s
+    float m_impulseNoiseRatioPlosive_percent;
+    float m_impulseNoiseRatioFricative_percent;
     
     mutable int m_summaryOutput;
     mutable int m_noiseTypeOutput;
