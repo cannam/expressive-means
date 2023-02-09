@@ -375,13 +375,19 @@ CoreFeatures::finish()
     int lastBelowThreshold = -minimumOnsetSteps;
     double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
 
+    // "pitch change locations are reported c. 20 ms delayed on
+    // average. Maybe we could just hard code this value as a
+    // compensation? --> pitch change onsets are reported as being 20
+    // ms before they are actually recognised"
+    int pitchOnsetAdvance = msToSteps(20.0, m_parameters.stepSize, false);
+
     for (int i = 0; i + halfLength < n; ++i) {
         // "absolute difference... falls below o_2":
         if (m_pitchOnsetDf[i] < threshold) {
             // "subsequent onsets require o_2 to be exceeded for at
             // least the duration of o_6 first":
             if (i > lastBelowThreshold + minimumOnsetSteps) {
-                m_pitchOnsets.insert(i);
+                m_pitchOnsets.insert(i - pitchOnsetAdvance);
             }
             lastBelowThreshold = i;
         }
