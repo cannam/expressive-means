@@ -70,6 +70,7 @@ protected:
     mutable int m_portamentoTypeOutput;
     mutable int m_pitchTrackOutput;
     mutable int m_portamentoIndexOutput;
+    mutable int m_portamentoPointsOutput;
 };
 
 #endif

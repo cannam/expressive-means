@@ -191,7 +191,7 @@ Onsets::getOutputDescriptors() const
     d.identifier = "pitchdf";
     d.name = "Pitch Onset Detection Function";
     d.description = "Function used to identify onsets by pitch change. Onsets are considered likely when the function is low rather than high, i.e. when it first falls below a threshold.";
-    d.unit = "semitones";
+    d.unit = "cents";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
@@ -308,7 +308,7 @@ Onsets::getRemainingFeatures()
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitchOnsetDf[i]);
+        f.values.push_back(pitchOnsetDf[i] * 100.0);
         fs[m_pitchOnsetDfOutput].push_back(f);
     }
     

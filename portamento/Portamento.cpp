@@ -18,6 +18,12 @@ using std::cerr;
 using std::endl;
 using std::vector;
 using std::set;
+using std::map;
+using std::lower_bound;
+
+static float default_glideThresholdPitch_cents = 20.f;
+static float default_glideThresholdDuration_ms = 30.f;
+static float default_glideThresholdProximity_ms = 500.f;
 
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -113,6 +119,29 @@ Portamento::getParameterDescriptors() const
     d.description = "";
     d.isQuantized = false;
     
+    d.identifier = "glideThresholdPitch";
+    d.name = "Glide detection threshold: Pitch";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_glideThresholdPitch_cents;
+    list.push_back(d);
+    
+    d.identifier = "glideThresholdDuration";
+    d.name = "Glide detection threshold: Duration";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 200.f;
+    d.defaultValue = default_glideThresholdDuration_ms;
+    list.push_back(d);
+    
+    d.identifier = "glideThresholdProximity";
+    d.name = "Glide detection threshold: Onset Proximity";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 2000.f;
+    d.defaultValue = default_glideThresholdProximity_ms;
+    list.push_back(d);
     
     return list;
 }
@@ -124,7 +153,14 @@ Portamento::getParameter(string identifier) const
     if (m_coreParams.obtainVampParameter(identifier, value)) {
         return value;
     }
-    
+
+    if (identifier == "glideThresholdPitch") {
+        return m_glideThresholdPitch_cents;
+    } else if (identifier == "glideThresholdDuration") {
+        return m_glideThresholdDuration_ms;
+    } else if (identifier == "glideThresholdProximity") {
+        return m_glideThresholdProximity_ms;
+    }
     
     return 0.f;
 }
@@ -136,6 +172,13 @@ Portamento::setParameter(string identifier, float value)
         return;
     }
 
+    if (identifier == "glideThresholdPitch") {
+        m_glideThresholdPitch_cents = value;
+    } else if (identifier == "glideThresholdDuration") {
+        m_glideThresholdDuration_ms = value;
+    } else if (identifier == "glideThresholdProximity") {
+        m_glideThresholdProximity_ms = value;
+    }
 }
 
 Portamento::ProgramList
@@ -209,6 +252,17 @@ Portamento::getOutputDescriptors() const
     d.hasKnownExtents = false;
     d.hasDuration = false;
     m_portamentoIndexOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "portamentoPoints";
+    d.name = "Portamento Significant Points";
+    d.description = "";
+    d.unit = "Hz";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_portamentoPointsOutput = int(list.size());
     list.push_back(d);
     
     return list;
@@ -288,10 +342,95 @@ Portamento::getRemainingFeatures()
         if (pyinPitch[i] <= 0) continue;
         Feature f;
         f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(pyinPitch[i]);
         fs[m_pitchTrackOutput].push_back(f);
     }
 
+    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
+    auto pitch = m_coreFeatures.getPitch_semis();
+    auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
+
+    int n = pitch.size();
+    
+    int pitchFilterLength =
+        m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
+                                 m_coreParams.stepSize, true);
+    int halfLength = pitchFilterLength / 2;
+    
+    // "Glides are apparent if the absolute difference of a pitch [o]
+    // and its following moving pitch average window [o1] exceeds [g1]
+    // cents for at least [g2] ms and if there continuously is pitch
+    // data within this time frame. Filter for glides that start
+    // and/or end +/- [g3] ms around a note onset"
+
+    map<int, int> glides; // glide start -> glide end
+
+    int lastNonCandidate = -1;
+    int thresholdSteps = m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
+                                                  m_coreParams.stepSize, false);
+    
+    for (int i = 0; i + halfLength < n; ++i) {
+
+        bool isCandidate = true;
+
+        if (pitch[i] == 0.0) {
+            isCandidate = false;
+        } else if (fabsf(pitch[i] - filteredPitch[i + halfLength]) <
+                   m_glideThresholdPitch_cents) {
+            isCandidate = false;
+        } 
+
+        if (!isCandidate) {
+            if (lastNonCandidate + thresholdSteps <= i) {
+                glides[lastNonCandidate + 1] = i;
+            }
+            lastNonCandidate = i;
+        }
+    }
+
+    int proximitySteps = m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
+                                                  m_coreParams.stepSize, false);
+
+    map<int, pair<int, int>> onsetMappedGlides; // onset -> glide start, end
+    
+    for (auto g : glides) {
+
+        int start = g.first;
+        int end = g.second;
+
+        auto nearestOnset = onsetOffsets.lower_bound(start - proximitySteps);
+
+        if (nearestOnset != onsetOffsets.end() &&
+            nearestOnset->first < end + proximitySteps) {
+            onsetMappedGlides[nearestOnset->first] = g;
+        }
+    }
+
+    for (auto m : onsetMappedGlides) {
+
+        int onset = m.first;
+        int glideStart = m.second.first;
+        int glideEnd = m.second.second;
+
+        Feature f;
+        f.hasTimestamp = true;
+
+        f.timestamp = m_coreFeatures.timeForStep(glideStart);
+        f.values.push_back(pyinPitch[glideStart]);
+        f.label = "Glide Start";
+        fs[m_portamentoPointsOutput].push_back(f);
+
+        f.timestamp = m_coreFeatures.timeForStep(onset);
+        f.values.push_back(pyinPitch[onset]);
+        f.label = "Detected Onset";
+        fs[m_portamentoPointsOutput].push_back(f);
+
+        f.timestamp = m_coreFeatures.timeForStep(glideEnd);
+        f.values.push_back(pyinPitch[glideEnd]);
+        f.label = "Glide End";
+        fs[m_portamentoPointsOutput].push_back(f);
+    }
     
     return fs;
 }

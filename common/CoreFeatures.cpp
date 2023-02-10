@@ -417,12 +417,14 @@ CoreFeatures::finish()
     int rawPowerSteps = msToSteps(50.0, m_parameters.stepSize, false);
     bool onsetComing = false;
     double prevDerivative = 0.0;
+
     // Iterate through raw power, and when we see a rise above a
     // certain level within the following rawPowerSteps, make note
     // that we have an onset coming (onsetComing = true). But
     // don't actually record the onset (insert into
     // m_powerRiseOnsets) until we see the derivative of raw power
     // begin to fall again, otherwise the onset appears early.
+    
     for (int i = 0; i + 1 < int(m_rawPower.size()); ++i) {
         double derivative = m_rawPower[i+1] - m_rawPower[i];
         if (onsetComing) {
