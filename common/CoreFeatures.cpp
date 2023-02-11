@@ -567,7 +567,7 @@ CoreFeatures::finish()
                      << " remain from the sustain begin step, giving df value "
                      << df << endl;
 
-                if (df <= 0.35) {
+                if (df <= 0.4) {
                     type = OffsetType::SpectralLevelDrop;
                     break;
                 }
