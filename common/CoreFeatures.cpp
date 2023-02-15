@@ -468,24 +468,32 @@ CoreFeatures::finish()
             
         if (p < prevP + minimumOnsetSteps) {
 
-            if (prevType == OnsetType::PowerRise &&
-                type != OnsetType::PowerRise) {
-                // "If a spectral rise onset follows [use minimum
-                // onset interval, i.e. 100 ms] after a raw power
-                // onset, return spectral rise onset only",
-                // i.e. erase the raw power onset we previously
-                // added. (But the motivating example for this
-                // actually has a pitch onset following the raw
-                // power one, not a spectral rise, so we test
-                // above for anything other than raw power)
-                m_mergedOnsets.erase(prevP);
+            // We have the following hierarchy for onsets, from most
+            // to least precise:
+            // 
+            // 1. Spectral Rise
+            // 2. Pitch Change
+            // 3. Power Rise
+            // 
+            // If a higher-ranked (i.e. smaller numbered, above) type
+            // of onset follows within the minimum onset interval
+            // after a lower-ranked one, we drop the lower-ranked one
+            // and keep the later higher-ranked one only.
 
+            bool isHigherRanked =
+                (prevType == OnsetType::PowerRise &&
+                 type != OnsetType::PowerRise) ||
+                (prevType != OnsetType::SpectralLevelRise &&
+                 type == OnsetType::SpectralLevelRise);
+            
+            if (isHigherRanked) {
+                m_mergedOnsets.erase(prevP);
             } else {
-                // An onset follows another one within the minimum
-                // onset interval and the above rule doesn't
-                // apply, so we don't insert this one, and also
-                // don't update prevP and prevType because we want
-                // it to have no effect on any following onsets
+                // This onset follows another one within the minimum
+                // onset interval, but it is of a lower-ranked type,
+                // so we don't insert this one, and also don't update
+                // prevP and prevType because we want it to have no
+                // effect on any following onsets
                 continue;
             }
         }
