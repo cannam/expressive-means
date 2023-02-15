@@ -115,7 +115,7 @@ public:
             (double(m_parameters.blockSize) * m_parameters.frequencyMax_Hz) /
             m_parameters.sampleRate;
         m_rise_ratio = pow(10.0, m_parameters.rise_dB / 10.0);
-        m_floor_ratio = pow(10.0, m_parameters.floor_dB / 20.0);
+        m_floor_mag = pow(10.0, m_parameters.floor_dB / 20.0);
 
         // Hann window
         m_window.reserve(m_parameters.blockSize);
@@ -160,7 +160,7 @@ public:
             double mag = sqrt(ro[i] * ro[i] + io[i] * io[i]);
             mag /= double(m_parameters.blockSize);
             magnitudes.push_back(mag);
-            if (mag > m_floor_ratio) {
+            if (mag > m_floor_mag) {
                 aboveFloor.push_back(i);
             }
         }
@@ -203,7 +203,7 @@ private:
     int m_binmin;
     int m_binmax;
     double m_rise_ratio;
-    double m_floor_ratio;
+    double m_floor_mag;
     bool m_initialised;
     std::vector<float> m_window;
     std::deque<std::vector<double>> m_magHistory;
