@@ -256,7 +256,7 @@ Articulation::getOutputDescriptors() const
     
     d.identifier = "volumeDevelopment";
     d.name = "Volume Development";
-    d.description = "Coding of volume development during the sustain phase. Time and duration indicate the sustain phase for each note; values are 0 = Unclassifiable, 1 = Decreasing, 2 = De-and-Increasing, 3 = Constant, 4 = In-and-Decreasing, 5 = Increasing";
+    d.description = "Coding of volume development during the sustain phase. Time and duration indicate the sustain phase for each note; values are 0 = unclassifiable or other, 1 = Decreasing, 2 = De-and-Increasing, 3 = Constant, 4 = In-and-Decreasing, 5 = Increasing";
     d.unit = "";
     d.hasFixedBinCount = true;
     d.binCount = 1;
@@ -679,9 +679,18 @@ Articulation::getRemainingFeatures()
         rec.sustainEnd = sustainEnd;
         rec.minDiff = minDiff;
         rec.maxDiff = maxDiff;
-        if (development == LevelDevelopment::Unclassifiable) {
+        if (rec.development == LevelDevelopment::Unclassifiable) {
             rec.sustainBegin = onset;
         }
+
+        // We wanted to distinguish Unclassifiable from the rest of
+        // the development types above, but we should now simplify our
+        // reporting by filing Unclassifiable (very short sustain) as
+        // Constant
+        if (rec.development == LevelDevelopment::Unclassifiable) {
+            rec.development = LevelDevelopment::Constant;
+        }
+        
         onsetToLD[onset] = rec;
     }
             
@@ -711,8 +720,13 @@ Articulation::getRemainingFeatures()
         f.hasDuration = true;
         f.duration =
             m_coreFeatures.timeForStep(pq.second.sustainEnd + 1) - f.timestamp;
-        f.values.push_back(static_cast<int>(pq.second.development));
-        f.label = developmentToString(pq.second.development);
+        auto development = pq.second.development;
+        if (development == LevelDevelopment::Other) {
+            f.values.push_back(0);
+        } else {
+            f.values.push_back(static_cast<int>(development));
+        }
+        f.label = developmentToString(development);
         fs[m_volumeDevelopmentOutput].push_back(f);
     }
 
