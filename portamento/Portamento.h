@@ -74,7 +74,8 @@ protected:
     mutable int m_portamentoIndexOutput;
 
 #ifdef WITH_DEBUG_OUTPUTS
-    mutable int m_pitchDiffOutput;
+    mutable int m_pitchDiffOutput1;
+    mutable int m_pitchDiffOutput2;
     mutable int m_candidateHopsOutput;
     mutable int m_portamentoPointsOutput;
 #endif

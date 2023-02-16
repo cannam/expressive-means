@@ -11,6 +11,8 @@
 
 #include "Portamento.h"
 
+#include "../ext/qm-dsp/maths/MedianFilter.h"
+
 #include <vector>
 #include <set>
 
@@ -38,7 +40,8 @@ Portamento::Portamento(float inputSampleRate) :
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
     m_portamentoIndexOutput(-1),
-    m_pitchDiffOutput(-1),
+    m_pitchDiffOutput1(-1),
+    m_pitchDiffOutput2(-1),
     m_candidateHopsOutput(-1),
     m_portamentoPointsOutput(-1)
 {
@@ -262,21 +265,32 @@ Portamento::getOutputDescriptors() const
     list.push_back(d);
 
 #ifdef WITH_DEBUG_OUTPUTS
-    d.identifier = "pitchdiff";
-    d.name = "[Debug] Pitch Difference Function";
+    d.identifier = "pitchdiff1";
+    d.name = "[Debug] Pitch Difference Function (Mean Filter)";
     d.description = "";
     d.unit = "semitones";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
     d.hasDuration = false;
-    m_pitchDiffOutput = int(list.size());
+    m_pitchDiffOutput1 = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "pitchdiff2";
+    d.name = "[Debug] Pitch Difference Function (Median+)";
+    d.description = "";
+    d.unit = "semitones";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_pitchDiffOutput2 = int(list.size());
     list.push_back(d);
 
     d.identifier = "candidateHops";
     d.name = "[Debug] Candidate Hops";
     d.description = "";
-    d.unit = "";
+    d.unit = "semitones";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
@@ -380,7 +394,6 @@ Portamento::getRemainingFeatures()
 
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
     auto pitch = m_coreFeatures.getPitch_semis();
-    auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
 
     int n = pitch.size();
     
@@ -388,6 +401,18 @@ Portamento::getRemainingFeatures()
         m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
                                  m_coreParams.stepSize, true);
     int halfLength = pitchFilterLength / 2;
+
+    auto meanFilteredPitch = m_coreFeatures.getFilteredPitch_semis();
+    
+    // The filtered pitch from CoreFeatures is mean-filtered, we want median too
+    vector<double> medianFilteredPitch =
+        MedianFilter<double>::filter(pitchFilterLength, pitch);
+
+    // And for comparison against it, use a much more modestly
+    // mean-filtered version of the original pitch
+    vector<double> slightlyFilteredPitch(n, 0.0);
+    MeanFilter(5).filter
+        (medianFilteredPitch.data(), slightlyFilteredPitch.data(), n);
     
     // "Glides are apparent if the absolute difference of a pitch [o]
     // and its following moving pitch average window [o1] exceeds [g1]
@@ -395,7 +420,8 @@ Portamento::getRemainingFeatures()
     // data within this time frame. Filter for glides that start
     // and/or end +/- [g3] ms around a note onset"
 
-    vector<double> pitchDiff;
+    vector<double> pitchDiff1;
+    vector<double> pitchDiff2;
     vector<int> candidates; // hop
     map<int, int> glides; // glide start hop -> glide end hop
 
@@ -406,13 +432,16 @@ Portamento::getRemainingFeatures()
     
     for (int i = 0; i + halfLength < n; ++i) {
 
-        double diff = fabs(pitch[i] - filteredPitch[i + halfLength]);
-        pitchDiff.push_back(diff);
+        pitchDiff1.push_back(fabs(pitch[i] - meanFilteredPitch[i + halfLength]));
+        
+        double diff = fabs(slightlyFilteredPitch[i] -
+                           medianFilteredPitch[i + halfLength]);
+        pitchDiff2.push_back(diff);
 
-        bool isCandidate = (pitch[i] != 0.0) && (diff >= threshold);
+        bool isCandidate = (pyinPitch[i] > 0.0) && (diff >= threshold);
 
         cerr << "hop " << i << ": pitch = " << pitch[i] << ", filtered = "
-             << filteredPitch[i + halfLength] << ", diff = " << diff
+             << medianFilteredPitch[i + halfLength] << ", diff = " << diff
              << ", threshold = " << threshold << ", isCandidate = "
              << isCandidate << endl;
         
@@ -420,7 +449,7 @@ Portamento::getRemainingFeatures()
             candidates.push_back(i);
         } else {
             if (lastNonCandidate + thresholdSteps <= i) {
-                glides[lastNonCandidate + 1] = i;
+                glides[lastNonCandidate + 1] = i - 1;
             }
             lastNonCandidate = i;
         }
@@ -488,19 +517,27 @@ Portamento::getRemainingFeatures()
     }
 
 #ifdef WITH_DEBUG_OUTPUTS
-    for (size_t i = 0; i < pitchDiff.size(); ++i) {
+    for (size_t i = 0; i < pitchDiff1.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitchDiff[i]);
-        fs[m_pitchDiffOutput].push_back(f);
+        f.values.push_back(pitchDiff1[i]);
+        fs[m_pitchDiffOutput1].push_back(f);
+    }
+    
+    for (size_t i = 0; i < pitchDiff2.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(i);
+        f.values.push_back(pitchDiff2[i]);
+        fs[m_pitchDiffOutput2].push_back(f);
     }
     
     for (size_t i = 0; i < candidates.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(candidates[i]);
-        f.values.push_back(pitchDiff[candidates[i]]);
+        f.values.push_back(pitchDiff2[candidates[i]]);
         fs[m_candidateHopsOutput].push_back(f);
     }
 
