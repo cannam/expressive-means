@@ -21,6 +21,8 @@ using std::set;
 using std::cerr;
 using std::endl;
 
+//#define DEBUG_CORE_FEATURES 1
+
 void
 CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::ParameterList &list)
 {
@@ -533,16 +535,20 @@ CoreFeatures::finish()
             powerDropTarget =
                 m_rawPower[s] - m_parameters.noteDurationThreshold_dB;
 
+#ifdef DEBUG_CORE_FEATURES
             cerr << "at sustain begin step " << s << " found power "
                  << m_rawPower[s] << ", threshold "
                  << m_parameters.noteDurationThreshold_dB
                  << " giving target power " << powerDropTarget
                  << "; we have " << binsAtBegin.size()
                  << " bins active" << endl;
+#endif
             
         } else {
+#ifdef DEBUG_CORE_FEATURES
             cerr << "sustain start index " << s
                  << " out of range at end" << endl;
+#endif
         }
         
         int q = s;
@@ -552,9 +558,12 @@ CoreFeatures::finish()
 
             if (m_rawPower[q] < powerDropTarget) {
 
+#ifdef DEBUG_CORE_FEATURES
                 cerr << "at step " << q << " found power " << m_rawPower[q]
                      << " which falls below target power "
                      << powerDropTarget << endl;
+#endif
+                
                 type = OffsetType::PowerDrop;
                 break;
 
@@ -571,10 +580,12 @@ CoreFeatures::finish()
                 double df = double(remaining) / double(nBinsAtBegin);
                 offsetDropDfEntries[q] = df;
                                                                     
+#ifdef DEBUG_CORE_FEATURES
                 cerr << "at step " << q << " we have " << binsHere.size()
                      << " of which " << remaining
                      << " remain from the sustain begin step, giving df value "
                      << df << endl;
+#endif
 
                 if (df <= 0.4) {
                     type = OffsetType::SpectralLevelDrop;
