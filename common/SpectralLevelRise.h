@@ -165,10 +165,7 @@ public:
             }
         }
 
-        std::cerr << "counted " << aboveFloor.size() << std::endl;
-        
         m_binsAboveFloor.push_back(aboveFloor);
-        
         m_magHistory.push_back(magnitudes);
 
         if (int(m_magHistory.size()) >= m_parameters.historyLength) {
