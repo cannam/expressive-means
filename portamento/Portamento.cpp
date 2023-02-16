@@ -20,6 +20,7 @@ using std::vector;
 using std::set;
 using std::map;
 using std::lower_bound;
+using std::ostringstream;
 
 static float default_glideThresholdPitch_cents = 20.f;
 static float default_glideThresholdDuration_ms = 30.f;
@@ -30,10 +31,16 @@ Portamento::Portamento(float inputSampleRate) :
     m_stepSize(0),
     m_blockSize(0),
     m_coreFeatures(inputSampleRate),
+    m_glideThresholdPitch_cents(default_glideThresholdPitch_cents),
+    m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
+    m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
-    m_portamentoIndexOutput(-1)
+    m_portamentoIndexOutput(-1),
+    m_pitchDiffOutput(-1),
+    m_candidateHopsOutput(-1),
+    m_portamentoPointsOutput(-1)
 {
 }
 
@@ -205,7 +212,7 @@ Portamento::getOutputDescriptors() const
     OutputList list;
     OutputDescriptor d;
 
-    // Common to all
+    // Common to (almost) all
     d.isQuantized = false;
     d.sampleType = OutputDescriptor::FixedSampleRate;
     d.sampleRate = (m_inputSampleRate / m_stepSize);
@@ -253,9 +260,32 @@ Portamento::getOutputDescriptors() const
     d.hasDuration = false;
     m_portamentoIndexOutput = int(list.size());
     list.push_back(d);
+
+#ifdef WITH_DEBUG_OUTPUTS
+    d.identifier = "pitchdiff";
+    d.name = "[Debug] Pitch Difference Function";
+    d.description = "";
+    d.unit = "semitones";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_pitchDiffOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "candidateHops";
+    d.name = "[Debug] Candidate Hops";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_candidateHopsOutput = int(list.size());
+    list.push_back(d);
     
     d.identifier = "portamentoPoints";
-    d.name = "Portamento Significant Points";
+    d.name = "[Debug] Portamento Significant Points";
     d.description = "";
     d.unit = "Hz";
     d.hasFixedBinCount = true;
@@ -264,6 +294,7 @@ Portamento::getOutputDescriptors() const
     d.hasDuration = false;
     m_portamentoPointsOutput = int(list.size());
     list.push_back(d);
+#endif
     
     return list;
 }
@@ -364,29 +395,39 @@ Portamento::getRemainingFeatures()
     // data within this time frame. Filter for glides that start
     // and/or end +/- [g3] ms around a note onset"
 
-    map<int, int> glides; // glide start -> glide end
+    vector<double> pitchDiff;
+    vector<int> candidates; // hop
+    map<int, int> glides; // glide start hop -> glide end hop
 
     int lastNonCandidate = -1;
     int thresholdSteps = m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
                                                   m_coreParams.stepSize, false);
+    double threshold = m_glideThresholdPitch_cents / 100.0;
     
     for (int i = 0; i + halfLength < n; ++i) {
 
-        bool isCandidate = true;
+        double diff = fabs(pitch[i] - filteredPitch[i + halfLength]);
+        pitchDiff.push_back(diff);
 
-        if (pitch[i] == 0.0) {
-            isCandidate = false;
-        } else if (fabsf(pitch[i] - filteredPitch[i + halfLength]) <
-                   m_glideThresholdPitch_cents) {
-            isCandidate = false;
-        } 
+        bool isCandidate = (pitch[i] != 0.0) && (diff >= threshold);
 
-        if (!isCandidate) {
+        cerr << "hop " << i << ": pitch = " << pitch[i] << ", filtered = "
+             << filteredPitch[i + halfLength] << ", diff = " << diff
+             << ", threshold = " << threshold << ", isCandidate = "
+             << isCandidate << endl;
+        
+        if (isCandidate) {
+            candidates.push_back(i);
+        } else {
             if (lastNonCandidate + thresholdSteps <= i) {
                 glides[lastNonCandidate + 1] = i;
             }
             lastNonCandidate = i;
         }
+    }
+
+    if (lastNonCandidate + thresholdSteps + halfLength <= n) {
+        glides[lastNonCandidate + 1] = n - halfLength;
     }
 
     int proximitySteps = m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
@@ -399,38 +440,118 @@ Portamento::getRemainingFeatures()
         int start = g.first;
         int end = g.second;
 
-        auto nearestOnset = onsetOffsets.lower_bound(start - proximitySteps);
+        int rangeStart = start - proximitySteps;
+        int rangeEnd = end + proximitySteps;
+        
+        auto onsetItr = onsetOffsets.lower_bound(rangeStart);
 
-        if (nearestOnset != onsetOffsets.end() &&
-            nearestOnset->first < end + proximitySteps) {
-            onsetMappedGlides[nearestOnset->first] = g;
+        auto scout = onsetItr;
+        bool found = false;
+        
+        while (scout != onsetOffsets.end()) {
+            int onset = scout->first;
+            if (onset >= start && onset <= end) {
+                cerr << "for glide from " << start << " to " << end
+                     << ", found onset within glide at " << onset << endl;
+                onsetMappedGlides[onset] = g;
+                found = true;
+                break;
+            }
+            ++scout;
+        }
+
+        if (!found) {
+            int minDist = proximitySteps + 1;
+            int best = -1;
+            scout = onsetItr;
+            while (scout != onsetOffsets.end()) {
+                int onset = scout->first;
+                int dist = std::min(abs(start - onset), abs(end - onset));
+                if (dist < minDist) {
+                    minDist = dist;
+                    best = onset;
+                    found = true;
+                }
+                ++scout;
+            }
+            if (found) {
+                cerr << "for glide from " << start << " to " << end
+                     << ", found no onset within glide; using closest onset at "
+                     << best << endl;
+                onsetMappedGlides[best] = g;
+            } else {
+                cerr << "for glide from " << start << " to " << end
+                     << ", found no onset within glide or within proximity "
+                     << "range; ignoring this glide" << endl;
+            }
         }
     }
 
+#ifdef WITH_DEBUG_OUTPUTS
+    for (size_t i = 0; i < pitchDiff.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(i);
+        f.values.push_back(pitchDiff[i]);
+        fs[m_pitchDiffOutput].push_back(f);
+    }
+    
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(candidates[i]);
+        f.values.push_back(pitchDiff[candidates[i]]);
+        fs[m_candidateHopsOutput].push_back(f);
+    }
+
+    int j = 1;
     for (auto m : onsetMappedGlides) {
 
         int onset = m.first;
         int glideStart = m.second.first;
         int glideEnd = m.second.second;
 
+        cerr << "returning features for glide " << j
+             << " associated with onset " << onset
+             << " with glide range from " << glideStart << " to " << glideEnd
+             << endl;
+        
         Feature f;
         f.hasTimestamp = true;
 
-        f.timestamp = m_coreFeatures.timeForStep(glideStart);
-        f.values.push_back(pyinPitch[glideStart]);
-        f.label = "Glide Start";
-        fs[m_portamentoPointsOutput].push_back(f);
+        {
+            ostringstream os;
+            os << "Glide " << j << ": Start";
+            f.timestamp = m_coreFeatures.timeForStep(glideStart);
+            f.values.clear();
+            f.values.push_back(pyinPitch[glideStart]);
+            f.label = os.str();
+            fs[m_portamentoPointsOutput].push_back(f);
+        }
 
-        f.timestamp = m_coreFeatures.timeForStep(onset);
-        f.values.push_back(pyinPitch[onset]);
-        f.label = "Detected Onset";
-        fs[m_portamentoPointsOutput].push_back(f);
+        {
+            ostringstream os;
+            os << "Glide " << j << ": Onset";
+            f.timestamp = m_coreFeatures.timeForStep(onset);
+            f.values.clear();
+            f.values.push_back(pyinPitch[onset]);
+            f.label = os.str();
+            fs[m_portamentoPointsOutput].push_back(f);
+        }
 
-        f.timestamp = m_coreFeatures.timeForStep(glideEnd);
-        f.values.push_back(pyinPitch[glideEnd]);
-        f.label = "Glide End";
-        fs[m_portamentoPointsOutput].push_back(f);
+        {
+            ostringstream os;
+            os << "Glide " << j << ": End";
+            f.timestamp = m_coreFeatures.timeForStep(glideEnd);
+            f.values.clear();
+            f.values.push_back(pyinPitch[glideEnd]);
+            f.label = os.str();
+            fs[m_portamentoPointsOutput].push_back(f);
+        }
+
+        ++j;
     }
+#endif
     
     return fs;
 }

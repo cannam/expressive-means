@@ -16,6 +16,8 @@
 
 #include "common/CoreFeatures.h"
 
+#define WITH_DEBUG_OUTPUTS 1
+
 using std::string;
 
 class Portamento : public Vamp::Plugin
@@ -70,7 +72,12 @@ protected:
     mutable int m_portamentoTypeOutput;
     mutable int m_pitchTrackOutput;
     mutable int m_portamentoIndexOutput;
+
+#ifdef WITH_DEBUG_OUTPUTS
+    mutable int m_pitchDiffOutput;
+    mutable int m_candidateHopsOutput;
     mutable int m_portamentoPointsOutput;
+#endif
 };
 
 #endif
