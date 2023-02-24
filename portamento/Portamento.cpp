@@ -27,6 +27,7 @@ using std::ostringstream;
 static float default_glideThresholdPitch_cents = 20.f;
 static float default_glideThresholdDuration_ms = 30.f;
 static float default_glideThresholdProximity_ms = 500.f;
+static float default_linkThreshold_ms = 30.f;
 
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -36,6 +37,7 @@ Portamento::Portamento(float inputSampleRate) :
     m_glideThresholdPitch_cents(default_glideThresholdPitch_cents),
     m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
     m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
+    m_linkThreshold_ms(default_linkThreshold_ms),
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
@@ -43,7 +45,9 @@ Portamento::Portamento(float inputSampleRate) :
     m_pitchDiffOutput1(-1),
     m_pitchDiffOutput2(-1),
     m_candidateHopsOutput(-1),
-    m_portamentoPointsOutput(-1)
+    m_portamentoPointsOutput(-1),
+    m_glideDirectionOutput(-1),
+    m_glideLinkOutput(-1)
 {
 }
 
@@ -153,6 +157,14 @@ Portamento::getParameterDescriptors() const
     d.defaultValue = default_glideThresholdProximity_ms;
     list.push_back(d);
     
+    d.identifier = "linkThreshold";
+    d.name = "Link threshold";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 150.f;
+    d.defaultValue = default_linkThreshold_ms;
+    list.push_back(d);
+    
     return list;
 }
 
@@ -170,6 +182,8 @@ Portamento::getParameter(string identifier) const
         return m_glideThresholdDuration_ms;
     } else if (identifier == "glideThresholdProximity") {
         return m_glideThresholdProximity_ms;
+    } else if (identifier == "linkThreshold") {
+        return m_linkThreshold_ms;
     }
     
     return 0.f;
@@ -188,6 +202,8 @@ Portamento::setParameter(string identifier, float value)
         m_glideThresholdDuration_ms = value;
     } else if (identifier == "glideThresholdProximity") {
         m_glideThresholdProximity_ms = value;
+    } else if (identifier == "linkThreshold") {
+        m_linkThreshold_ms = value;
     }
 }
 
@@ -307,6 +323,28 @@ Portamento::getOutputDescriptors() const
     d.hasKnownExtents = false;
     d.hasDuration = false;
     m_portamentoPointsOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "glideDirection";
+    d.name = "[Debug] Glide Direction";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_glideDirectionOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "glideLink";
+    d.name = "[Debug] Glide Link";
+    d.description = "";
+    d.unit = "";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.hasDuration = false;
+    m_glideLinkOutput = int(list.size());
     list.push_back(d);
 #endif
     
@@ -429,6 +467,9 @@ Portamento::getRemainingFeatures()
     int thresholdSteps = m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
                                                   m_coreParams.stepSize, false);
     double threshold = m_glideThresholdPitch_cents / 100.0;
+    double peakHold = 0.0;
+    int peakHop = 0;
+    bool isCandidate = false;
     
     for (int i = 0; i + halfLength < n; ++i) {
 
@@ -438,12 +479,32 @@ Portamento::getRemainingFeatures()
                            medianFilteredPitch[i + halfLength]);
         pitchDiff2.push_back(diff);
 
-        bool isCandidate = (pyinPitch[i] > 0.0) && (diff >= threshold);
+        bool aboveThreshold = (pyinPitch[i] > 0.0) && (diff >= threshold);
 
+        if (!aboveThreshold) {
+            isCandidate = false;
+            peakHold = 0.0;
+        } else {
+            if (!isCandidate) {
+                if (aboveThreshold && diff < peakHold * 0.95) {
+                    isCandidate = true;
+                    for (int j = peakHop; j < i; ++j) {
+                        candidates.push_back(j);
+                    }
+                } else {
+                    if (diff > peakHold) {
+                        peakHold = diff;
+                        peakHop = i;
+                    }
+                }
+            }
+        }
+        
         cerr << "hop " << i << ": pitch = " << pitch[i] << ", filtered = "
              << medianFilteredPitch[i + halfLength] << ", diff = " << diff
-             << ", threshold = " << threshold << ", isCandidate = "
-             << isCandidate << endl;
+             << ", peakHold = " << peakHold << ", peakHop = " << peakHop
+             << ", threshold = " << threshold
+             << ", isCandidate = " << isCandidate << endl;
         
         if (isCandidate) {
             candidates.push_back(i);
@@ -516,6 +577,62 @@ Portamento::getRemainingFeatures()
         }
     }
 
+    map<int, GlideDirection> directions; // onset -> direction
+    map<int, GlideLink> links; // onset -> links
+    int linkThresholdSteps = m_coreFeatures.msToSteps
+        (m_linkThreshold_ms, m_coreParams.stepSize, false);
+    
+    for (auto m : onsetMappedGlides) {
+
+        int onset = m.first;
+        int glideStart = m.second.first;
+        int glideEnd = m.second.second;
+
+        if (pyinPitch[glideStart] < pyinPitch[glideEnd]) {
+            directions[onset] = GlideDirection::Ascending;
+        } else {
+            directions[onset] = GlideDirection::Descending;
+        }
+
+        bool haveBefore = false, haveAfter = false;
+        
+        int dist = 1;
+        for (int i = glideStart - 1; i >= 0; --i) {
+            if (pyinPitch[i] > 0) {
+                break;
+            }
+            ++dist;
+        }
+        if (dist < linkThresholdSteps) {
+            haveBefore = true;
+        }
+
+        dist = 1;
+        for (int i = glideEnd + 1; i < n; ++i) {
+            if (pyinPitch[i] > 0) {
+                break;
+            }
+            ++dist;
+        }
+        if (dist < linkThresholdSteps) {
+            haveAfter = true;
+        }
+
+        if (haveBefore) {
+            if (haveAfter) {
+                links[onset] = GlideLink::Interconnecting;
+            } else {
+                links[onset] = GlideLink::Targeting;
+            }
+        } else {
+            if (haveAfter) {
+                links[onset] = GlideLink::Starting;
+            } else {
+                links[onset] = GlideLink::Interconnecting;
+            }
+        }
+    }
+
 #ifdef WITH_DEBUG_OUTPUTS
     for (size_t i = 0; i < pitchDiff1.size(); ++i) {
         Feature f;
@@ -555,7 +672,7 @@ Portamento::getRemainingFeatures()
         
         Feature f;
         f.hasTimestamp = true;
-
+        
         {
             ostringstream os;
             os << "Glide " << j << ": Start";
@@ -574,6 +691,16 @@ Portamento::getRemainingFeatures()
             f.values.push_back(pyinPitch[onset]);
             f.label = os.str();
             fs[m_portamentoPointsOutput].push_back(f);
+
+#ifdef WITH_DEBUG_OUTPUTS
+            f.values.clear();
+
+            f.label = glideDirectionToString(directions[onset]);
+            fs[m_glideDirectionOutput].push_back(f);
+
+            f.label = glideLinkToString(links[onset]);
+            fs[m_glideLinkOutput].push_back(f);
+#endif
         }
 
         {

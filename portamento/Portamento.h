@@ -57,6 +57,48 @@ public:
 
     FeatureSet getRemainingFeatures();
 
+    enum class GlideDirection {
+        Ascending, Descending
+    };
+
+    static std::string glideDirectionToString(GlideDirection d) {
+        switch (d) {
+        case GlideDirection::Ascending: return "Ascending";
+        case GlideDirection::Descending: return "Descending";
+        default: throw std::logic_error("unknown GlideDirection");
+        }
+    }
+
+    static std::string glideDirectionToCode(GlideDirection d) {
+        switch (d) {
+        case GlideDirection::Ascending: return "/";
+        case GlideDirection::Descending: return "\\";
+        default: throw std::logic_error("unknown GlideDirection");
+        }
+    }
+
+    enum class GlideLink {
+        Targeting, Interconnecting, Starting
+    };
+
+    static std::string glideLinkToString(GlideLink d) {
+        switch (d) {
+        case GlideLink::Targeting: return "Targeting";
+        case GlideLink::Interconnecting: return "Interconnecting";
+        case GlideLink::Starting: return "Starting";
+        default: throw std::logic_error("unknown GlideLink");
+        }
+    }
+
+    static std::string glideLinkToCode(GlideLink d) {
+        switch (d) {
+        case GlideLink::Targeting: return "3";
+        case GlideLink::Interconnecting: return "2";
+        case GlideLink::Starting: return "1";
+        default: throw std::logic_error("unknown GlideLink");
+        }
+    }
+    
 protected:
     int m_stepSize;
     int m_blockSize;
@@ -67,6 +109,7 @@ protected:
     float m_glideThresholdPitch_cents;  // 3.1, g_1
     float m_glideThresholdDuration_ms;  // 3.2, g_2
     float m_glideThresholdProximity_ms; // 3.3, g_3
+    float m_linkThreshold_ms; // b_1
     
     mutable int m_summaryOutput;
     mutable int m_portamentoTypeOutput;
@@ -78,6 +121,8 @@ protected:
     mutable int m_pitchDiffOutput2;
     mutable int m_candidateHopsOutput;
     mutable int m_portamentoPointsOutput;
+    mutable int m_glideDirectionOutput;
+    mutable int m_glideLinkOutput;
 #endif
 };
 
