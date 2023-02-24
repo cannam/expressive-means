@@ -63,10 +63,12 @@ protected:
 
     CoreFeatures::Parameters m_coreParams;
 
+    mutable int m_pitchTrackOutput;
+    mutable int m_peaksOutput;
+
 /*!!!
     mutable int m_summaryOutput;
     mutable int m_pitchvibratoTypeOutput;
-    mutable int m_pitchTrackOutput;
     mutable int m_pitchvibratoIndexOutput;
 */
 

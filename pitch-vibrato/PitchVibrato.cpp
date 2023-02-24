@@ -23,11 +23,12 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
-    m_coreFeatures(inputSampleRate)
+    m_coreFeatures(inputSampleRate),
+    m_pitchTrackOutput(-1),
+    m_peaksOutput(-1)
     /*,
     m_summaryOutput(-1),
     m_pitchvibratoTypeOutput(-1),
-    m_pitchTrackOutput(-1),
     m_pitchvibratoIndexOutput(-1)
     */
 {
@@ -163,6 +164,34 @@ PitchVibrato::getOutputDescriptors() const
 {
     OutputList list;
     OutputDescriptor d;
+    
+    d.identifier = "pitchTrack";
+    d.name = "Pitch Track";
+    d.description = "The pitch track computed by pYIN, with further smoothing.";
+    d.unit = "semitones";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_pitchTrackOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "peaks";
+    d.name = "Peaks";
+    d.description = "Locations and pitches of vibrato peaks.";
+    d.unit = "semitones";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.sampleRate = 0.f;
+    d.hasDuration = false;
+    m_peaksOutput = int(list.size());
+    list.push_back(d);
 /*!!!    
     d.identifier = "summary";
     d.name = "Summary";
@@ -188,20 +217,6 @@ PitchVibrato::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::VariableSampleRate;
     d.hasDuration = false;
     m_pitchvibratoTypeOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "pitchTrack";
-    d.name = "Pitch Track";
-    d.description = "The smoothed pitch track computed by pYIN.";
-    d.unit = "Hz";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_pitchTrackOutput = int(list.size());
     list.push_back(d);
     
     d.identifier = "pitchvibratoIndex";
@@ -290,17 +305,138 @@ PitchVibrato::getRemainingFeatures()
     m_coreFeatures.finish();
 
     auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-/*!!!
-    for (int i = 0; i < int(pyinPitch.size()); ++i) {
-        if (pyinPitch[i] <= 0) continue;
+
+    // The numbered comments correspond to the numbered steps in Tilo
+    // Haehnel's paper
+    
+    // 1. Convert pitch track from Hz to cents and smooth with a 35ms
+    // (either side? so 70ms total) mean filter
+
+    auto unfilteredPitch = m_coreFeatures.getPitch_semis();
+    int n = unfilteredPitch.size();
+
+    MeanFilter meanFilter(m_coreFeatures.msToSteps
+                          (70.f, m_coreParams.stepSize, true));
+    vector<double> pitch(n, 0.0);
+    meanFilter.filter(unfilteredPitch.data(), pitch.data(), n);
+    for (int i = 0; i < n; ++i) {
+        if (pyinPitch[i] <= 0) {
+            pitch[i] = 0.0;
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        if (pitch[i] == 0.0) continue;
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = pyinTimestamps[i];
-        f.values.push_back(pyinPitch[i]);
+        f.timestamp = m_coreFeatures.timeForStep(i);
+        f.values.push_back(pitch[i]);
         fs[m_pitchTrackOutput].push_back(f);
     }
-*/
+
+    // 2. Identify peaks - simply local maxima, with values greater
+    // then their immediate neighbours (where they all have valid
+    // pitch values)
     
+    vector<int> peaks;
+    for (int i = 1; i + 1 < n; ++i) {
+        if (pitch[i] >= pitch[i-1] && pitch[i] > pitch[i+1]) {
+            if (pitch[i] > 0.0 && pitch[i-1] > 0.0 && pitch[i+1] > 0.0) {
+                peaks.push_back(i);
+            }
+        }
+    }
+
+    // Number of peak-to-peak ranges found (NB this could be -1 if no
+    // peaks at all found!)
+    int npairs = int(peaks.size()) - 1;
+
+    // 3. Eliminate those peaks that don't have at least 10 valid
+    // pitch values between them and their following peak, and
+    //
+    // 4. Eliminate those peaks that are not spaced at an interval
+    // between 62.5 and 416.7 ms apart (these values are not as
+    // precise as they look, judging from the paper), and
+    // 
+    // 5. Eliminate those peaks that don't rise to within 20-800 cents
+    // relative to the intervening minimum
+
+    vector<int> accepted; // NB this contains indices into peaks, so
+                          // the *pitch* of accepted[i] is
+                          // pitch[peaks[accepted[i]]]
+
+    int minDistSteps = m_coreFeatures.msToSteps
+        (62.5, m_coreParams.stepSize, false);
+    int maxDistSteps = m_coreFeatures.msToSteps
+        (416.7, m_coreParams.stepSize, false);
+    
+    for (int i = 0; i < npairs; ++i) {
+
+        // Establish time criterion (4)
+        int steps = peaks[i+1] - peaks[i];
+        if (steps < minDistSteps || steps > maxDistSteps) {
+            continue;
+        }
+        
+        // Establish at least 10 valid pitches in range (3)
+        int nvalid = 0;
+        for (int j = peaks[i] + 1; j < peaks[i+1]; ++j) {
+            if (pitch[j] > 0.0) {
+                ++nvalid;
+            }
+        }
+        if (nvalid < 10) {
+            continue;
+        }
+
+        // Find the minimum
+        double minimum = pitch[peaks[i]];
+        for (int j = peaks[i] + 1; j < peaks[i+1]; ++j) {
+            if (pitch[j] > 0.0 && pitch[j] < minimum) {
+                minimum = pitch[j];
+            }
+        }
+
+        // Establish pitch criterion (5)
+        double peakHeight =
+            std::max(pitch[peaks[i]], pitch[peaks[i+1]]) - minimum;
+        if (peakHeight < 0.2 || peakHeight > 8.0) { // semitones
+            continue;
+        }
+
+        accepted.push_back(i);
+    }
+
+    // 6. Use parabolic interpolation to identify a more precise peak
+    // location
+
+    vector<double> positions; // positions[i] is time in seconds of
+                              // accepted[i], relative to start time
+    
+    for (int i = 0; i < int(accepted.size()); ++i) {
+        double alpha = pitch[peaks[accepted[i]] - 1];
+        double beta = pitch[peaks[accepted[i]]];
+        double gamma = pitch[peaks[accepted[i]] + 1];
+        double denom = alpha - 2.0 * beta + gamma;
+        double p = (denom != 0.0 ? ((alpha - gamma) / denom * 0.5) : 0.0);
+        double refinedStep = double(peaks[accepted[i]]) + p;
+        double sec =
+            ((refinedStep +
+              double((m_coreParams.blockSize / m_coreParams.stepSize) / 2)) *
+             double(m_coreParams.stepSize))
+            / double(m_inputSampleRate);
+        positions.push_back(sec);
+    }
+
+    for (int i = 0; i < int(accepted.size()); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.getStartTime() +
+            Vamp::RealTime::fromSeconds(positions[i]);
+        f.values.push_back(pitch[peaks[accepted[i]]]);
+        fs[m_peaksOutput].push_back(f);
+    }
+
     return fs;
 }
 

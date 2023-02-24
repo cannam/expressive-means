@@ -184,6 +184,10 @@ public:
         return m_onsetOffsets;
     }
 
+    Vamp::RealTime getStartTime() const {
+        return m_startTime;
+    }
+    
     Vamp::RealTime timeForStep(int step) const {
         // See notes about timing alignment in finish() in the .cpp file
         int halfBlock = (m_parameters.blockSize / m_parameters.stepSize) / 2;
