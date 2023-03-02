@@ -18,10 +18,14 @@
 #include "PitchVibrato.h"
 #include "Portamento.h"
 
+#include "SemanticArticulation.h"
+
 static Vamp::PluginAdapter<Onsets> onsetsPluginAdapter;
 static Vamp::PluginAdapter<Articulation> articulationPluginAdapter;
 static Vamp::PluginAdapter<PitchVibrato> pitchVibratoPluginAdapter;
 static Vamp::PluginAdapter<Portamento> portamentoPluginAdapter;
+
+static Vamp::PluginAdapter<SemanticArticulation> semanticArticulationPluginAdapter;
 
 const VampPluginDescriptor *
 vampGetPluginDescriptor(unsigned int version, unsigned int index)
@@ -33,6 +37,7 @@ vampGetPluginDescriptor(unsigned int version, unsigned int index)
     case  1: return articulationPluginAdapter.getDescriptor();
     case  2: return pitchVibratoPluginAdapter.getDescriptor();
     case  3: return portamentoPluginAdapter.getDescriptor();
+    case  4: return semanticArticulationPluginAdapter.getDescriptor();
     default: return 0;
     }
 }
