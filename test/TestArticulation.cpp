@@ -14,7 +14,7 @@
 #endif
 #include <boost/test/unit_test.hpp>
 
-#include "../articulation/Articulation.h"
+#include "../src/Articulation.h"
 
 #include <iostream>
 

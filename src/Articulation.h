@@ -14,7 +14,7 @@
 
 #include <vamp-sdk/Plugin.h>
 
-#include "common/CoreFeatures.h"
+#include "CoreFeatures.h"
 
 #define WITH_DEBUG_OUTPUTS 1
 

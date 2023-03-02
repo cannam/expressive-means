@@ -13,10 +13,10 @@
 #include <vamp/vamp.h>
 #include <vamp-sdk/PluginAdapter.h>
 
-#include "onsets/Onsets.h"
-#include "articulation/Articulation.h"
-#include "pitch-vibrato/PitchVibrato.h"
-#include "portamento/Portamento.h"
+#include "Onsets.h"
+#include "Articulation.h"
+#include "PitchVibrato.h"
+#include "Portamento.h"
 
 static Vamp::PluginAdapter<Onsets> onsetsPluginAdapter;
 static Vamp::PluginAdapter<Articulation> articulationPluginAdapter;
