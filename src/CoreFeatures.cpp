@@ -121,6 +121,22 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.maxValue = 0.f;
     d.defaultValue = defaultCoreParams.spectralDropFloor_dB;
     list.push_back(d);
+    
+    d.identifier = "spectralFrequencyMin";
+    d.name = "Spectral rise and fall minimum frequency";
+    d.unit = "Hz";
+    d.minValue = 0.f;
+    d.maxValue = 20000.f;
+    d.defaultValue = defaultCoreParams.spectralFrequencyMin_Hz;
+    list.push_back(d);
+    
+    d.identifier = "spectralFrequencyMax";
+    d.name = "Spectral rise and fall maximum frequency";
+    d.unit = "Hz";
+    d.minValue = 0.f;
+    d.maxValue = 20000.f;
+    d.defaultValue = defaultCoreParams.spectralFrequencyMax_Hz;
+    list.push_back(d);
 }
 
 bool
@@ -150,6 +166,10 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
         value = noteDurationThreshold_dB;
     } else if (identifier == "spectralDropFloor") {
         value = spectralDropFloor_dB;
+    } else if (identifier == "spectralFrequencyMin") {
+        value = spectralFrequencyMin_Hz;
+    } else if (identifier == "spectralFrequencyMax") {
+        value = spectralFrequencyMax_Hz;
     } else {
         return false;
     }
@@ -183,6 +203,10 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
         noteDurationThreshold_dB = value;
     } else if (identifier == "spectralDropFloor") {
         spectralDropFloor_dB = value;
+    } else if (identifier == "spectralFrequencyMin") {
+        spectralFrequencyMin_Hz = value;
+    } else if (identifier == "spectralFrequencyMax") {
+        spectralFrequencyMax_Hz = value;
     } else {
         return false;
     }
@@ -238,6 +262,8 @@ CoreFeatures::initialise(Parameters parameters) {
     levelRiseParameters.blockSize = m_parameters.blockSize;
     levelRiseParameters.rise_dB = m_parameters.onsetSensitivityLevel_dB;
     levelRiseParameters.floor_dB = m_parameters.spectralDropFloor_dB;
+    levelRiseParameters.frequencyMin_Hz = m_parameters.spectralFrequencyMin_Hz;
+    levelRiseParameters.frequencyMax_Hz = m_parameters.spectralFrequencyMax_Hz;
     levelRiseParameters.historyLength =
         msToSteps(m_parameters.onsetSensitivityNoiseTimeWindow_ms,
                   m_parameters.stepSize, false);

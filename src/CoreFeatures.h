@@ -53,6 +53,8 @@ public:
         float sustainBeginThreshold_ms;
         float noteDurationThreshold_dB;             // 2.7, o_7
         float spectralDropFloor_dB;
+        float spectralFrequencyMin_Hz;
+        float spectralFrequencyMax_Hz;
 
         Parameters() :
             stepSize(256),
@@ -68,7 +70,9 @@ public:
             minimumOnsetInterval_ms(100.f),
             sustainBeginThreshold_ms(60.f),
             noteDurationThreshold_dB(12.f),
-            spectralDropFloor_dB(-70.f)
+            spectralDropFloor_dB(-70.f),
+            spectralFrequencyMin_Hz(100.f),
+            spectralFrequencyMax_Hz(4000.f)
         {}
 
         static void appendVampParameterDescriptors(Vamp::Plugin::ParameterList &);

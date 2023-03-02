@@ -13,6 +13,11 @@
 
 #include <vamp-sdk/Plugin.h>
 
+#include <set>
+#include <map>
+#include <vector>
+#include <cmath>
+
 using std::string;
 
 template <class Adapted>
@@ -62,6 +67,12 @@ protected:
         m_semanticParameterDefaults(parameterDefaults),
         m_semanticParameterValues(parameterDefaults)
     {
+        for (auto pm : m_parameterMetadata) {
+            if (m_semanticParameterValues.find(pm.first) ==
+                m_semanticParameterValues.end()) {
+                m_semanticParameterValues[pm.first] = 0.f;
+            }
+        }
     }
     
 public:
@@ -105,22 +116,38 @@ public:
                 d.name = m_parameterMetadata.at(id).name;
                 d.description = m_parameterMetadata.at(id).description;
                 d.unit = "";
-                d.minValue = 0.f;
-                d.defaultValue = 0.f;
+                d.isQuantized = true;
+                d.quantizeStep = 1.f;
+                std::set<string> upstreamParamsUsed;
+                if (named) {
+                    d.minValue = 0.f;
+                    d.defaultValue = 0.f;
+                    d.maxValue = int(m_namedOptionsParameters.at(id).size()) - 1;
+                    for (const auto &v : m_namedOptionsParameters.at(id)) {
+                        d.valueNames.push_back(v.first);
+                        for (const auto &ppv : v.second) {
+                            upstreamParamsUsed.insert(ppv.first);
+                        }
+                    }
+                } else {
+                    d.minValue = 1.f;
+                    d.defaultValue = 1.f;
+                    d.maxValue = int(m_numberedOptionsParameters.at(id).size());
+                    for (const auto &v : m_numberedOptionsParameters.at(id)) {
+                        for (const auto &ppv : v) {
+                            upstreamParamsUsed.insert(ppv.first);
+                        }
+                    }
+                    d.valueNames.clear();
+                }
                 if (m_semanticParameterDefaults.find(id) !=
                     m_semanticParameterDefaults.end()) {
                     d.defaultValue = m_semanticParameterDefaults.at(id);
                 }
-                d.isQuantized = true;
-                d.quantizeStep = 1.f;
-                if (named) {
-                    d.maxValue = int(m_namedOptionsParameters.at(id).size()) - 1;
-                    for (const auto &v : m_namedOptionsParameters.at(id)) {
-                        d.valueNames.push_back(v.first);
+                for (auto p : upstreamParamsUsed) {
+                    if (upmap.find(p) == upmap.end()) {
+                        throw std::logic_error("Parameter: " + id + " refers to nonexistent upstream parameter: " + p);
                     }
-                } else {
-                    d.maxValue = int(m_numberedOptionsParameters.at(id).size()) - 1;
-                    d.valueNames.clear();
                 }
                 list.push_back(d);
             }
@@ -192,11 +219,11 @@ public:
             } else if (m_numberedOptionsParameters.find(id) !=
                        m_numberedOptionsParameters.end()) {
                 int n = int(m_numberedOptionsParameters.at(id).size());
-                if (v < 0 || v >= n) {
+                if (v < 1 || v > n) {
                     std::cerr << "WARNING: parameter " << id << " value " << v
-                              << " is out of range 0-" << n-1 << std::endl;
+                              << " is out of range 1-" << n << std::endl;
                 } else {
-                    for (auto ppv : m_numberedOptionsParameters.at(id).at(v)) {
+                    for (auto ppv : m_numberedOptionsParameters.at(id).at(v-1)) {
                         std::cerr << "[numbered] " << ppv.first << " -> "
                                   << ppv.second << std::endl;
                         m_adapted.setParameter(ppv.first, ppv.second);
