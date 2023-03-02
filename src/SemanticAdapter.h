@@ -70,7 +70,12 @@ protected:
         for (auto pm : m_parameterMetadata) {
             if (m_semanticParameterValues.find(pm.first) ==
                 m_semanticParameterValues.end()) {
-                m_semanticParameterValues[pm.first] = 0.f;
+                if (m_numberedOptionsParameters.find(pm.first) !=
+                    m_numberedOptionsParameters.end()) {
+                    m_semanticParameterValues[pm.first] = 1.f;
+                } else {
+                    m_semanticParameterValues[pm.first] = 0.f;
+                }
             }
         }
     }
