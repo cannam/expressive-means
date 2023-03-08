@@ -401,7 +401,17 @@ CoreFeatures::finish()
 
     int minimumOnsetSteps = msToSteps(m_parameters.minimumOnsetInterval_ms,
                                       m_parameters.stepSize, false);
-    int lastBelowThreshold = -minimumOnsetSteps;
+
+    // "subsequent onsets require o_2 to be exceeded for at least the
+    // duration of o_6 [minimumOnsetSteps] first, but not exceeding
+    // 120ms" (the last clause added in issue #11). The purpose is
+    // just to avoid vibratos triggering pitch-based onsets. Calculate
+    // that threshold now
+    int vibratoSuppressionThresholdSteps =
+        std::min(minimumOnsetSteps,
+                 msToSteps(120.0, m_parameters.stepSize, false));
+
+    int lastBelowThreshold = -vibratoSuppressionThresholdSteps;
     double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
 
     // "pitch change locations are reported c. 20 ms delayed on
@@ -410,12 +420,11 @@ CoreFeatures::finish()
     // ms before they are actually recognised"
     int pitchOnsetAdvance = msToSteps(20.0, m_parameters.stepSize, false);
 
+    
     for (int i = 0; i + halfLength < n; ++i) {
         // "absolute difference... falls below o_2":
         if (m_pitchOnsetDf[i] < threshold) {
-            // "subsequent onsets require o_2 to be exceeded for at
-            // least the duration of o_6 first":
-            if (i > lastBelowThreshold + minimumOnsetSteps) {
+            if (i > lastBelowThreshold + vibratoSuppressionThresholdSteps) {
                 m_pitchOnsets.insert(i - pitchOnsetAdvance);
             }
             lastBelowThreshold = i;
