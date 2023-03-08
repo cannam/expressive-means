@@ -182,7 +182,9 @@ public:
         return m_mergedOnsets;
     }
 
-    std::map<int, std::pair<int, OffsetType>>
+    typedef std::map<int, std::pair<int, OffsetType>> OnsetOffsetMap;
+
+    OnsetOffsetMap
     getOnsetOffsets() const {
         assertFinished();
         return m_onsetOffsets;
@@ -205,7 +207,7 @@ public:
         return n;
     }
 
-    double hzToPitch(double hz) const {
+    static double hzToPitch(double hz) {
         double p = 12.0 * (log(hz / 220.0) / log(2.0)) + 57.0;
         return p;
     }

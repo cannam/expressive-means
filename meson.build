@@ -27,6 +27,7 @@ have_boost_unit_test = boost_unit_test_dep.found()
 plugin_sources = [
   'src/Articulation.cpp',
   'src/CoreFeatures.cpp',
+  'src/Glide.cpp',
   'src/Onsets.cpp',
   'src/PitchVibrato.cpp',
   'src/Portamento.cpp',

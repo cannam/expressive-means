@@ -117,8 +117,6 @@ protected:
     mutable int m_portamentoIndexOutput;
 
 #ifdef WITH_DEBUG_OUTPUTS
-    mutable int m_pitchDeltaOutput;
-    mutable int m_candidateHopsOutput;
     mutable int m_portamentoPointsOutput;
     mutable int m_glideDirectionOutput;
     mutable int m_glideLinkOutput;
