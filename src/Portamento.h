@@ -55,8 +55,11 @@ public:
     FeatureSet process(const float *const *inputBuffers,
                        Vamp::RealTime timestamp);
 
-    FeatureSet getRemainingFeatures();
+    FeatureSet getRemainingFeatures_glideModel1();
+    FeatureSet getRemainingFeatures_glideModel2();
 
+    FeatureSet getRemainingFeatures();
+    
     enum class GlideDirection {
         Ascending, Descending
     };
@@ -123,6 +126,7 @@ protected:
     mutable int m_portamentoPointsOutput;
     mutable int m_glideDirectionOutput;
     mutable int m_glideLinkOutput;
+    mutable int m_glidePitchTrackOutput;
 #endif
 };
 
