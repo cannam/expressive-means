@@ -42,8 +42,7 @@ Portamento::Portamento(float inputSampleRate) :
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
     m_portamentoIndexOutput(-1),
-    m_pitchDiffOutput1(-1),
-    m_pitchDiffOutput2(-1),
+    m_pitchDeltaOutput(-1),
     m_candidateHopsOutput(-1),
     m_portamentoPointsOutput(-1),
     m_glideDirectionOutput(-1),
@@ -282,26 +281,15 @@ Portamento::getOutputDescriptors() const
     list.push_back(d);
 
 #ifdef WITH_DEBUG_OUTPUTS
-    d.identifier = "pitchdiff1";
-    d.name = "[Debug] Pitch Difference Function (Mean Filter)";
+    d.identifier = "pitchdelta";
+    d.name = "[Debug] Pitch Derivative";
     d.description = "";
     d.unit = "semitones";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
     d.hasDuration = false;
-    m_pitchDiffOutput1 = int(list.size());
-    list.push_back(d);
-
-    d.identifier = "pitchdiff2";
-    d.name = "[Debug] Pitch Difference Function (Median+)";
-    d.description = "";
-    d.unit = "semitones";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_pitchDiffOutput2 = int(list.size());
+    m_pitchDeltaOutput = int(list.size());
     list.push_back(d);
 
     d.identifier = "candidateHops";
@@ -425,315 +413,7 @@ Portamento::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 }
 
 Portamento::FeatureSet
-Portamento::getRemainingFeatures_glideModel1()
-{
-    FeatureSet fs;
-
-    m_coreFeatures.finish();
-
-    auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-
-    for (int i = 0; i < int(pyinPitch.size()); ++i) {
-        if (pyinPitch[i] <= 0) continue;
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pyinPitch[i]);
-        fs[m_pitchTrackOutput].push_back(f);
-    }
-
-    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
-    auto pitch = m_coreFeatures.getPitch_semis();
-
-    int n = pitch.size();
-    
-    int pitchFilterLength =
-        m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
-                                 m_coreParams.stepSize, true);
-    int halfLength = pitchFilterLength / 2;
-
-    auto meanFilteredPitch = m_coreFeatures.getFilteredPitch_semis();
-    
-    // The filtered pitch from CoreFeatures is mean-filtered, we want median too
-    vector<double> medianFilteredPitch =
-        MedianFilter<double>::filter(pitchFilterLength, pitch);
-
-    // And for comparison against it, use a much more modestly
-    // mean-filtered version of the original pitch
-    vector<double> slightlyFilteredPitch(n, 0.0);
-    MeanFilter(5).filter
-        (medianFilteredPitch.data(), slightlyFilteredPitch.data(), n);
-    
-    // "Glides are apparent if the absolute difference of a pitch [o]
-    // and its following moving pitch average window [o1] exceeds [g1]
-    // cents for at least [g2] ms and if there continuously is pitch
-    // data within this time frame. Filter for glides that start
-    // and/or end +/- [g3] ms around a note onset"
-
-    vector<double> pitchDiff1;
-    vector<double> pitchDiff2;
-    vector<int> candidates; // hop
-    map<int, int> glides; // glide start hop -> glide end hop
-
-    int lastNonCandidate = -1;
-    int thresholdSteps = m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
-                                                  m_coreParams.stepSize, false);
-    double threshold = m_glideThresholdPitch_cents / 100.0;
-    double peakHold = 0.0;
-    int peakHop = 0;
-    bool isCandidate = false;
-    
-    for (int i = 0; i + halfLength < n; ++i) {
-
-        pitchDiff1.push_back(fabs(pitch[i] - meanFilteredPitch[i + halfLength]));
-        
-        double diff = fabs(slightlyFilteredPitch[i] -
-                           medianFilteredPitch[i + halfLength]);
-        pitchDiff2.push_back(diff);
-
-        bool aboveThreshold = (pyinPitch[i] > 0.0) && (diff >= threshold);
-
-        if (!aboveThreshold) {
-            isCandidate = false;
-            peakHold = 0.0;
-        } else {
-            if (!isCandidate) {
-                if (aboveThreshold && diff < peakHold * 0.95) {
-                    isCandidate = true;
-                    for (int j = peakHop; j < i; ++j) {
-                        candidates.push_back(j);
-                    }
-                } else {
-                    if (diff > peakHold) {
-                        peakHold = diff;
-                        peakHop = i;
-                    }
-                }
-            }
-        }
-        
-        cerr << "hop " << i << ": pitch = " << pitch[i] << ", filtered = "
-             << medianFilteredPitch[i + halfLength] << ", diff = " << diff
-             << ", peakHold = " << peakHold << ", peakHop = " << peakHop
-             << ", threshold = " << threshold
-             << ", isCandidate = " << isCandidate << endl;
-        
-        if (isCandidate) {
-            candidates.push_back(i);
-        } else {
-            if (lastNonCandidate + thresholdSteps <= i) {
-                glides[lastNonCandidate + 1] = i - 1;
-            }
-            lastNonCandidate = i;
-        }
-    }
-
-    if (lastNonCandidate + thresholdSteps + halfLength <= n) {
-        glides[lastNonCandidate + 1] = n - halfLength;
-    }
-
-    int proximitySteps = m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
-                                                  m_coreParams.stepSize, false);
-
-    map<int, pair<int, int>> onsetMappedGlides; // onset -> glide start, end
-    
-    for (auto g : glides) {
-
-        int start = g.first;
-        int end = g.second;
-
-        int rangeStart = start - proximitySteps;
-        int rangeEnd = end + proximitySteps;
-        
-        auto onsetItr = onsetOffsets.lower_bound(rangeStart);
-
-        auto scout = onsetItr;
-        bool found = false;
-        
-        while (scout != onsetOffsets.end()) {
-            int onset = scout->first;
-            if (onset >= start && onset <= end) {
-                cerr << "for glide from " << start << " to " << end
-                     << ", found onset within glide at " << onset << endl;
-                onsetMappedGlides[onset] = g;
-                found = true;
-                break;
-            }
-            ++scout;
-        }
-
-        if (!found) {
-            int minDist = proximitySteps + 1;
-            int best = -1;
-            scout = onsetItr;
-            while (scout != onsetOffsets.end()) {
-                int onset = scout->first;
-                int dist = std::min(abs(start - onset), abs(end - onset));
-                if (dist < minDist) {
-                    minDist = dist;
-                    best = onset;
-                    found = true;
-                }
-                ++scout;
-            }
-            if (found) {
-                cerr << "for glide from " << start << " to " << end
-                     << ", found no onset within glide; using closest onset at "
-                     << best << endl;
-                onsetMappedGlides[best] = g;
-            } else {
-                cerr << "for glide from " << start << " to " << end
-                     << ", found no onset within glide or within proximity "
-                     << "range; ignoring this glide" << endl;
-            }
-        }
-    }
-
-    map<int, GlideDirection> directions; // onset -> direction
-    map<int, GlideLink> links; // onset -> links
-    int linkThresholdSteps = m_coreFeatures.msToSteps
-        (m_linkThreshold_ms, m_coreParams.stepSize, false);
-    
-    for (auto m : onsetMappedGlides) {
-
-        int onset = m.first;
-        int glideStart = m.second.first;
-        int glideEnd = m.second.second;
-
-        if (pyinPitch[glideStart] < pyinPitch[glideEnd]) {
-            directions[onset] = GlideDirection::Ascending;
-        } else {
-            directions[onset] = GlideDirection::Descending;
-        }
-
-        bool haveBefore = false, haveAfter = false;
-        
-        int dist = 1;
-        for (int i = glideStart - 1; i >= 0; --i) {
-            if (pyinPitch[i] > 0) {
-                break;
-            }
-            ++dist;
-        }
-        if (dist < linkThresholdSteps) {
-            haveBefore = true;
-        }
-
-        dist = 1;
-        for (int i = glideEnd + 1; i < n; ++i) {
-            if (pyinPitch[i] > 0) {
-                break;
-            }
-            ++dist;
-        }
-        if (dist < linkThresholdSteps) {
-            haveAfter = true;
-        }
-
-        if (haveBefore) {
-            if (haveAfter) {
-                links[onset] = GlideLink::Interconnecting;
-            } else {
-                links[onset] = GlideLink::Targeting;
-            }
-        } else {
-            if (haveAfter) {
-                links[onset] = GlideLink::Starting;
-            } else {
-                links[onset] = GlideLink::Interconnecting;
-            }
-        }
-    }
-
-#ifdef WITH_DEBUG_OUTPUTS
-    for (size_t i = 0; i < pitchDiff1.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitchDiff1[i]);
-        fs[m_pitchDiffOutput1].push_back(f);
-    }
-    
-    for (size_t i = 0; i < pitchDiff2.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitchDiff2[i]);
-        fs[m_pitchDiffOutput2].push_back(f);
-    }
-    
-    for (size_t i = 0; i < candidates.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(candidates[i]);
-        f.values.push_back(pitchDiff2[candidates[i]]);
-        fs[m_candidateHopsOutput].push_back(f);
-    }
-
-    int j = 1;
-    for (auto m : onsetMappedGlides) {
-
-        int onset = m.first;
-        int glideStart = m.second.first;
-        int glideEnd = m.second.second;
-
-        cerr << "returning features for glide " << j
-             << " associated with onset " << onset
-             << " with glide range from " << glideStart << " to " << glideEnd
-             << endl;
-        
-        Feature f;
-        f.hasTimestamp = true;
-        
-        {
-            ostringstream os;
-            os << "Glide " << j << ": Start";
-            f.timestamp = m_coreFeatures.timeForStep(glideStart);
-            f.values.clear();
-            f.values.push_back(pyinPitch[glideStart]);
-            f.label = os.str();
-            fs[m_portamentoPointsOutput].push_back(f);
-        }
-
-        {
-            ostringstream os;
-            os << "Glide " << j << ": Onset";
-            f.timestamp = m_coreFeatures.timeForStep(onset);
-            f.values.clear();
-            f.values.push_back(pyinPitch[onset]);
-            f.label = os.str();
-            fs[m_portamentoPointsOutput].push_back(f);
-
-#ifdef WITH_DEBUG_OUTPUTS
-            f.values.clear();
-
-            f.label = glideDirectionToString(directions[onset]);
-            fs[m_glideDirectionOutput].push_back(f);
-
-            f.label = glideLinkToString(links[onset]);
-            fs[m_glideLinkOutput].push_back(f);
-#endif
-        }
-
-        {
-            ostringstream os;
-            os << "Glide " << j << ": End";
-            f.timestamp = m_coreFeatures.timeForStep(glideEnd);
-            f.values.clear();
-            f.values.push_back(pyinPitch[glideEnd]);
-            f.label = os.str();
-            fs[m_portamentoPointsOutput].push_back(f);
-        }
-
-        ++j;
-    }
-#endif
-    
-    return fs;
-}
-
-Portamento::FeatureSet
-Portamento::getRemainingFeatures_glideModel2()
+Portamento::getRemainingFeatures()
 {
     FeatureSet fs;
 
@@ -1046,12 +726,9 @@ Portamento::getRemainingFeatures_glideModel2()
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);
         f.values.push_back(pitchDelta[i]);
-        fs[m_pitchDiffOutput1].push_back(f);
+        fs[m_pitchDeltaOutput].push_back(f);
     }
 
-    // NB m_pitchDiffOutput2 is unused here (and the descriptions for
-    // the other diff/candidate outputs are wrong)
-    
     for (size_t i = 0; i < candidates.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
@@ -1133,10 +810,3 @@ Portamento::getRemainingFeatures_glideModel2()
     
     return fs;
 }
-
-Portamento::FeatureSet
-Portamento::getRemainingFeatures()
-{
-    return getRemainingFeatures_glideModel2();
-}
-

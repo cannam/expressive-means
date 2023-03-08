@@ -55,9 +55,6 @@ public:
     FeatureSet process(const float *const *inputBuffers,
                        Vamp::RealTime timestamp);
 
-    FeatureSet getRemainingFeatures_glideModel1();
-    FeatureSet getRemainingFeatures_glideModel2();
-
     FeatureSet getRemainingFeatures();
     
     enum class GlideDirection {
@@ -120,8 +117,7 @@ protected:
     mutable int m_portamentoIndexOutput;
 
 #ifdef WITH_DEBUG_OUTPUTS
-    mutable int m_pitchDiffOutput1;
-    mutable int m_pitchDiffOutput2;
+    mutable int m_pitchDeltaOutput;
     mutable int m_candidateHopsOutput;
     mutable int m_portamentoPointsOutput;
     mutable int m_glideDirectionOutput;
