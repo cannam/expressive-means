@@ -20,10 +20,22 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
        "soundQuality"
 //           , "reverbDuration", "overlapCompensation"
      },
-     { { "clef", { "Clef", "Clef which is closest to the instrument's pitch range." } },
-       { "instrumentType", { "Instrument type", "General family of instrument." } },
-       { "noteDurations", { "Note durations", "Indication of the shortest durations found in the recording." } },
-       { "soundQuality", { "Sound quality", "Indication of the degree of surface noise in the recording, from 1 (clean, SNR > 50dB) to 6 (extremely noisy, SNR < 6dB)." } }
+     { { "clef",
+         { "Clef",
+           "Clef which is closest to the instrument's pitch range."
+         } },
+       { "instrumentType",
+         { "Instrument type",
+           "General family of instrument."
+         } },
+       { "noteDurations",
+         { "Note durations",
+           "Indication of the shortest durations found in the recording."
+         } },
+       { "soundQuality",
+         { "Sound quality",
+           "Indication of the degree of surface noise in the recording, from 1 (clean, SNR > 50dB) to 6 (extremely noisy, SNR < 6dB)."
+         } }
 //            ,
 //            { "reverbDuration", { "Reverb duration", "" } },
 //            { "overlapCompensation", { "Overlap compensation", "" } }
