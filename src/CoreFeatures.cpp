@@ -42,6 +42,30 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.description = "";
     d.isQuantized = false;
     
+    d.identifier = "spectralFrequencyMin";
+    d.name = "Spectral detection range minimum frequency";
+    d.unit = "Hz";
+    d.minValue = 0.f;
+    d.maxValue = 20000.f;
+    d.defaultValue = defaultCoreParams.spectralFrequencyMin_Hz;
+    list.push_back(d);
+    
+    d.identifier = "spectralFrequencyMax";
+    d.name = "Spectral detection range maximum frequency";
+    d.unit = "Hz";
+    d.minValue = 0.f;
+    d.maxValue = 20000.f;
+    d.defaultValue = defaultCoreParams.spectralFrequencyMax_Hz;
+    list.push_back(d);
+    
+    d.identifier = "minimumOnsetInterval";
+    d.name = "Minimum onset interval";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
+    list.push_back(d);
+    
     d.identifier = "pitchAverageWindow";
     d.name = "Moving pitch average window";
     d.unit = "ms";
@@ -90,14 +114,6 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.defaultValue = defaultCoreParams.onsetSensitivityRawPowerThreshold_dB;
     list.push_back(d);
     
-    d.identifier = "minimumOnsetInterval";
-    d.name = "Minimum onset interval";
-    d.unit = "ms";
-    d.minValue = 0.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.minimumOnsetInterval_ms;
-    list.push_back(d);
-    
     d.identifier = "sustainBeginThreshold";
     d.name = "Sustain phase begin threshold";
     d.unit = "ms";
@@ -120,22 +136,6 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.minValue = -120.f;
     d.maxValue = 0.f;
     d.defaultValue = defaultCoreParams.spectralDropFloor_dB;
-    list.push_back(d);
-    
-    d.identifier = "spectralFrequencyMin";
-    d.name = "Spectral rise and fall minimum frequency";
-    d.unit = "Hz";
-    d.minValue = 0.f;
-    d.maxValue = 20000.f;
-    d.defaultValue = defaultCoreParams.spectralFrequencyMin_Hz;
-    list.push_back(d);
-    
-    d.identifier = "spectralFrequencyMax";
-    d.name = "Spectral rise and fall maximum frequency";
-    d.unit = "Hz";
-    d.minValue = 0.f;
-    d.maxValue = 20000.f;
-    d.defaultValue = defaultCoreParams.spectralFrequencyMax_Hz;
     list.push_back(d);
 }
 
