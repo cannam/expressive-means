@@ -201,10 +201,14 @@ public:
             ((step + halfBlock) * m_parameters.stepSize, m_sampleRate);
     }
     
-    int msToSteps(float ms, int stepSize, bool odd) const {
+    int msToSteps(double ms, int stepSize, bool odd) const {
         int n = ceil((ms / 1000.0) * m_sampleRate / stepSize);
         if (odd && (n % 2 == 0)) ++n;
         return n;
+    }
+    
+    double stepsToMs(int steps, int stepSize) const {
+        return (double(steps) * double(stepSize) * 1000.0) / m_sampleRate;
     }
 
     static double hzToPitch(double hz) {

@@ -421,8 +421,14 @@ Portamento::getRemainingFeatures()
     Glide::Extents glides = glide.extract
         (pyinPitch, m_coreFeatures.getOnsetOffsets());
 
-    map<int, GlideDirection> directions; // onset -> direction
-    map<int, GlideLink> links; // onset -> links
+    // The following all use the onset step number as the identifier
+    // for a specific glide (the one associated with that onset)
+    // 
+    map<int, GlideDirection> directions;  // onset -> direction
+    map<int, double> ranges;              // onset -> pitch change, semis
+    map<int, double> durations;           // onset -> duration in msec
+    map<int, GlideLink> links;            // onset -> links
+    
     int linkThresholdSteps = m_coreFeatures.msToSteps
         (m_linkThreshold_ms, m_coreParams.stepSize, false);
     
@@ -438,6 +444,14 @@ Portamento::getRemainingFeatures()
             directions[onset] = GlideDirection::Descending;
         }
 
+        ranges[onset] =
+            m_coreFeatures.hzToPitch(pyinPitch[glideEnd]) -
+            m_coreFeatures.hzToPitch(pyinPitch[glideStart]);
+
+        durations[onset] =
+            m_coreFeatures.stepsToMs(glideEnd - glideStart + 1,
+                                     m_coreParams.stepSize);
+            
         bool haveBefore = false, haveAfter = false;
         
         int dist = 1;
@@ -487,7 +501,7 @@ Portamento::getRemainingFeatures()
 
         cerr << "returning features for glide " << j
              << " associated with onset " << onset
-             << " with glide range from " << glideStart << " to " << glideEnd
+             << " with glide from " << glideStart << " to " << glideEnd
              << endl;
         
         Feature f;
