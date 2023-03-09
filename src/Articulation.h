@@ -175,6 +175,8 @@ protected:
     float m_scalingFactor;                      // 6, s
     float m_impulseNoiseRatioPlosive_percent;
     float m_impulseNoiseRatioFricative_percent;
+    float m_reverbDurationFactor;
+    float m_overlapCompensationFactor;
     
     mutable int m_summaryOutput;
     mutable int m_noiseTypeOutput;

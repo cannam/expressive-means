@@ -26,6 +26,8 @@ static const float default_volumeDevelopmentThreshold_dB = 2.f;
 static const float default_scalingFactor = 10.7f;
 static const float default_impulseNoiseRatioPlosive_percent = 80.f;
 static const float default_impulseNoiseRatioFricative_percent = 30.f;
+static const float default_reverbDurationFactor = 1.5f;
+static const float default_overlapCompensationFactor = 1.6;
 
 Articulation::Articulation(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -36,6 +38,8 @@ Articulation::Articulation(float inputSampleRate) :
     m_scalingFactor(default_scalingFactor),
     m_impulseNoiseRatioPlosive_percent(default_impulseNoiseRatioPlosive_percent),
     m_impulseNoiseRatioFricative_percent(default_impulseNoiseRatioFricative_percent),
+    m_reverbDurationFactor(default_reverbDurationFactor),
+    m_overlapCompensationFactor(default_overlapCompensationFactor),
     m_summaryOutput(-1),
     m_noiseTypeOutput(-1),
     m_volumeDevelopmentOutput(-1),
@@ -153,8 +157,24 @@ Articulation::getParameterDescriptors() const
     d.defaultValue = default_volumeDevelopmentThreshold_dB;
     list.push_back(d);
     
+    d.identifier = "reverbDurationFactor";
+    d.name = "Reverb duration factor";
+    d.unit = "";
+    d.minValue = 1.f;
+    d.maxValue = 5.f;
+    d.defaultValue = default_reverbDurationFactor;
+    list.push_back(d);
+    
+    d.identifier = "overlapCompensationFactor";
+    d.name = "Overlap compensation factor";
+    d.unit = "";
+    d.minValue = 1.f;
+    d.maxValue = 3.f;
+    d.defaultValue = default_overlapCompensationFactor;
+    list.push_back(d);
+    
     d.identifier = "scalingFactor";
-    d.name = "Scaling factor";
+    d.name = "Index scaling factor";
     d.unit = "";
     d.minValue = 1.f;
     d.maxValue = 30.f;
@@ -180,6 +200,10 @@ Articulation::getParameter(string identifier) const
         return m_impulseNoiseRatioPlosive_percent;
     } else if (identifier == "impulseNoiseRatioFricative") {
         return m_impulseNoiseRatioFricative_percent;
+    } else if (identifier == "reverbDurationFactor") {
+        return m_reverbDurationFactor;
+    } else if (identifier == "overlapCompensationFactor") {
+        return m_overlapCompensationFactor;
     }
     
     return 0.f;
@@ -200,6 +224,10 @@ Articulation::setParameter(string identifier, float value)
         m_impulseNoiseRatioPlosive_percent = value;
     } else if (identifier == "impulseNoiseRatioFricative") {
         m_impulseNoiseRatioFricative_percent = value;
+    } else if (identifier == "reverbDurationFactor") {
+        m_reverbDurationFactor = value;
+    } else if (identifier == "overlapCompensationFactor") {
+        m_overlapCompensationFactor = value;
     }
 }
 
@@ -589,6 +617,11 @@ Articulation::getRemainingFeatures()
     auto noiseRatioFractions = m_coreFeatures.getOnsetLevelRiseFractions();
     int noiseWindowSteps = m_coreFeatures.msToSteps
         (m_coreParams.onsetSensitivityNoiseTimeWindow_ms, m_stepSize, false);
+
+    double plosiveRatio =
+        (m_impulseNoiseRatioPlosive_percent * m_reverbDurationFactor) / 100.0;
+    double fricativeRatio =
+        (m_impulseNoiseRatioFricative_percent * m_reverbDurationFactor) / 100.0;
     
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
@@ -601,8 +634,7 @@ Articulation::getRemainingFeatures()
         }
         NoiseRec rec = classifyOnsetNoise
             (binsAboveFloor, m_coreFeatures.getOnsetBinCount(),
-             m_impulseNoiseRatioPlosive_percent / 100.0,
-             m_impulseNoiseRatioFricative_percent / 100.0);
+             plosiveRatio, fricativeRatio);
         onsetToNoise[onset] = rec;
     }
 

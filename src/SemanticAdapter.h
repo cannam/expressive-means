@@ -40,6 +40,9 @@ protected:
     typedef std::map<string, std::vector<std::map<string, float>>>
     NumberedOptionsParameters;
 
+    typedef std::map<string, std::map<string, std::pair<float, float>>>
+    ToggleParameters;
+
     typedef std::vector<string> // in returned order
     IdSelection;
 
@@ -55,6 +58,7 @@ protected:
                     ParameterMetadata parameterMetadata,
                     NamedOptionsParameters namedOptionsParameters,
                     NumberedOptionsParameters numberedOptionsParameters,
+                    ToggleParameters toggleParameters,
                     ValueMap parameterDefaults) :
         Plugin(inputSampleRate),
         m_adapted(inputSampleRate),
@@ -64,6 +68,7 @@ protected:
         m_parameterMetadata(parameterMetadata),
         m_namedOptionsParameters(namedOptionsParameters),
         m_numberedOptionsParameters(numberedOptionsParameters),
+        m_toggleParameters(toggleParameters),
         m_semanticParameterDefaults(parameterDefaults),
         m_semanticParameterValues(parameterDefaults)
     {
@@ -109,12 +114,20 @@ public:
             } else {
                 // Parameter appears in the metadata set: it's a
                 // semantic parameter
-                bool named = (m_namedOptionsParameters.find(id) !=
-                              m_namedOptionsParameters.end());
-                if (!named &&
-                    (m_numberedOptionsParameters.find(id) ==
-                     m_numberedOptionsParameters.end())) {
-                    throw std::logic_error("Parameter in metadata is not found in named or numbered: " + id);
+                bool named =
+                    (m_namedOptionsParameters.find(id) !=
+                     m_namedOptionsParameters.end());
+                bool numbered = 
+                    (m_numberedOptionsParameters.find(id) !=
+                     m_numberedOptionsParameters.end());
+                bool toggled = 
+                    (m_toggleParameters.find(id) !=
+                     m_toggleParameters.end());
+                if (!named && !numbered && !toggled) {
+                    throw std::logic_error("Parameter in metadata is not found in named, numbered, or toggled: " + id);
+                }
+                if ((named && numbered) || (named && toggled) || (numbered && toggled)) {
+                    throw std::logic_error("Parameter in metadata appears in more than one type map: " + id);
                 }
                 ParameterDescriptor d;
                 d.identifier = id;
@@ -134,7 +147,7 @@ public:
                             upstreamParamsUsed.insert(ppv.first);
                         }
                     }
-                } else {
+                } else if (numbered) {
                     d.minValue = 1.f;
                     d.defaultValue = 1.f;
                     d.maxValue = int(m_numberedOptionsParameters.at(id).size());
@@ -144,7 +157,15 @@ public:
                         }
                     }
                     d.valueNames.clear();
-                }
+                } else if (toggled) {
+                    d.minValue = 0.f;
+                    d.defaultValue = 1.f;
+                    d.maxValue = 1.f;
+                    for (const auto &ppv : m_toggleParameters.at(id)) {
+                        upstreamParamsUsed.insert(ppv.first);
+                    }
+                    d.valueNames.clear();
+                }                    
                 if (m_semanticParameterDefaults.find(id) !=
                     m_semanticParameterDefaults.end()) {
                     d.defaultValue = m_semanticParameterDefaults.at(id);
@@ -234,8 +255,17 @@ public:
                         m_adapted.setParameter(ppv.first, ppv.second);
                     }
                 }
+            } else if (m_toggleParameters.find(id) !=
+                       m_toggleParameters.end()) {
+                for (auto ppv : m_toggleParameters.at(id)) {
+                    float value =
+                        (v < 0.5 ? ppv.second.first : ppv.second.second);
+                    std::cerr << "[toggled] " << ppv.first << " -> "
+                              << value << std::endl;
+                    m_adapted.setParameter(ppv.first, value);
+                }                    
             } else {
-                throw std::logic_error("Parameter in semantic parameter values not found in named or numbered: " + id);
+                throw std::logic_error("Parameter in semantic parameter values not found in named, numbered, or toggled: " + id);
             }
         }
         
@@ -270,6 +300,7 @@ protected:
     const ParameterMetadata m_parameterMetadata;
     const NamedOptionsParameters m_namedOptionsParameters;
     const NumberedOptionsParameters m_numberedOptionsParameters;
+    const ToggleParameters m_toggleParameters;
     mutable std::map<string, int> m_outputIndicesHere;
     mutable std::map<string, int> m_outputIndicesThere;
     const std::map<string, float> m_semanticParameterDefaults;

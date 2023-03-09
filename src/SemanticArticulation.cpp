@@ -14,12 +14,14 @@
 SemanticArticulation::SemanticArticulation(float inputSampleRate) :
     SemanticAdapter<Articulation>
     (inputSampleRate,
+     // Output selection (to be passed through)
      { "summary", "noiseType", "volumeDevelopment",
        "articulationType", "articulationIndex" },
+     // Parameter selection (passed through, or new)
      { "clef", "instrumentType", "noteDurations",
-       "soundQuality"
-//           , "reverbDuration", "overlapCompensation"
+       "soundQuality", "reverb", "overlap"
      },
+     // Parameter metadata (map)
      { { "clef",
          { "Clef",
            "Clef which is closest to the instrument's pitch range."
@@ -35,11 +37,17 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
        { "soundQuality",
          { "Sound quality",
            "Indication of the degree of surface noise in the recording, from 1 (clean, SNR > 50dB) to 6 (extremely noisy, SNR < 6dB)."
+         } },
+       { "reverb",
+         { "Reverb duration",
+           "Indication of the reverb duration of the recording space."
+         } },
+       { "overlap",
+         { "Overlap compensation",
+           "Whether to compensate automatically for likely overlapping notes."
          } }
-//            ,
-//            { "reverbDuration", { "Reverb duration", "" } },
-//            { "overlapCompensation", { "Overlap compensation", "" } }
      },
+     // Named options parameters (map)
      { { "clef",
          { { "Treble",
              { { "spectralFrequencyMin", 196.f },
@@ -113,8 +121,32 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "pitchAverageWindow", 60.f }
              } }
          }
+       },
+       { "reverb",
+         { { "Small studio (< 150 ms)",
+             { { "noteDurationThreshold", 12.f },
+               { "spectralDropFloor", -70.f },
+               { "reverbDurationFactor", 1.f }
+             } },
+           { "Large studio (c. 150-600 ms)",
+             { { "noteDurationThreshold", 12.f },
+               { "spectralDropFloor", -70.f },
+               { "reverbDurationFactor", 1.5f }
+             } },
+           { "Concert hall (c. 600-1500 ms)",
+             { { "noteDurationThreshold", 12.f },
+               { "spectralDropFloor", -70.f },
+               { "reverbDurationFactor", 2.25f }
+             } },
+           { "Church (> 1500 ms)",
+             { { "noteDurationThreshold", 12.f },
+               { "spectralDropFloor", -70.f },
+               { "reverbDurationFactor", 3.375f }
+             } }
+         }
        }
      },
+     // Numbered options parameters (map)
      { { "soundQuality",
          {
              { { "impulseNoiseRatioPlosive", 22.f },
@@ -135,13 +167,23 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
              { { "impulseNoiseRatioPlosive", 53.f },
                { "impulseNoiseRatioFricative", 47.f }
              }
+         } }
+     },
+     // Toggled parameters (map)
+     {
+       { "overlap",
+         { { "overlapCompensationFactor",
+             { 1.f, 1.6f } // off, on
+             }
          }
-        }
+       }
      },
      // Default values. If not specified, named parameters default to
-     // the first label, i.e. 0.f, and numbered ones default to 1.f.
+     // the first label, i.e. 0.f, numbered ones default to 1.f, and
+     // toggles default to off.
      {
          { "noteDurations", 1.f },
+         { "overlap", 1.f }
      })
     {}
     
