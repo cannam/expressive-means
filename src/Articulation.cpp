@@ -623,21 +623,6 @@ Articulation::getRemainingFeatures()
     double fricativeRatio =
         (m_impulseNoiseRatioFricative_percent * m_reverbDurationFactor) / 100.0;
     
-    for (auto pq: onsetOffsets) {
-        int onset = pq.first;
-        vector<vector<int>> binsAboveFloor;
-        for (int i = 0; i < noiseWindowSteps; ++i) {
-            if (i < n) {
-                binsAboveFloor.push_back
-                    (m_coreFeatures.getOnsetBinsAboveFloorAt(onset + i));
-            }
-        }
-        NoiseRec rec = classifyOnsetNoise
-            (binsAboveFloor, m_coreFeatures.getOnsetBinCount(),
-             plosiveRatio, fricativeRatio);
-        onsetToNoise[onset] = rec;
-    }
-
     map<int, int> onsetToFollowingOnset;
     for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
         int onset = itr->first;
@@ -652,6 +637,42 @@ Articulation::getRemainingFeatures()
         } else {
             onsetToFollowingOnset[onset] = offset;
         }
+    }
+            
+    map<int, double> onsetToRelativeDuration;
+    for (auto pq : onsetToFollowingOnset) {
+        int onset = pq.first;
+        int following = pq.second;
+        int offset = onsetOffsets.at(pq.first).first;
+        onsetToRelativeDuration[onset] = 
+            double(offset - onset) / double(following - onset);
+    }
+
+    int prevOnset = -1;
+    for (auto pq: onsetOffsets) {
+        int onset = pq.first;
+        vector<vector<int>> binsAboveFloor;
+        for (int i = 0; i < noiseWindowSteps; ++i) {
+            if (i < n) {
+                binsAboveFloor.push_back
+                    (m_coreFeatures.getOnsetBinsAboveFloorAt(onset + i));
+            }
+        }
+        bool lungoPrecedes = false;
+        if (prevOnset >= 0) {
+            if (onsetToRelativeDuration.at(prevOnset) >= 0.95) {
+                lungoPrecedes = true;
+            }
+        }
+        double effectiveFricativeRatio =
+            (lungoPrecedes ?
+             fricativeRatio * m_overlapCompensationFactor :
+             fricativeRatio);
+        NoiseRec rec = classifyOnsetNoise
+            (binsAboveFloor, m_coreFeatures.getOnsetBinCount(),
+             plosiveRatio, effectiveFricativeRatio);
+        onsetToNoise[onset] = rec;
+        prevOnset = onset;
     }
     
     int sustainBeginSteps = m_coreFeatures.msToSteps
@@ -724,15 +745,6 @@ Articulation::getRemainingFeatures()
         }
         
         onsetToLD[onset] = rec;
-    }
-            
-    map<int, double> onsetToRelativeDuration;
-    for (auto pq : onsetToFollowingOnset) {
-        int onset = pq.first;
-        int following = pq.second;
-        int offset = onsetOffsets.at(pq.first).first;
-        onsetToRelativeDuration[onset] = 
-            double(offset - onset) / double(following - onset);
     }
 
     for (auto pq : onsetToNoise) {
