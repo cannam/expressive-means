@@ -71,7 +71,7 @@ Articulation::getIdentifier() const
 string
 Articulation::getName() const
 {
-    return "Expressive Means: Articulation";
+    return "Expressive Means (advanced): Articulation";
 }
 
 string

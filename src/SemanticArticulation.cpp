@@ -194,7 +194,7 @@ SemanticArticulation::getIdentifier() const {
 
 string
 SemanticArticulation::getName() const {
-    return "Expressive Means (semantic presets): Articulation";
+    return "Expressive Means: Articulation";
 }
 
 string
