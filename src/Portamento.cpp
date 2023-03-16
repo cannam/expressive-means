@@ -23,10 +23,10 @@ using std::map;
 using std::lower_bound;
 using std::ostringstream;
 
-static float default_glideThresholdPitch_cents = 50.f;
-static float default_glideThresholdDuration_ms = 70.f;
-static float default_glideThresholdProximity_ms = 350.f;
-static float default_linkThreshold_ms = 30.f;
+static const float default_glideThresholdPitch_cents = 50.f;
+static const float default_glideThresholdDuration_ms = 70.f;
+static const float default_glideThresholdProximity_ms = 350.f;
+static const float default_linkThreshold_ms = 30.f;
 
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),

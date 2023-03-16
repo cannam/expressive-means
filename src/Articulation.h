@@ -105,7 +105,8 @@ public:
                                        activeBinsAfterOnset,
                                        int binCount,
                                        double plosiveRatio,
-                                       double fricativeRatio);
+                                       double fricativeRatio,
+                                       bool forceSonorous);
 
     enum class LevelDevelopment {
         Unclassifiable,
@@ -177,6 +178,9 @@ protected:
     float m_impulseNoiseRatioFricative_percent;
     float m_reverbDurationFactor;
     float m_overlapCompensationFactor;
+    float m_glideThresholdPitch_cents;
+    float m_glideThresholdDuration_ms;
+    float m_glideThresholdProximity_ms;
     
     mutable int m_summaryOutput;
     mutable int m_noiseTypeOutput;

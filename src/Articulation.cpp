@@ -10,6 +10,7 @@
 */
 
 #include "Articulation.h"
+#include "Glide.h"
 
 #include <vector>
 #include <set>
@@ -28,6 +29,9 @@ static const float default_impulseNoiseRatioPlosive_percent = 80.f;
 static const float default_impulseNoiseRatioFricative_percent = 30.f;
 static const float default_reverbDurationFactor = 1.5f;
 static const float default_overlapCompensationFactor = 1.6;
+static const float default_glideThresholdPitch_cents = 50.f;
+static const float default_glideThresholdDuration_ms = 70.f;
+static const float default_glideThresholdProximity_ms = 350.f;
 
 Articulation::Articulation(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -40,6 +44,9 @@ Articulation::Articulation(float inputSampleRate) :
     m_impulseNoiseRatioFricative_percent(default_impulseNoiseRatioFricative_percent),
     m_reverbDurationFactor(default_reverbDurationFactor),
     m_overlapCompensationFactor(default_overlapCompensationFactor),
+    m_glideThresholdPitch_cents(default_glideThresholdPitch_cents),
+    m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
+    m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
     m_summaryOutput(-1),
     m_noiseTypeOutput(-1),
     m_volumeDevelopmentOutput(-1),
@@ -519,7 +526,8 @@ Articulation::NoiseRec
 Articulation::classifyOnsetNoise(const vector<vector<int>> &activeBinsAfterOnset,
                                  int binCount,
                                  double plosiveRatio,
-                                 double fricativeRatio)
+                                 double fricativeRatio,
+                                 bool forceSonorous)
 {
     NoiseRec rec;
     int n = activeBinsAfterOnset.size();
@@ -556,7 +564,14 @@ Articulation::classifyOnsetNoise(const vector<vector<int>> &activeBinsAfterOnset
     // or Plosive.
     rec.total = double(maxConsecutiveHopsAboveP) / double(n);
 
-    if (maxConsecutiveHopsAboveP >= n/2 && maxConsecutiveHopsAboveF >= n) {
+    if (forceSonorous) {
+
+        // Special case where the caller has already found a glide
+        // (but we are still called, so as to fill in the
+        // informational total field above)
+        rec.type = NoiseType::Sonorous;
+    
+    } else if (maxConsecutiveHopsAboveP >= n/2 && maxConsecutiveHopsAboveF >= n) {
     
         // at least [p] FFT bins within [o5]/2 (half the time span)
         // and at least [f] FFT windows within [o5] (full span)
@@ -593,7 +608,7 @@ Articulation::getRemainingFeatures()
 
     m_coreFeatures.finish();
 
-    auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
+    const auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
 
     for (int i = 0; i < int(pyinPitch.size()); ++i) {
         if (pyinPitch[i] <= 0) continue;
@@ -648,6 +663,19 @@ Articulation::getRemainingFeatures()
             double(offset - onset) / double(following - onset);
     }
 
+    Glide::Parameters glideParams;
+    glideParams.durationThreshold_steps =
+        m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
+                                 m_coreParams.stepSize, false);
+    glideParams.onsetProximityThreshold_steps =
+        m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
+                                 m_coreParams.stepSize, false);
+    glideParams.pitchThreshold_semis =
+        m_glideThresholdPitch_cents / 100.0;
+
+    Glide glide(glideParams);
+    Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);
+    
     int prevOnset = -1;
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
@@ -659,9 +687,19 @@ Articulation::getRemainingFeatures()
             }
         }
         bool lungoPrecedes = false;
+        bool lungoAndGlide = false;
         if (prevOnset >= 0) {
             if (onsetToRelativeDuration.at(prevOnset) >= 0.95) {
+                cerr << "Onset " << onset << " has lungo at preceding onset "
+                     << prevOnset << endl;
                 lungoPrecedes = true;
+                if (glides.find(onset) != glides.end() &&
+                    glides.at(onset).start < onset) {
+                    cerr << "... and there is a glide from "
+                         << glides.at(onset).start << " to "
+                         << glides.at(onset).end << endl;
+                    lungoAndGlide = true;
+                }
             }
         }
         double effectiveFricativeRatio =
@@ -670,7 +708,7 @@ Articulation::getRemainingFeatures()
              fricativeRatio);
         NoiseRec rec = classifyOnsetNoise
             (binsAboveFloor, m_coreFeatures.getOnsetBinCount(),
-             plosiveRatio, effectiveFricativeRatio);
+             plosiveRatio, effectiveFricativeRatio, lungoAndGlide);
         onsetToNoise[onset] = rec;
         prevOnset = onset;
     }
