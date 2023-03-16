@@ -30,8 +30,8 @@ public:
         m_parameters(parameters) { }
     
     struct Extent {
-        int start;
-        int end;
+        int start;  // first hop within the glide
+        int end;    // last hop within the glide
     };
 
     typedef std::map<int, Extent> Extents; // onset step -> glide extent

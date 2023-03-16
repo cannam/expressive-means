@@ -16,6 +16,8 @@
 
 #include "CoreFeatures.h"
 
+#include "Glide.h"
+
 #define WITH_DEBUG_OUTPUTS 1
 
 using std::string;
@@ -77,6 +79,10 @@ public:
         }
     }
 
+    static double glideDirectionToFactor(GlideDirection) {
+        return 1.0;
+    }
+    
     enum class GlideLink {
         Targeting, Interconnecting, Starting
     };
@@ -98,6 +104,123 @@ public:
         default: throw std::logic_error("unknown GlideLink");
         }
     }
+
+    static double glideLinkToFactor(GlideLink d) {
+        switch (d) {
+        case GlideLink::Targeting: return 0.9;
+        case GlideLink::Interconnecting: return 1.0;
+        case GlideLink::Starting: return 0.9;
+        default: throw std::logic_error("unknown GlideLink");
+        }
+    }
+
+    enum class GlideRange {
+        Small, Medium, Large
+    };
+
+    static std::string glideRangeToString(GlideRange d) {
+        switch (d) {
+        case GlideRange::Small: return "Small";
+        case GlideRange::Medium: return "Medium";
+        case GlideRange::Large: return "Large";
+        default: throw std::logic_error("unknown GlideRange");
+        }
+    }
+
+    static std::string glideRangeToCode(GlideRange d) {
+        switch (d) {
+        case GlideRange::Small: return "S";
+        case GlideRange::Medium: return "M";
+        case GlideRange::Large: return "L";
+        default: throw std::logic_error("unknown GlideRange");
+        }
+    }
+    
+    static double glideRangeToFactor(GlideRange d) {
+        switch (d) {
+        case GlideRange::Small: return 1.0;
+        case GlideRange::Medium: return 2.0;
+        case GlideRange::Large: return 3.0;
+        default: throw std::logic_error("unknown GlideRange");
+        }
+    }
+
+    enum class GlideDuration {
+        Short, Medium, Long
+    };
+
+    static std::string glideDurationToString(GlideDuration d) {
+        switch (d) {
+        case GlideDuration::Short: return "Short";
+        case GlideDuration::Medium: return "Medium";
+        case GlideDuration::Long: return "Long";
+        default: throw std::logic_error("unknown GlideDuration");
+        }
+    }
+
+    static std::string glideDurationToCode(GlideDuration d) {
+        switch (d) {
+        case GlideDuration::Short: return "s";
+        case GlideDuration::Medium: return "m";
+        case GlideDuration::Long: return "l";
+        default: throw std::logic_error("unknown GlideDuration");
+        }
+    }
+    
+    static double glideDurationToFactor(GlideDuration d) {
+        switch (d) {
+        case GlideDuration::Short: return 1.0;
+        case GlideDuration::Medium: return 2.0;
+        case GlideDuration::Long: return 3.0;
+        default: throw std::logic_error("unknown GlideDuration");
+        }
+    }
+
+    enum class GlideDynamic {
+        Loud, Stable, Quiet
+    };
+
+    static std::string glideDynamicToString(GlideDynamic d) {
+        switch (d) {
+        case GlideDynamic::Loud: return "Loud";
+        case GlideDynamic::Stable: return "Stable";
+        case GlideDynamic::Quiet: return "Quiet";
+        default: throw std::logic_error("unknown GlideDynamic");
+        }
+    }
+
+    static std::string glideDynamicToCode(GlideDynamic d) {
+        switch (d) {
+        case GlideDynamic::Loud: return "+";
+        case GlideDynamic::Stable: return "=";
+        case GlideDynamic::Quiet: return "-";
+        default: throw std::logic_error("unknown GlideDynamic");
+        }
+    }
+
+    static double glideDynamicToFactor(GlideDynamic d) {
+        switch (d) {
+        case GlideDynamic::Loud: return 1.5;
+        case GlideDynamic::Stable: return 1.0;
+        case GlideDynamic::Quiet: return 0.5;
+        default: throw std::logic_error("unknown GlideDynamic");
+        }
+    }
+
+    struct GlideClassification {
+        GlideDirection direction;
+        GlideRange range;
+        double range_cents;
+        GlideDuration duration;
+        GlideLink link;
+        GlideDynamic dynamic;
+        double dynamicMax;
+        double dynamicMin;
+    };
+
+    GlideClassification classifyGlide(const Glide::Extent &,
+                                      const std::vector<double> &pyinPitch,
+                                      const std::vector<double> &smoothedPower);
     
 protected:
     int m_stepSize;
@@ -110,6 +233,12 @@ protected:
     float m_glideThresholdDuration_ms;  // 3.2, g_2
     float m_glideThresholdProximity_ms; // 3.3, g_3
     float m_linkThreshold_ms; // b_1
+    float m_rangeBoundaryMedium_cents; // c_1.M
+    float m_rangeBoundaryLarge_cents; // c_1.L
+    float m_durationBoundaryMedium_ms; // d_1.m
+    float m_durationBoundaryLong_ms; // d_1.l
+    float m_dynamicsThreshold_dB; // e_1
+    float m_scalingFactor; // s
     
     mutable int m_summaryOutput;
     mutable int m_portamentoTypeOutput;
@@ -120,6 +249,7 @@ protected:
     mutable int m_portamentoPointsOutput;
     mutable int m_glideDirectionOutput;
     mutable int m_glideLinkOutput;
+    mutable int m_glideDynamicOutput;
     mutable int m_glidePitchTrackOutput;
 #endif
 };
