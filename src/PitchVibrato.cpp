@@ -19,13 +19,16 @@ using std::endl;
 using std::vector;
 using std::set;
 
+#define DEBUG_PITCH_VIBRATO 1
+
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
     m_coreFeatures(inputSampleRate),
     m_pitchTrackOutput(-1),
-    m_peaksOutput(-1)
+    m_rawPeaksOutput(-1),
+    m_acceptedPeaksOutput(-1)
     /*,
     m_summaryOutput(-1),
     m_pitchvibratoTypeOutput(-1),
@@ -179,6 +182,19 @@ PitchVibrato::getOutputDescriptors() const
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
     
+    d.identifier = "rawpeaks";
+    d.name = "Raw Peaks";
+    d.description = "Simple local maxima of pitch track.";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_rawPeaksOutput = int(list.size());
+    list.push_back(d);
+    
     d.identifier = "peaks";
     d.name = "Peaks";
     d.description = "Locations and pitches of vibrato peaks.";
@@ -190,7 +206,7 @@ PitchVibrato::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::VariableSampleRate;
     d.sampleRate = 0.f;
     d.hasDuration = false;
-    m_peaksOutput = int(list.size());
+    m_acceptedPeaksOutput = int(list.size());
     list.push_back(d);
 /*!!!    
     d.identifier = "summary";
@@ -308,17 +324,19 @@ PitchVibrato::getRemainingFeatures()
 
     // The numbered comments correspond to the numbered steps in Tilo
     // Haehnel's paper
-    
-    // 1. Convert pitch track from Hz to cents and smooth with a 35ms
-    // (either side? so 70ms total) mean filter
 
+    // 1. Convert pitch track from Hz to cents and smooth with a 35ms
+    // (either side? so 70ms total? or 35ms total?) mean filter
+    
     auto unfilteredPitch = m_coreFeatures.getPitch_semis();
     int n = unfilteredPitch.size();
 
     MeanFilter meanFilter(m_coreFeatures.msToSteps
-                          (70.f, m_coreParams.stepSize, true));
+                          (35.f, m_coreParams.stepSize, true));
     vector<double> pitch(n, 0.0);
     meanFilter.filter(unfilteredPitch.data(), pitch.data(), n);
+
+    // (Reinstate unvoiced pitches)
     for (int i = 0; i < n; ++i) {
         if (pyinPitch[i] <= 0) {
             pitch[i] = 0.0;
@@ -372,20 +390,37 @@ PitchVibrato::getRemainingFeatures()
     
     for (int i = 0; i < npairs; ++i) {
 
+#ifdef DEBUG_PITCH_VIBRATO
+        std::cerr << "Considering peak at step " << peaks[i]
+                  << " (following peak is at " << peaks[i+1] << ")"
+                  << std::endl;
+#endif
+
         // Establish time criterion (4)
         int steps = peaks[i+1] - peaks[i];
         if (steps < minDistSteps || steps > maxDistSteps) {
+#ifdef DEBUG_PITCH_VIBRATO
+            std::cerr << "Rejecting as step count to following peak ("
+                      << steps << ") is outside range " << minDistSteps
+                      << " - " << maxDistSteps << std::endl;
+#endif
             continue;
         }
         
         // Establish at least 10 valid pitches in range (3)
-        int nvalid = 0;
+        int nValid = 0;
+        const int minValid = 10;
         for (int j = peaks[i] + 1; j < peaks[i+1]; ++j) {
             if (pitch[j] > 0.0) {
-                ++nvalid;
+                ++nValid;
             }
         }
-        if (nvalid < 10) {
+        if (nValid < minValid) {
+#ifdef DEBUG_PITCH_VIBRATO
+            std::cerr << "Rejecting as only " << nValid << " valid pitch "
+                      << "measurements found before following peak, at least "
+                      << minValid << " required" << std::endl;
+#endif
             continue;
         }
 
@@ -400,7 +435,14 @@ PitchVibrato::getRemainingFeatures()
         // Establish pitch criterion (5)
         double peakHeight =
             std::max(pitch[peaks[i]], pitch[peaks[i+1]]) - minimum;
-        if (peakHeight < 0.2 || peakHeight > 8.0) { // semitones
+        const double minHeight = 0.2, maxHeight = 8.0; // semitones
+        if (peakHeight < minHeight || peakHeight > maxHeight) {
+#ifdef DEBUG_PITCH_VIBRATO
+            std::cerr << "Rejecting as peak height of " << peakHeight
+                      << " semitones relative to intervening minimum is "
+                      << "outside range " << minHeight << " to " << maxHeight
+                      << std::endl;
+#endif
             continue;
         }
 
@@ -428,13 +470,107 @@ PitchVibrato::getRemainingFeatures()
         positions.push_back(sec);
     }
 
+    // We now have:
+    // 
+    // * peaks - all simple local maxima
+    // * accepted - indices into peaks of those peaks that meet the
+    //   preliminary acceptance criteria listed above
+    // * positions - precise times in seconds of the accepted peaks
+    // 
+    // To determine whether a preliminarily accepted peak will
+    // actually be considered part of a vibrato, we model two cycles
+    // of a sinusoid synchronised with the minimum before the peak and
+    // that two minima ahead of it (so the sinusoid also has a trough
+    // somewhere around the intervening minimum). This function and
+    // the section of the signal under test are both Hann windowed and
+    // their correlation checked.
+
+    auto hann = [](int i, int n) {
+        return 0.5 - 0.5 * cos(2.0 * M_PI * double(i) / double(n));
+    };
+
+    auto winSine = [&](int i, int n) {
+        return hann(i, n) *
+            (0.5 - 0.5 * cos(4.0 * M_PI * double(i) / double(n)));
+    };
+    
+    for (int i = 0; i < int(accepted.size()); ++i) {
+
+        int min0 = peaks[accepted[i]];
+        while (min0 > 0 && pitch[min0 - 1] < pitch[min0]) {
+            --min0;
+        }
+        
+        int min1 = peaks[accepted[i] + 1];
+        while (min1 < n-1 && pitch[min1 + 1] < pitch[min1]) {
+            ++min1;
+        }
+
+        int m = min1 - min0;
+
+        double minInRange = 0.0, maxInRange = 0.0;
+
+        for (int j = 0; j < m; ++j) {
+            if (pitch[min0 + j] > 0.0 &&
+                (minInRange == 0.0 || pitch[min0 + j] < minInRange)) {
+                minInRange = pitch[min0 + j];
+            }
+            if (pitch[min0 + j] > maxInRange) {
+                maxInRange = pitch[min0 + j];
+            }
+        }
+            
+        std::cerr << "for accepted peak at " << peaks[accepted[i]]
+                  << " with pitch " << pitch[peaks[accepted[i]]]
+                  << " we have previous minimum " << pitch[min0]
+                  << " at " << min0 << " and following-following minimum "
+                  << pitch[min1] << " at " << min1
+                  << "; overall minimum is " << minInRange
+                  << " and maximum is " << maxInRange << std::endl;
+
+        double corr = 0.0;
+
+        if (maxInRange <= minInRange) {
+            //!!!
+            continue;
+        }
+
+#ifdef DEBUG_PITCH_VIBRATO
+        std::cerr << "window of signal (" << m << "): ";
+        for (int j = 0; j < m; ++j) {
+            double signal = (pitch[min0 + j] - minInRange) /
+                (maxInRange - minInRange);
+            double winSignal = signal * hann(j, m);
+            std::cerr << winSignal << " ";
+        }
+        std::cerr << std::endl;
+            
+        std::cerr << "window of modelled sinusoid (" << m << "): ";
+        for (int j = 0; j < m; ++j) {
+            std::cerr << winSine(j, m) << " ";
+        }
+        std::cerr << std::endl;
+#endif
+        
+    }
+        
+
+    //!!! filter out the debug ones
+    
+    for (int i = 0; i < int(peaks.size()); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(peaks[i]);
+        fs[m_rawPeaksOutput].push_back(f);
+    }
+    
     for (int i = 0; i < int(accepted.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.getStartTime() +
             Vamp::RealTime::fromSeconds(positions[i]);
         f.values.push_back(pitch[peaks[accepted[i]]]);
-        fs[m_peaksOutput].push_back(f);
+        fs[m_acceptedPeaksOutput].push_back(f);
     }
 
     return fs;
