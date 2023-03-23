@@ -28,7 +28,7 @@ static const float default_glideThresholdDuration_ms = 70.f;
 static const float default_glideThresholdProximity_ms = 350.f;
 static const float default_linkThreshold_ms = 30.f;
 static const float default_rangeBoundaryMedium_cents = 250.f;
-static const float default_rangeBoundaryLarge_cents = 500.f;
+static const float default_rangeBoundaryLarge_cents = 550.f;
 static const float default_durationBoundaryMedium_ms = 120.f;
 static const float default_durationBoundaryLong_ms = 210.f;
 static const float default_dynamicsThreshold_dB = 1.f;
@@ -175,7 +175,7 @@ Portamento::getParameterDescriptors() const
     list.push_back(d);
     
     d.identifier = "rangeBoundaryMedium";
-    d.name = "Range boundary: small to medium";
+    d.name = "Range threshold: medium";
     d.unit = "cents";
     d.minValue = 0.f;
     d.maxValue = 1200.f;
@@ -183,7 +183,7 @@ Portamento::getParameterDescriptors() const
     list.push_back(d);
     
     d.identifier = "rangeBoundaryLarge";
-    d.name = "Range boundary: medium to large";
+    d.name = "Range threshold: large";
     d.unit = "cents";
     d.minValue = 0.f;
     d.maxValue = 1200.f;
@@ -191,7 +191,7 @@ Portamento::getParameterDescriptors() const
     list.push_back(d);
     
     d.identifier = "durationBoundaryMedium";
-    d.name = "Duration boundary: short to medium";
+    d.name = "Duration threshold: medium";
     d.unit = "ms";
     d.minValue = 0.f;
     d.maxValue = 1000.f;
@@ -199,7 +199,7 @@ Portamento::getParameterDescriptors() const
     list.push_back(d);
     
     d.identifier = "durationBoundaryLong";
-    d.name = "Duration boundary: medium to long";
+    d.name = "Duration threshold: long";
     d.unit = "ms";
     d.minValue = 0.f;
     d.maxValue = 4000.f;
