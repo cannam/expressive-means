@@ -183,6 +183,8 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
      // toggles default to off.
      {
          { "noteDurations", 1.f },
+         { "reverb", 1.f },
+         { "soundQuality", 1.f }
          { "overlap", 1.f }
      })
     {}
