@@ -146,7 +146,7 @@ Portamento::getParameterDescriptors() const
     d.name = "Glide detection threshold: Pitch";
     d.unit = "cents";
     d.minValue = 0.f;
-    d.maxValue = 100.f;
+    d.maxValue = 500.f;
     d.defaultValue = default_glideThresholdPitch_cents;
     list.push_back(d);
     
