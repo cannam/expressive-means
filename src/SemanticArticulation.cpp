@@ -50,19 +50,19 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
      // Named options parameters (map)
      { { "clef",
          { { "Treble",
-             { { "spectralFrequencyMin", 196.f },
+             { { "spectralFrequencyMin", 100.f },
                { "spectralFrequencyMax", 4000.f },
                { "sustainBeginThreshold", 50.f },
                { "volumeDevelopmentThreshold", 2.f }
              } },
            { "Alto",
-             { { "spectralFrequencyMin", 130.f },
+             { { "spectralFrequencyMin", 100.f },
                { "spectralFrequencyMax", 3000.f },
                { "sustainBeginThreshold", 60.f },
                { "volumeDevelopmentThreshold", 2.f }
              } },
            { "Bass",
-             { { "spectralFrequencyMin", 65.f },
+             { { "spectralFrequencyMin", 50.f },
                { "spectralFrequencyMax", 2000.f },
                { "sustainBeginThreshold", 70.f },
                { "volumeDevelopmentThreshold", 3.f }
