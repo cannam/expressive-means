@@ -143,7 +143,7 @@ Portamento::getParameterDescriptors() const
     d.isQuantized = false;
     
     d.identifier = "glideThresholdPitch";
-    d.name = "Glide detection threshold: Pitch";
+    d.name = "Glide detection: Maximum hop difference";
     d.unit = "cents";
     d.minValue = 0.f;
     d.maxValue = 100.f;
@@ -151,7 +151,7 @@ Portamento::getParameterDescriptors() const
     list.push_back(d);
     
     d.identifier = "glideThresholdDuration";
-    d.name = "Glide detection threshold: Duration";
+    d.name = "Glide detection: Minimum duration";
     d.unit = "ms";
     d.minValue = 0.f;
     d.maxValue = 200.f;
@@ -191,7 +191,7 @@ Portamento::getParameterDescriptors() const
     list.push_back(d);
     
     d.identifier = "durationBoundaryMedium";
-    d.name = "Duration threshold: medium";
+    d.name = "Duration threshold: moderate";
     d.unit = "ms";
     d.minValue = 0.f;
     d.maxValue = 1000.f;
