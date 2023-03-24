@@ -588,13 +588,14 @@ Portamento::classifyGlide(const Glide::Extent &extent,
         succeeding = smoothedPower[n - 1];
     }
 
-    double max, min;
+    double max = smoothedPower[extent.start];
+    double min = max;
 
     for (int i = extent.start; i <= extent.end; ++i) {
-        if (i == extent.start || smoothedPower[i] < min) {
+        if (smoothedPower[i] < min) {
             min = smoothedPower[i];
         }
-        if (i == extent.start || smoothedPower[i] > max) {
+        if (smoothedPower[i] > max) {
             max = smoothedPower[i];
         }
     }
@@ -644,8 +645,6 @@ Portamento::getRemainingFeatures()
         fs[m_pitchTrackOutput].push_back(f);
     }
 
-    int n = int(pyinPitch.size());
-    
     Glide::Parameters glideParams;
     glideParams.durationThreshold_steps =
         m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
