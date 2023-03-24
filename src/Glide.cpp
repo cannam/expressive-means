@@ -36,15 +36,22 @@ Glide::extract(const vector<double> &pitch_Hz,
             rawPitch.push_back(0.0);
         }
     }
-    
-    // Modestly mean-filtered pitch, just to take out jitter
-    vector<double> pitch(n, 0.0);
-    MeanFilter(5).filter(rawPitch.data(), pitch.data(), n);
 
-    for (int i = 0; i < n; ++i) {
-        if (pitch_Hz[i] <= 0.0) {
-            pitch[i] = 0.0;
+    vector<double> pitch(n, 0.0);
+        
+    if (m_parameters.useSmoothing) {
+        
+        // Modestly mean-filtered pitch, just to take out jitter
+        MeanFilter(5).filter(rawPitch.data(), pitch.data(), n);
+
+        for (int i = 0; i < n; ++i) {
+            if (pitch_Hz[i] <= 0.0) {
+                pitch[i] = 0.0;
+            }
         }
+
+    } else {
+        pitch = rawPitch;
     }
 
     // "A glide is apparent as soon as the pitch starts to constantly

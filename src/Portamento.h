@@ -239,6 +239,7 @@ protected:
     float m_durationBoundaryLong_ms; // d_1.l
     float m_dynamicsThreshold_dB; // e_1
     float m_scalingFactor; // s
+    float m_smoothingEnabled;
     
     mutable int m_summaryOutput;
     mutable int m_portamentoTypeOutput;

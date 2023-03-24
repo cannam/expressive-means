@@ -672,6 +672,7 @@ Articulation::getRemainingFeatures()
                                  m_coreParams.stepSize, false);
     glideParams.pitchThreshold_semis =
         m_glideThresholdPitch_cents / 100.0;
+    glideParams.useSmoothing = true;
 
     Glide glide(glideParams);
     Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);

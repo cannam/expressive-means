@@ -24,6 +24,7 @@ public:
         int durationThreshold_steps;
         int onsetProximityThreshold_steps;
         double pitchThreshold_semis;
+        bool useSmoothing;
     };
 
     Glide(Parameters parameters) :

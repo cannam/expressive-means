@@ -33,6 +33,7 @@ static const float default_durationBoundaryMedium_ms = 120.f;
 static const float default_durationBoundaryLong_ms = 210.f;
 static const float default_dynamicsThreshold_dB = 1.f;
 static const float default_scalingFactor = 7.4f;
+static const float default_smoothingEnabled = 0.f;
 
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -49,6 +50,7 @@ Portamento::Portamento(float inputSampleRate) :
     m_durationBoundaryLong_ms(default_durationBoundaryLong_ms),
     m_dynamicsThreshold_dB(default_dynamicsThreshold_dB),
     m_scalingFactor(default_scalingFactor),
+    m_smoothingEnabled(default_smoothingEnabled),
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
@@ -221,6 +223,16 @@ Portamento::getParameterDescriptors() const
     d.maxValue = 30.f;
     d.defaultValue = default_scalingFactor;
     list.push_back(d);
+        
+    d.identifier = "smoothingEnabled";
+    d.name = "[Debug] Pitch smoothing";
+    d.unit = "";
+    d.minValue = 0.f;
+    d.maxValue = 1.f;
+    d.isQuantized = true;
+    d.quantizeStep = 1.f;
+    d.defaultValue = default_smoothingEnabled;
+    list.push_back(d);
 
     return list;
 }
@@ -253,6 +265,8 @@ Portamento::getParameter(string identifier) const
         return m_dynamicsThreshold_dB;
     } else if (identifier == "scalingFactor") {
         return m_scalingFactor;
+    } else if (identifier == "smoothingEnabled") {
+        return m_smoothingEnabled;
     }
     
     return 0.f;
@@ -285,6 +299,8 @@ Portamento::setParameter(string identifier, float value)
         m_dynamicsThreshold_dB = value;
     } else if (identifier == "scalingFactor") {
         m_scalingFactor = value;
+    } else if (identifier == "smoothingEnabled") {
+        m_smoothingEnabled = value;
     }
 }
 
@@ -654,6 +670,8 @@ Portamento::getRemainingFeatures()
                                  m_coreParams.stepSize, false);
     glideParams.pitchThreshold_semis =
         m_glideThresholdPitch_cents / 100.0;
+    glideParams.useSmoothing =
+        m_smoothingEnabled > 0.5f;
 
     Glide glide(glideParams);
     Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);
