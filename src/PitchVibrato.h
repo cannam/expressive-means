@@ -18,6 +18,8 @@
 
 using std::string;
 
+#define WITH_DEBUG_OUTPUTS 1
+
 class PitchVibrato : public Vamp::Plugin
 {
 public:
@@ -64,14 +66,18 @@ protected:
     CoreFeatures::Parameters m_coreParams;
 
     mutable int m_pitchTrackOutput;
-    mutable int m_rawPeaksOutput;
-    mutable int m_acceptedPeaksOutput;
 
 /*!!!
     mutable int m_summaryOutput;
     mutable int m_pitchvibratoTypeOutput;
     mutable int m_pitchvibratoIndexOutput;
 */
+
+#ifdef WITH_DEBUG_OUTPUTS
+    mutable int m_rawPeaksOutput;
+    mutable int m_acceptedPeaksOutput;
+    mutable int m_vibratoPitchTrackOutput;
+#endif
 
 };
 

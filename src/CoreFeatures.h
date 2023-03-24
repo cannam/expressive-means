@@ -216,6 +216,11 @@ public:
         return p;
     }
 
+    static double pitchToHz(double semis) {
+        double f = 220.0 * pow(2.0, ((semis - 57.0) / 12.0));
+        return f;
+    }
+
     CoreFeatures(const CoreFeatures &) =delete;
     CoreFeatures &operator=(const CoreFeatures &) =delete;
     

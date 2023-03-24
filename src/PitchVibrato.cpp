@@ -28,7 +28,8 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_coreFeatures(inputSampleRate),
     m_pitchTrackOutput(-1),
     m_rawPeaksOutput(-1),
-    m_acceptedPeaksOutput(-1)
+    m_acceptedPeaksOutput(-1),
+    m_vibratoPitchTrackOutput(-1)
     /*,
     m_summaryOutput(-1),
     m_pitchvibratoTypeOutput(-1),
@@ -171,7 +172,7 @@ PitchVibrato::getOutputDescriptors() const
     d.identifier = "pitchTrack";
     d.name = "Pitch Track";
     d.description = "The pitch track computed by pYIN, with further smoothing.";
-    d.unit = "semitones";
+    d.unit = "Hz";
     d.hasFixedBinCount = true;
     d.binCount = 1;
     d.hasKnownExtents = false;
@@ -181,33 +182,7 @@ PitchVibrato::getOutputDescriptors() const
     d.hasDuration = false;
     m_pitchTrackOutput = int(list.size());
     list.push_back(d);
-    
-    d.identifier = "rawpeaks";
-    d.name = "Raw Peaks";
-    d.description = "Simple local maxima of pitch track.";
-    d.hasFixedBinCount = true;
-    d.binCount = 0;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_rawPeaksOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "peaks";
-    d.name = "Peaks";
-    d.description = "Locations and pitches of vibrato peaks.";
-    d.unit = "semitones";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::VariableSampleRate;
-    d.sampleRate = 0.f;
-    d.hasDuration = false;
-    m_acceptedPeaksOutput = int(list.size());
-    list.push_back(d);
+
 /*!!!    
     d.identifier = "summary";
     d.name = "Summary";
@@ -248,6 +223,49 @@ PitchVibrato::getOutputDescriptors() const
     m_pitchvibratoIndexOutput = int(list.size());
     list.push_back(d);
 */
+
+#ifdef WITH_DEBUG_OUTPUTS
+    d.identifier = "rawpeaks";
+    d.name = "[Debug] Raw Peaks";
+    d.description = "Simple local maxima of pitch track.";
+    d.hasFixedBinCount = true;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_rawPeaksOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "peaks";
+    d.name = "[Debug] Peaks";
+    d.description = "Locations and pitches of vibrato peaks.";
+    d.unit = "Hz";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::VariableSampleRate;
+    d.sampleRate = 0.f;
+    d.hasDuration = false;
+    m_acceptedPeaksOutput = int(list.size());
+    list.push_back(d);
+    
+    d.identifier = "vibratoPitchTrack";
+    d.name = "[Debug] Vibrato-Only Pitch Track";
+    d.description = "";
+    d.unit = "Hz";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_vibratoPitchTrackOutput = int(list.size());
+    list.push_back(d);
+#endif
     
     return list;
 }
@@ -348,7 +366,7 @@ PitchVibrato::getRemainingFeatures()
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitch[i]);
+        f.values.push_back(m_coreFeatures.pitchToHz(pitch[i]));
         fs[m_pitchTrackOutput].push_back(f);
     }
 
@@ -493,6 +511,10 @@ PitchVibrato::getRemainingFeatures()
         return hann(i, n) *
             (0.5 - 0.5 * cos(4.0 * M_PI * double(i) / double(n)));
     };
+
+    vector<double> correlations; // correlations[i] is correlation
+                                 // between vibrato peak and modelled
+                                 // vibrato for accepted[i]
     
     for (int i = 0; i < int(accepted.size()); ++i) {
 
@@ -528,10 +550,8 @@ PitchVibrato::getRemainingFeatures()
                   << "; overall minimum is " << minInRange
                   << " and maximum is " << maxInRange << std::endl;
 
-        double corr = 0.0;
-
         if (maxInRange <= minInRange) {
-            //!!!
+            correlations.push_back(0.0);
             continue;
         }
 
@@ -551,11 +571,54 @@ PitchVibrato::getRemainingFeatures()
         }
         std::cerr << std::endl;
 #endif
-        
-    }
-        
 
-    //!!! filter out the debug ones
+        // The R implementation appears to use Pearson correlation
+        
+        auto measured = [&](int i) {
+            double s = (pitch[min0 + i] - minInRange) /
+                (maxInRange - minInRange);
+            return s * hann(i, m);
+        };
+
+        auto modelled = [&](int i) {
+            return winSine(i, m);
+        };
+
+        double measuredTotal = 0.0, modelledTotal = 0.0;
+        for (int i = 0; i < m; ++i) {
+            measuredTotal += measured(i);
+            modelledTotal += modelled(i);
+        }
+
+        double xmean = measuredTotal / double(m);
+        double ymean = modelledTotal / double(m);
+        
+        double num = 0.0, xdenom = 0.0, ydenom = 0.0;
+        for (int i = 0; i < m; ++i) {
+            double x = measured(i);
+            double y = modelled(i);
+            num += (x - xmean) * (y - ymean);
+            xdenom += (x - xmean) * (x - xmean);
+            ydenom += (y - ymean) * (y - ymean);
+        }
+
+        double denom = sqrt(xdenom) * sqrt(ydenom);
+        
+        double corr = 1.0;
+        if (denom != 0.0) {
+            corr = num / denom;
+        }
+
+#ifdef DEBUG_PITCH_VIBRATO
+        std::cerr << "correlation = " << corr << std::endl;
+#endif
+
+        correlations.push_back(corr);
+    }
+
+    const double correlationThreshold = 0.75;
+
+#ifdef WITH_DEBUG_OUTPUTS
     
     for (int i = 0; i < int(peaks.size()); ++i) {
         Feature f;
@@ -569,10 +632,28 @@ PitchVibrato::getRemainingFeatures()
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.getStartTime() +
             Vamp::RealTime::fromSeconds(positions[i]);
-        f.values.push_back(pitch[peaks[accepted[i]]]);
+        f.values.push_back(m_coreFeatures.pitchToHz
+                           (pitch[peaks[accepted[i]]]));
         fs[m_acceptedPeaksOutput].push_back(f);
     }
 
+    for (int i = 0; i < int(accepted.size()); ++i) {
+        if (correlations[i] < correlationThreshold) {
+            continue;
+        }
+        for (int j = peaks[accepted[i]]; j < peaks[accepted[i] + 1]; ++j) {
+            if (j < n && pitch[j] > 0.0) {
+                Feature f;
+                f.hasTimestamp = true;
+                f.timestamp = m_coreFeatures.timeForStep(j);
+                f.values.push_back(m_coreFeatures.pitchToHz(pitch[j]));
+                fs[m_vibratoPitchTrackOutput].push_back(f);
+            }
+        }
+    }
+    
+#endif
+    
     return fs;
 }
 
