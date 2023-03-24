@@ -32,6 +32,7 @@ plugin_sources = [
   'src/PitchVibrato.cpp',
   'src/Portamento.cpp',
   'src/SemanticArticulation.cpp',
+  'src/SemanticPortamento.cpp',
   'src/libmain.cpp',
 ]
 

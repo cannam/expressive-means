@@ -75,7 +75,7 @@ Portamento::getIdentifier() const
 string
 Portamento::getName() const
 {
-    return "Expressive Means: Portamento";
+    return "Expressive Means (advanced): Portamento";
 }
 
 string

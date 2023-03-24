@@ -19,6 +19,7 @@
 #include "Portamento.h"
 
 #include "SemanticArticulation.h"
+#include "SemanticPortamento.h"
 
 static Vamp::PluginAdapter<Onsets> onsetsPluginAdapter;
 static Vamp::PluginAdapter<Articulation> articulationPluginAdapter;
@@ -26,6 +27,7 @@ static Vamp::PluginAdapter<PitchVibrato> pitchVibratoPluginAdapter;
 static Vamp::PluginAdapter<Portamento> portamentoPluginAdapter;
 
 static Vamp::PluginAdapter<SemanticArticulation> semanticArticulationPluginAdapter;
+static Vamp::PluginAdapter<SemanticPortamento> semanticPortamentoPluginAdapter;
 
 const VampPluginDescriptor *
 vampGetPluginDescriptor(unsigned int version, unsigned int index)
@@ -38,6 +40,7 @@ vampGetPluginDescriptor(unsigned int version, unsigned int index)
     case  2: return pitchVibratoPluginAdapter.getDescriptor();
     case  3: return portamentoPluginAdapter.getDescriptor();
     case  4: return semanticArticulationPluginAdapter.getDescriptor();
+    case  5: return semanticPortamentoPluginAdapter.getDescriptor();
     default: return 0;
     }
 }
