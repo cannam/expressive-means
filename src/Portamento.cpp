@@ -686,138 +686,173 @@ Portamento::getRemainingFeatures()
         classifications[m.first] =
             classifyGlide(m.second, pyinPitch, smoothedPower);
     }
+    
+    int glideNo = 1;
 
-    int j = 1;
-    for (auto m : glides) {
+    for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
-        int onset = m.first;
-        int glideStart = m.second.start;
-        int glideEnd = m.second.end;
-        string code;
-        double index = 1.0;
-
-        cerr << "returning features for glide " << j
-             << " associated with onset " << onset
-             << " with glide from " << glideStart << " to " << glideEnd
-             << endl;
+        int onset = pitr->first;
 
         int followingOnset = onset;
-        auto itr = onsetOffsets.find(onset);
-        if (++itr != onsetOffsets.end()) {
-            followingOnset = itr->first;
+        auto pj = pitr;
+        if (++pj != onsetOffsets.end()) {
+            followingOnset = pj->first;
         }
+
+        if (glides.find(onset) == glides.end()) {
+            
+            cerr << "returning features for onset " << onset
+                 << " without glide" << endl;
         
-        Feature f;
-        f.hasTimestamp = true;
+            Feature f;
+            f.hasTimestamp = true;
 
-        GlideDirection direction = classifications[onset].direction;
-        code += glideDirectionToCode(direction);
-        index *= glideDirectionToFactor(direction);
+            string code = "N";
+            
+            f.timestamp = m_coreFeatures.timeForStep(onset);
+            f.hasDuration = false;
+            f.label = code;
+            fs[m_portamentoTypeOutput].push_back(f);
 
-        GlideLink link = classifications[onset].link;
-        code += glideLinkToCode(link);
-        index *= glideLinkToFactor(link);
-
-        GlideRange range = classifications[onset].range;
-        code += glideRangeToCode(range);
-        index *= glideRangeToFactor(range);
-
-        GlideDuration duration = classifications[onset].duration;
-        code += glideDurationToCode(duration);
-        index *= glideDurationToFactor(duration);
-
-        GlideDynamic dynamic = classifications[onset].dynamic;
-        code += glideDynamicToCode(dynamic);
-        index *= glideDynamicToFactor(dynamic);
-
-        index *= m_scalingFactor;
+            f.label = "";
+            f.values.push_back(0.f);
+            fs[m_portamentoIndexOutput].push_back(f);
         
-        f.timestamp = m_coreFeatures.timeForStep(onset);
-        f.hasDuration = false;
-        f.label = code;
-        fs[m_portamentoTypeOutput].push_back(f);
+            ostringstream os;
+            os << m_coreFeatures.timeForStep(onset).toText() << " / "
+               << (m_coreFeatures.timeForStep(followingOnset) -
+                   m_coreFeatures.timeForStep(onset)).toText() << "\n"
+               << code << "\n"
+               << "IPort = " << 0.0;
+            f.label = os.str();
+            f.values.clear();
+            fs[m_summaryOutput].push_back(f);
 
-        f.label = "";
-        f.values.push_back(round(index));
-        fs[m_portamentoIndexOutput].push_back(f);
+        } else {
         
-        double sp2dp = round(pyinPitch.at(glideStart) * 100.0) / 100.0;
-        double ep2dp = round(pyinPitch.at(glideEnd) * 100.0) / 100.0;
-        double range2dp = round(classifications[onset].range_cents * 100.0) / 100.0;
-        double emin2dp = round(classifications[onset].dynamicMin * 100.0) / 100.0;
-        double emax2dp = round(classifications[onset].dynamicMax * 100.0) / 100.0;
+            auto m = glides.at(onset);
+            int glideStart = m.start;
+            int glideEnd = m.end;
+            string code;
+            double index = 1.0;
 
-        ostringstream os;
-        os << m_coreFeatures.timeForStep(onset).toText() << " / "
-           << (m_coreFeatures.timeForStep(followingOnset) -
-               m_coreFeatures.timeForStep(onset)).toText() << "\n"
-           << code << "\n"
-           << sp2dp << "Hz / " << ep2dp << "Hz (" << range2dp << "c)\n"
-           << m_coreFeatures.timeForStep(glideStart).toText() << " / "
-           << m_coreFeatures.timeForStep(glideEnd).toText() << " ("
-           << round(m_coreFeatures.stepsToMs
-                    (glideEnd - glideStart + 1, m_coreParams.stepSize))
-           << "ms)\n"
-           << emax2dp << "dB / " << emin2dp << "dB\n"
-           << "IPort = " << index;
-        f.label = os.str();
-        f.values.clear();
-        fs[m_summaryOutput].push_back(f);
+            cerr << "returning features for glide " << glideNo
+                 << " associated with onset " << onset
+                 << " with glide from " << glideStart << " to " << glideEnd
+                 << endl;
+        
+            Feature f;
+            f.hasTimestamp = true;
+
+            GlideDirection direction = classifications[onset].direction;
+            code += glideDirectionToCode(direction);
+            index *= glideDirectionToFactor(direction);
+
+            GlideLink link = classifications[onset].link;
+            code += glideLinkToCode(link);
+            index *= glideLinkToFactor(link);
+
+            GlideRange range = classifications[onset].range;
+            code += glideRangeToCode(range);
+            index *= glideRangeToFactor(range);
+
+            GlideDuration duration = classifications[onset].duration;
+            code += glideDurationToCode(duration);
+            index *= glideDurationToFactor(duration);
+
+            GlideDynamic dynamic = classifications[onset].dynamic;
+            code += glideDynamicToCode(dynamic);
+            index *= glideDynamicToFactor(dynamic);
+
+            index *= m_scalingFactor;
+        
+            f.timestamp = m_coreFeatures.timeForStep(onset);
+            f.hasDuration = false;
+            f.label = code;
+            fs[m_portamentoTypeOutput].push_back(f);
+
+            f.label = "";
+            f.values.push_back(round(index));
+            fs[m_portamentoIndexOutput].push_back(f);
+        
+            double sp2dp = round(pyinPitch.at(glideStart) * 100.0) / 100.0;
+            double ep2dp = round(pyinPitch.at(glideEnd) * 100.0) / 100.0;
+            double range2dp = round(classifications[onset].range_cents * 100.0) / 100.0;
+            double emin2dp = round(classifications[onset].dynamicMin * 100.0) / 100.0;
+            double emax2dp = round(classifications[onset].dynamicMax * 100.0) / 100.0;
+
+            ostringstream os;
+            os << m_coreFeatures.timeForStep(onset).toText() << " / "
+               << (m_coreFeatures.timeForStep(followingOnset) -
+                   m_coreFeatures.timeForStep(onset)).toText() << "\n"
+               << code << "\n"
+               << sp2dp << "Hz / " << ep2dp << "Hz (" << range2dp << "c)\n"
+               << m_coreFeatures.timeForStep(glideStart).toText() << " / "
+               << m_coreFeatures.timeForStep(glideEnd).toText() << " ("
+               << round(m_coreFeatures.stepsToMs
+                        (glideEnd - glideStart + 1, m_coreParams.stepSize))
+               << "ms)\n"
+               << emax2dp << "dB / " << emin2dp << "dB\n"
+               << "IPort = " << index;
+            f.label = os.str();
+            f.values.clear();
+            fs[m_summaryOutput].push_back(f);
         
 #ifdef WITH_DEBUG_OUTPUTS
-        {
-            ostringstream os;
-            os << "Glide " << j << ": Start";
-            f.timestamp = m_coreFeatures.timeForStep(glideStart);
-            f.values.clear();
-            f.values.push_back(pyinPitch[glideStart]);
-            f.label = os.str();
-            fs[m_portamentoPointsOutput].push_back(f);
-        }
-        
-        {
-            ostringstream os;
-            os << "Glide " << j << ": Onset";
-            f.timestamp = m_coreFeatures.timeForStep(onset);
-            f.values.clear();
-            f.values.push_back(pyinPitch[onset]);
-            f.label = os.str();
-            fs[m_portamentoPointsOutput].push_back(f);
-
-            f.values.clear();
-
-            f.label = glideDirectionToString(direction);
-            fs[m_glideDirectionOutput].push_back(f);
-
-            f.label = glideLinkToString(link);
-            fs[m_glideLinkOutput].push_back(f);
-            
-            f.label = glideDynamicToString(dynamic);
-            fs[m_glideDynamicOutput].push_back(f);
-        }
-
-        {
-            ostringstream os;
-            os << "Glide " << j << ": End";
-            f.timestamp = m_coreFeatures.timeForStep(glideEnd);
-            f.values.clear();
-            f.values.push_back(pyinPitch[glideEnd]);
-            f.label = os.str();
-            fs[m_portamentoPointsOutput].push_back(f);
-        }
-
-        for (int k = glideStart; k <= glideEnd; ++k) {
-            if (pyinPitch[k] > 0.0) {
-                f.timestamp = m_coreFeatures.timeForStep(k);
+            {
+                ostringstream os;
+                os << "Glide " << glideNo << ": Start";
+                f.timestamp = m_coreFeatures.timeForStep(glideStart);
                 f.values.clear();
-                f.values.push_back(pyinPitch[k]);
-                f.label = "";
-                fs[m_glidePitchTrackOutput].push_back(f);
+                f.values.push_back(pyinPitch[glideStart]);
+                f.label = os.str();
+                fs[m_portamentoPointsOutput].push_back(f);
             }
-        }
+        
+            {
+                ostringstream os;
+                os << "Glide " << glideNo << ": Onset";
+                f.timestamp = m_coreFeatures.timeForStep(onset);
+                f.values.clear();
+                f.values.push_back(pyinPitch[onset]);
+                f.label = os.str();
+                fs[m_portamentoPointsOutput].push_back(f);
+
+                f.values.clear();
+
+                f.label = glideDirectionToString(direction);
+                fs[m_glideDirectionOutput].push_back(f);
+
+                f.label = glideLinkToString(link);
+                fs[m_glideLinkOutput].push_back(f);
+            
+                f.label = glideDynamicToString(dynamic);
+                fs[m_glideDynamicOutput].push_back(f);
+            }
+
+            {
+                ostringstream os;
+                os << "Glide " << glideNo << ": End";
+                f.timestamp = m_coreFeatures.timeForStep(glideEnd);
+                f.values.clear();
+                f.values.push_back(pyinPitch[glideEnd]);
+                f.label = os.str();
+                fs[m_portamentoPointsOutput].push_back(f);
+            }
+
+            for (int k = glideStart; k <= glideEnd; ++k) {
+                if (pyinPitch[k] > 0.0) {
+                    f.timestamp = m_coreFeatures.timeForStep(k);
+                    f.values.clear();
+                    f.values.push_back(pyinPitch[k]);
+                    f.label = "";
+                    fs[m_glidePitchTrackOutput].push_back(f);
+                }
+            }
 #endif
         
-        ++j;
+            ++glideNo;
+        }
     }
     
     return fs;
