@@ -65,6 +65,19 @@ protected:
 
     CoreFeatures::Parameters m_coreParams;
 
+    struct VibratoElement {
+        int hop;
+        int peakIndex;
+        double peakHeight; // min-to-max, in semitones
+        double position; // in seconds, interpolated for position
+        double waveLength; // time to the following element's position
+        double correlation;
+        VibratoElement() :
+            hop(-1), peakIndex(-1),
+            peakHeight(0.0), position(0.0),
+            waveLength(0.0), correlation(0.0) { }
+    };
+    
     mutable int m_pitchTrackOutput;
 
 /*!!!

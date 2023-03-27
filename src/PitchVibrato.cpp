@@ -400,14 +400,12 @@ PitchVibrato::getRemainingFeatures()
     // 5. Eliminate those peaks that don't rise to within 20-800 cents
     // relative to the intervening minimum
 
-    vector<int> accepted; // NB this contains indices into peaks, so
-                          // the *pitch* of accepted[i] is
-                          // pitch[peaks[accepted[i]]]
-
     int minDistSteps = m_coreFeatures.msToSteps
         (62.5, m_coreParams.stepSize, false);
     int maxDistSteps = m_coreFeatures.msToSteps
         (416.7, m_coreParams.stepSize, false);
+
+    vector<VibratoElement> elements;
     
     for (int i = 0; i < npairs; ++i) {
 
@@ -467,28 +465,35 @@ PitchVibrato::getRemainingFeatures()
             continue;
         }
 
-        accepted.push_back(i);
+        VibratoElement element;
+        element.hop = peaks[i];
+        element.peakIndex = i;
+        element.peakHeight = peakHeight;
+        // fill in the remaining elements below
+        elements.push_back(element);
     }
 
     // 6. Use parabolic interpolation to identify a more precise peak
     // location
 
-    vector<double> positions; // positions[i] is time in seconds of
-                              // accepted[i], relative to start time
-    
-    for (int i = 0; i < int(accepted.size()); ++i) {
-        double alpha = pitch[peaks[accepted[i]] - 1];
-        double beta = pitch[peaks[accepted[i]]];
-        double gamma = pitch[peaks[accepted[i]] + 1];
+    for (int i = 0; i < int(elements.size()); ++i) {
+        int hop = elements[i].hop;
+        double alpha = pitch[hop - 1];
+        double beta = pitch[hop];
+        double gamma = pitch[hop + 1];
         double denom = alpha - 2.0 * beta + gamma;
         double p = (denom != 0.0 ? ((alpha - gamma) / denom * 0.5) : 0.0);
-        double refinedStep = double(peaks[accepted[i]]) + p;
+        double refinedStep = double(hop) + p;
         double sec =
             ((refinedStep +
               double((m_coreParams.blockSize / m_coreParams.stepSize) / 2)) *
              double(m_coreParams.stepSize))
             / double(m_inputSampleRate);
-        positions.push_back(sec);
+        elements[i].position = sec;
+    }
+
+    for (int i = 0; i + 1 < int(elements.size()); ++i) {
+        elements[i].waveLength = elements[i+1].position - elements[i].position;
     }
 
     // We now have:
@@ -515,18 +520,16 @@ PitchVibrato::getRemainingFeatures()
             (0.5 - 0.5 * cos(4.0 * M_PI * double(i) / double(n)));
     };
 
-    vector<double> correlations; // correlations[i] is correlation
-                                 // between vibrato peak and modelled
-                                 // vibrato for accepted[i]
-    
-    for (int i = 0; i < int(accepted.size()); ++i) {
+    for (int i = 0; i < int(elements.size()); ++i) {
 
-        int min0 = peaks[accepted[i]];
+        int peakIndex = elements[i].peakIndex;
+        
+        int min0 = peaks[peakIndex];
         while (min0 > 0 && pitch[min0 - 1] < pitch[min0]) {
             --min0;
         }
         
-        int min1 = peaks[accepted[i] + 1];
+        int min1 = peaks[peakIndex + 1];
         while (min1 < n-1 && pitch[min1 + 1] < pitch[min1]) {
             ++min1;
         }
@@ -545,8 +548,8 @@ PitchVibrato::getRemainingFeatures()
             }
         }
             
-        std::cerr << "for accepted peak at " << peaks[accepted[i]]
-                  << " with pitch " << pitch[peaks[accepted[i]]]
+        std::cerr << "for accepted peak at " << peaks[peakIndex]
+                  << " with pitch " << pitch[peaks[peakIndex]]
                   << " we have previous minimum " << pitch[min0]
                   << " at " << min0 << " and following-following minimum "
                   << pitch[min1] << " at " << min1
@@ -554,7 +557,6 @@ PitchVibrato::getRemainingFeatures()
                   << " and maximum is " << maxInRange << std::endl;
 
         if (maxInRange <= minInRange) {
-            correlations.push_back(0.0);
             continue;
         }
 
@@ -616,7 +618,7 @@ PitchVibrato::getRemainingFeatures()
         std::cerr << "correlation = " << corr << std::endl;
 #endif
 
-        correlations.push_back(corr);
+        elements[i].correlation = corr;
     }
 
     const double correlationThreshold = 0.75;
@@ -630,21 +632,20 @@ PitchVibrato::getRemainingFeatures()
         fs[m_rawPeaksOutput].push_back(f);
     }
     
-    for (int i = 0; i < int(accepted.size()); ++i) {
+    for (auto e: elements) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.getStartTime() +
-            Vamp::RealTime::fromSeconds(positions[i]);
-        f.values.push_back(m_coreFeatures.pitchToHz
-                           (pitch[peaks[accepted[i]]]));
+            Vamp::RealTime::fromSeconds(e.position);
+        f.values.push_back(m_coreFeatures.pitchToHz(pitch[e.hop]));
         fs[m_acceptedPeaksOutput].push_back(f);
     }
 
-    for (int i = 0; i < int(accepted.size()); ++i) {
-        if (correlations[i] < correlationThreshold) {
+    for (auto e: elements) {
+        if (e.correlation < correlationThreshold) {
             continue;
         }
-        for (int j = peaks[accepted[i]]; j < peaks[accepted[i] + 1]; ++j) {
+        for (int j = peaks[e.peakIndex]; j < peaks[e.peakIndex + 1]; ++j) {
             if (j < n && pitch[j] > 0.0) {
                 Feature f;
                 f.hasTimestamp = true;
