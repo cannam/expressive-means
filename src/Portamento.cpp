@@ -23,7 +23,9 @@ using std::map;
 using std::lower_bound;
 using std::ostringstream;
 
-static const float default_glideThresholdPitch_cents = 50.f;
+static const float default_glideThresholdPitch_cents = 60.f;
+static const float default_glideThresholdHopMinimum_cents = 15.f;
+static const float default_glideThresholdHopMaximum_cents = 50.f;
 static const float default_glideThresholdDuration_ms = 70.f;
 static const float default_glideThresholdProximity_ms = 350.f;
 static const float default_linkThreshold_ms = 30.f;
@@ -41,6 +43,8 @@ Portamento::Portamento(float inputSampleRate) :
     m_blockSize(0),
     m_coreFeatures(inputSampleRate),
     m_glideThresholdPitch_cents(default_glideThresholdPitch_cents),
+    m_glideThresholdHopMinimum_cents(default_glideThresholdHopMinimum_cents),
+    m_glideThresholdHopMaximum_cents(default_glideThresholdHopMaximum_cents),
     m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
     m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
     m_linkThreshold_ms(default_linkThreshold_ms),
@@ -148,11 +152,27 @@ Portamento::getParameterDescriptors() const
     d.isQuantized = false;
     
     d.identifier = "glideThresholdPitch";
+    d.name = "Glide detection: Minimum pitch difference";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 200.f;
+    d.defaultValue = default_glideThresholdPitch_cents;
+    list.push_back(d);
+    
+    d.identifier = "glideThresholdHopMinimum";
+    d.name = "Glide detection: Minimum hop difference";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 100.f;
+    d.defaultValue = default_glideThresholdHopMinimum_cents;
+    list.push_back(d);
+    
+    d.identifier = "glideThresholdHopMaximum";
     d.name = "Glide detection: Maximum hop difference";
     d.unit = "cents";
     d.minValue = 0.f;
     d.maxValue = 100.f;
-    d.defaultValue = default_glideThresholdPitch_cents;
+    d.defaultValue = default_glideThresholdHopMaximum_cents;
     list.push_back(d);
     
     d.identifier = "glideThresholdDuration";
@@ -250,6 +270,10 @@ Portamento::getParameter(string identifier) const
 
     if (identifier == "glideThresholdPitch") {
         return m_glideThresholdPitch_cents;
+    } else if (identifier == "glideThresholdHopMinimum") {
+        return m_glideThresholdHopMinimum_cents;
+    } else if (identifier == "glideThresholdHopMaximum") {
+        return m_glideThresholdHopMaximum_cents;
     } else if (identifier == "glideThresholdDuration") {
         return m_glideThresholdDuration_ms;
     } else if (identifier == "glideThresholdProximity") {
@@ -284,6 +308,10 @@ Portamento::setParameter(string identifier, float value)
 
     if (identifier == "glideThresholdPitch") {
         m_glideThresholdPitch_cents = value;
+    } else if (identifier == "glideThresholdHopMinimum") {
+        m_glideThresholdHopMinimum_cents = value;
+    } else if (identifier == "glideThresholdHopMaximum") {
+        m_glideThresholdHopMaximum_cents = value;
     } else if (identifier == "glideThresholdDuration") {
         m_glideThresholdDuration_ms = value;
     } else if (identifier == "glideThresholdProximity") {
@@ -671,10 +699,13 @@ Portamento::getRemainingFeatures()
     glideParams.onsetProximityThreshold_steps =
         m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
                                  m_coreParams.stepSize, false);
-    glideParams.pitchThreshold_semis =
-        m_glideThresholdPitch_cents / 100.0;
-    glideParams.useSmoothing =
-        m_smoothingEnabled > 0.5f;
+    glideParams.minimumPitchThreshold_cents = m_glideThresholdPitch_cents;
+    glideParams.minimumHopDifference_cents = m_glideThresholdHopMinimum_cents;
+    glideParams.maximumHopDifference_cents = m_glideThresholdHopMaximum_cents;
+    glideParams.medianFilterLength_steps =
+        m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
+                                 m_coreParams.stepSize, true);
+    glideParams.useSmoothing = (m_smoothingEnabled > 0.5f);
 
     Glide glide(glideParams);
     Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);

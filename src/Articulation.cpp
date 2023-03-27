@@ -673,9 +673,12 @@ Articulation::getRemainingFeatures()
     glideParams.onsetProximityThreshold_steps =
         m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
                                  m_coreParams.stepSize, false);
-    glideParams.pitchThreshold_semis =
-        m_glideThresholdPitch_cents / 100.0;
-    glideParams.useSmoothing = true;
+//!!!    glideParams.pitchThreshold_semis =
+//        m_glideThresholdPitch_cents / 100.0;
+    glideParams.medianFilterLength_steps =
+        m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
+                                 m_coreParams.stepSize, true);
+    glideParams.useSmoothing = false;
 
     Glide glide(glideParams);
     Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);

@@ -230,6 +230,8 @@ protected:
 
     CoreFeatures::Parameters m_coreParams;
     float m_glideThresholdPitch_cents;  // 3.1, g_1
+    float m_glideThresholdHopMinimum_cents;
+    float m_glideThresholdHopMaximum_cents;
     float m_glideThresholdDuration_ms;  // 3.2, g_2
     float m_glideThresholdProximity_ms; // 3.3, g_3
     float m_linkThreshold_ms; // b_1

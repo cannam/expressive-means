@@ -23,8 +23,21 @@ public:
     struct Parameters {
         int durationThreshold_steps;
         int onsetProximityThreshold_steps;
-        double pitchThreshold_semis;
+        float minimumPitchThreshold_cents;
+        float minimumHopDifference_cents;
+        float maximumHopDifference_cents;
+        int medianFilterLength_steps;
         bool useSmoothing;
+
+        Parameters() :
+            durationThreshold_steps(10),
+            onsetProximityThreshold_steps(100),
+            minimumPitchThreshold_cents(60.f),
+            minimumHopDifference_cents(15.f),
+            maximumHopDifference_cents(50.f),
+            medianFilterLength_steps(29),
+            useSmoothing(false)
+        {}
     };
 
     Glide(Parameters parameters) :

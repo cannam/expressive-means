@@ -12,6 +12,7 @@
 #include "Glide.h"
 
 #include "../ext/pyin/MeanFilter.h"
+#include "../ext/qm-dsp/maths/MedianFilter.h"
 
 #include <iostream>
 
@@ -37,6 +38,10 @@ Glide::extract(const vector<double> &pitch_Hz,
         }
     }
 
+    int halfMedianFilterLength = m_parameters.medianFilterLength_steps / 2;
+    vector<double> medianFilteredPitch = MedianFilter<double>::filter
+        (m_parameters.medianFilterLength_steps, rawPitch);
+
     vector<double> pitch(n, 0.0);
         
     if (m_parameters.useSmoothing) {
@@ -53,72 +58,86 @@ Glide::extract(const vector<double> &pitch_Hz,
     } else {
         pitch = rawPitch;
     }
-
-    // "A glide is apparent as soon as the pitch starts to constantly
+    
+    // A glide is apparent as soon as the pitch starts to constantly
     // move forward in one direction for at least [threshold:
-    // duration], but each hop's value not deviating more than
-    // [threshold: pitch] cents from the hop value before".
+    // duration], *and* the absolute difference of a pitch and its
+    // following median exceeds [threshold: minimum pitch], *and* the
+    // absolute difference of a pitch from its previous pitch exceeds
+    // [threshold: minimum hop difference].
     //
-    // A couple of additions to this:
-    //
-    // * It's implicit that there must *be* pitch measurements
-    // continuously available during this time
-    //
-    // * Although each hop should not deviate more than the given
-    // threshold from the previous one, we do insist that the total
-    // deviation through the whole glide is over this threshold, to
-    // eliminate tiny drifts in pitch through a note
+    // A glide ends as soon as the difference to the median falls
+    // below [threshold: minimum hop difference]. If within this span
+    // a pitch value deviates by more than [threshold: maximum hop
+    // difference] from the previous hop, rule it out as a glide.  For
+    // practical reasons we also need to end a glide if a hop is found
+    // without a pitch measurement.
 
-    vector<double> pitchDelta;
     vector<int> candidates; // hop
     map<int, int> glides; // glide start hop -> glide end hop
 
+    double minimumPitchThreshold_semis =
+        m_parameters.minimumPitchThreshold_cents / 100.0;
+    double minimumHopDifference_semis =
+        m_parameters.minimumHopDifference_cents / 100.0;
+    double maximumHopDifference_semis =
+        m_parameters.maximumHopDifference_cents / 100.0;
+
     int lastNonCandidate = -1;
-    int thresholdSteps = m_parameters.durationThreshold_steps;
-    double threshold = m_parameters.pitchThreshold_semis;
     double prevDelta = 0.0;
+
+    // Latches - when set true, these are not set false again until we
+    // reach a hop that fails the other thresholds for candidacy
+    bool surpassedMedianThreshold = false;
+    bool surpassedStartingHopDifference = false;
     
-    for (int i = 1; i < n; ++i) {
+    for (int i = 1; i + halfMedianFilterLength < n; ++i) {
 
         bool sameDirection = false;
-        bool belowThreshold = false;
+        bool belowMaxDiff = false;
         bool havePitch = (pitch[i] > 0.0);
 
         if (havePitch) {
             if (pitch[i-1] > 0.0) {
                 double delta = pitch[i] - pitch[i-1];
-                belowThreshold = (fabs(delta) <= threshold);
+                double diff = fabs(delta);
                 sameDirection = ((delta > 0.0 && prevDelta > 0.0) ||
                                  (delta < 0.0 && prevDelta < 0.0));
-                pitchDelta.push_back(delta);
+                belowMaxDiff = (diff <= maximumHopDifference_semis);
+                if (diff > minimumHopDifference_semis) {
+                    surpassedStartingHopDifference = true;
+                }
                 prevDelta = delta;
             } else {
-                pitchDelta.push_back(0.0);
                 prevDelta = 0.0;
             }
+            double medianDiff = fabs
+                (pitch[i] - medianFilteredPitch[i + halfMedianFilterLength]);
+            if (medianDiff > minimumPitchThreshold_semis) {
+                surpassedMedianThreshold = true;
+            }
         } else {
-            pitchDelta.push_back(0.0);
             prevDelta = 0.0;
         }
 
-        bool isCandidate = (havePitch && belowThreshold && sameDirection);
-
+        bool isCandidate =
+            (surpassedMedianThreshold && surpassedStartingHopDifference) &&
+            (havePitch && belowMaxDiff && sameDirection);
+        
         if (isCandidate) {
             candidates.push_back(i);
         } else {
             // Not a candidate: If at least thresholdSteps candidates
             // in a row previously with total pitch drift more than
             // threshold, record a glide ending here
-            if (lastNonCandidate + thresholdSteps <= i &&
-                fabs(pitch[i-1] - pitch[lastNonCandidate + 1]) > threshold) {
+            if (lastNonCandidate + m_parameters.durationThreshold_steps <= i) {
                 glides[lastNonCandidate + 1] = i-1;
             }
             lastNonCandidate = i;
         }
     }
 
-    if (lastNonCandidate + thresholdSteps < n &&
-        fabs(pitch[n-1] - pitch[lastNonCandidate + 1]) > threshold) {
+    if (lastNonCandidate + m_parameters.durationThreshold_steps < n) {
         glides[lastNonCandidate + 1] = n-1;
     }
 
