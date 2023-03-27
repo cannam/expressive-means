@@ -11,11 +11,6 @@
 
 #include "SemanticPortamento.h"
 
-//!!! This is only a sketch!
-// -> Not all of the referenced parameters exist in the Portamento plugin yet
-// -> The spec calls for another parameter (g1) that is not there yet
-// -> The spec mentions passing through some further parameters
-
 SemanticPortamento::SemanticPortamento(float inputSampleRate) :
     SemanticAdapter<Portamento>
     (inputSampleRate,
@@ -60,28 +55,32 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityNoise", 24.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 6.f }
+               { "onsetSensitivityRawPowerThreshold", 6.f },
+               { "glideThresholdPitch", 60.f }
              } },
            { "Voice",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 40.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 8.f }
+               { "onsetSensitivityRawPowerThreshold", 8.f },
+               { "glideThresholdPitch", 100.f }
              } },
            { "Keys / Mallets",
              { { "onsetSensitivityPitch", 90.f },
                { "onsetSensitivityNoise", 18.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f },
+               { "glideThresholdPitch", 40.f }
              } },
            { "Wind",
              { { "onsetSensitivityPitch", 10.f },
                { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 12.f }
+               { "onsetSensitivityRawPowerThreshold", 12.f },
+               { "glideThresholdPitch", 40.f }
              } }                  
          }
        },
