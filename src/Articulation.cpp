@@ -52,9 +52,12 @@ Articulation::Articulation(float inputSampleRate) :
     m_volumeDevelopmentOutput(-1),
     m_articulationTypeOutput(-1),
     m_pitchTrackOutput(-1),
-    m_articulationIndexOutput(-1),
+    m_articulationIndexOutput(-1)
+#ifdef WITH_DEBUG_OUTPUTS
+    ,
     m_noiseRatioOutput(-1),
     m_relativeDurationOutput(-1)
+#endif
 {
 }
 

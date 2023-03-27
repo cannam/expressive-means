@@ -54,11 +54,14 @@ Portamento::Portamento(float inputSampleRate) :
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
-    m_portamentoIndexOutput(-1),
+    m_portamentoIndexOutput(-1)
+#ifdef WITH_DEBUG_OUTPUTS
+    ,
     m_portamentoPointsOutput(-1),
     m_glideDirectionOutput(-1),
     m_glideLinkOutput(-1),
     m_glidePitchTrackOutput(-1)
+#endif
 {
 }
 
@@ -684,7 +687,6 @@ Portamento::getRemainingFeatures()
             classifyGlide(m.second, pyinPitch, smoothedPower);
     }
 
-#ifdef WITH_DEBUG_OUTPUTS
     int j = 1;
     for (auto m : glides) {
 
@@ -762,6 +764,7 @@ Portamento::getRemainingFeatures()
         f.values.clear();
         fs[m_summaryOutput].push_back(f);
         
+#ifdef WITH_DEBUG_OUTPUTS
         {
             ostringstream os;
             os << "Glide " << j << ": Start";
@@ -771,7 +774,7 @@ Portamento::getRemainingFeatures()
             f.label = os.str();
             fs[m_portamentoPointsOutput].push_back(f);
         }
-
+        
         {
             ostringstream os;
             os << "Glide " << j << ": Onset";
@@ -781,7 +784,6 @@ Portamento::getRemainingFeatures()
             f.label = os.str();
             fs[m_portamentoPointsOutput].push_back(f);
 
-#ifdef WITH_DEBUG_OUTPUTS
             f.values.clear();
 
             f.label = glideDirectionToString(direction);
@@ -792,7 +794,6 @@ Portamento::getRemainingFeatures()
             
             f.label = glideDynamicToString(dynamic);
             fs[m_glideDynamicOutput].push_back(f);
-#endif
         }
 
         {
@@ -805,7 +806,6 @@ Portamento::getRemainingFeatures()
             fs[m_portamentoPointsOutput].push_back(f);
         }
 
-#ifdef WITH_DEBUG_OUTPUTS
         for (int k = glideStart; k <= glideEnd; ++k) {
             if (pyinPitch[k] > 0.0) {
                 f.timestamp = m_coreFeatures.timeForStep(k);
@@ -819,7 +819,6 @@ Portamento::getRemainingFeatures()
         
         ++j;
     }
-#endif
     
     return fs;
 }

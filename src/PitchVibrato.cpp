@@ -26,10 +26,13 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_stepSize(0),
     m_blockSize(0),
     m_coreFeatures(inputSampleRate),
-    m_pitchTrackOutput(-1),
+    m_pitchTrackOutput(-1)
+#ifdef WITH_DEBUG_OUTPUTS
+    ,
     m_rawPeaksOutput(-1),
     m_acceptedPeaksOutput(-1),
     m_vibratoPitchTrackOutput(-1)
+#endif
     /*,
     m_summaryOutput(-1),
     m_pitchvibratoTypeOutput(-1),
