@@ -60,10 +60,6 @@ public:
 protected:
     int m_stepSize;
     int m_blockSize;
-    
-    CoreFeatures m_coreFeatures;
-
-    CoreFeatures::Parameters m_coreParams;
 
     struct VibratoElement {
         int hop;
@@ -77,6 +73,16 @@ protected:
             peakHeight(0.0), position(0.0),
             waveLength(0.0), correlation(0.0) { }
     };
+    
+    CoreFeatures m_coreFeatures;
+
+    CoreFeatures::Parameters m_coreParams;
+    float m_vibratoRateMinimum_Hz;
+    float m_vibratoRateMaximum_Hz;
+    float m_vibratoRangeMinimum_cents;
+    float m_vibratoRangeMaximum_cents;
+    float m_correlationThreshold;
+    float m_scalingFactor;
     
     mutable int m_pitchTrackOutput;
 

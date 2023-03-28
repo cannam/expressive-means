@@ -21,11 +21,24 @@ using std::set;
 
 #define DEBUG_PITCH_VIBRATO 1
 
+static const float default_vibratoRateMinimum_Hz = 3.f;
+static const float default_vibratoRateMaximum_Hz = 12.f;
+static const float default_vibratoRangeMinimum_cents = 10.f;
+static const float default_vibratoRangeMaximum_cents = 500.f;
+static const float default_correlationThreshold = 0.75f;
+static const float default_scalingFactor = 11.1f;
+
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
     m_blockSize(0),
     m_coreFeatures(inputSampleRate),
+    m_vibratoRateMinimum_Hz(default_vibratoRateMinimum_Hz),
+    m_vibratoRateMaximum_Hz(default_vibratoRateMaximum_Hz),
+    m_vibratoRangeMinimum_cents(default_vibratoRangeMinimum_cents),
+    m_vibratoRangeMaximum_cents(default_vibratoRangeMaximum_cents),
+    m_correlationThreshold(default_correlationThreshold),
+    m_scalingFactor(default_scalingFactor),
     m_pitchTrackOutput(-1)
 #ifdef WITH_DEBUG_OUTPUTS
     ,
@@ -123,7 +136,54 @@ PitchVibrato::getParameterDescriptors() const
     d.description = "";
     d.isQuantized = false;
     
+    d.identifier = "vibratoRateMinimum";
+    d.name = "Vibrato rate: Minimum";
+    d.unit = "Hz";
+    d.minValue = 0.1f;
+    d.maxValue = 20.f;
+    d.defaultValue = default_vibratoRateMinimum_Hz;
+    list.push_back(d);
     
+    d.identifier = "vibratoRateMaximum";
+    d.name = "Vibrato rate: Maximum";
+    d.unit = "Hz";
+    d.minValue = 0.1f;
+    d.maxValue = 20.f;
+    d.defaultValue = default_vibratoRateMaximum_Hz;
+    list.push_back(d);
+    
+    d.identifier = "vibratoRangeMinimum";
+    d.name = "Vibrato range: Minimum";
+    d.unit = "cents";
+    d.minValue = 1.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = default_vibratoRangeMinimum_cents;
+    list.push_back(d);
+    
+    d.identifier = "vibratoRangeMaximum";
+    d.name = "Vibrato range: Maximum";
+    d.unit = "cents";
+    d.minValue = 1.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = default_vibratoRangeMaximum_cents;
+    list.push_back(d);
+    
+    d.identifier = "correlationThreshold";
+    d.name = "Vibrato shape: Correlation threshold";
+    d.unit = "";
+    d.minValue = 0.3f;
+    d.maxValue = 1.f;
+    d.defaultValue = default_correlationThreshold;
+    list.push_back(d);
+    
+    d.identifier = "scalingFactor";
+    d.name = "Index scaling factor";
+    d.unit = "";
+    d.minValue = 1.f;
+    d.maxValue = 30.f;
+    d.defaultValue = default_scalingFactor;
+    list.push_back(d);
+        
     return list;
 }
 
@@ -134,7 +194,20 @@ PitchVibrato::getParameter(string identifier) const
     if (m_coreParams.obtainVampParameter(identifier, value)) {
         return value;
     }
-    
+
+    if (identifier == "vibratoRateMinimum") {
+        return m_vibratoRateMinimum_Hz;
+    } else if (identifier == "vibratoRateMaximum") {
+        return m_vibratoRateMaximum_Hz;
+    } else if (identifier == "vibratoRangeMinimum") {
+        return m_vibratoRangeMinimum_cents;
+    } else if (identifier == "vibratoRangeMaximum") {
+        return m_vibratoRangeMaximum_cents;
+    } else if (identifier == "correlationThreshold") {
+        return m_correlationThreshold;
+    } else if (identifier == "scalingFactor") {
+        return m_scalingFactor;
+    }
     
     return 0.f;
 }
@@ -146,6 +219,19 @@ PitchVibrato::setParameter(string identifier, float value)
         return;
     }
 
+    if (identifier == "vibratoRateMinimum") {
+        m_vibratoRateMinimum_Hz = value;
+    } else if (identifier == "vibratoRateMaximum") {
+        m_vibratoRateMaximum_Hz = value;
+    } else if (identifier == "vibratoRangeMinimum") {
+        m_vibratoRangeMinimum_cents = value;
+    } else if (identifier == "vibratoRangeMaximum") {
+        m_vibratoRangeMaximum_cents = value;
+    } else if (identifier == "correlationThreshold") {
+        m_correlationThreshold = value;
+    } else if (identifier == "scalingFactor") {
+        m_scalingFactor = value;
+    }
 }
 
 PitchVibrato::ProgramList
@@ -390,21 +476,33 @@ PitchVibrato::getRemainingFeatures()
     // peaks at all found!)
     int npairs = int(peaks.size()) - 1;
 
+    // The original paper says
+    // 
     // 3. Eliminate those peaks that don't have at least 10 valid
     // pitch values between them and their following peak, and
     //
     // 4. Eliminate those peaks that are not spaced at an interval
-    // between 62.5 and 416.7 ms apart (these values are not as
-    // precise as they look, judging from the paper), and
+    // between 62.5 and 416.7 ms apart (i.e. 16 Hz to 2.4 Hz), and
     // 
     // 5. Eliminate those peaks that don't rise to within 20-800 cents
     // relative to the intervening minimum
+    //
+    // We have parameters for the rate and range min and max which we
+    // use instead of these. We need to be careful with "at least 10
+    // valid pitch values", since at 256 hop, 48kHz a 16Hz vibrato
+    // only has 11.7 hops per cycle in the first place. Let's ask for
+    // at least 0.8x the total number of hops.
 
     int minDistSteps = m_coreFeatures.msToSteps
-        (62.5, m_coreParams.stepSize, false);
+        (1000.0 / m_vibratoRateMaximum_Hz, m_coreParams.stepSize, false);
     int maxDistSteps = m_coreFeatures.msToSteps
-        (416.7, m_coreParams.stepSize, false);
+        (1000.0 / m_vibratoRateMinimum_Hz, m_coreParams.stepSize, false);
 
+    int minPitchedHops = (minDistSteps / 5) * 4;
+
+    double minHeight = m_vibratoRangeMinimum_cents / 100.0; // semitones
+    double maxHeight = m_vibratoRangeMaximum_cents / 100.0;
+    
     vector<VibratoElement> elements;
     
     for (int i = 0; i < npairs; ++i) {
@@ -428,17 +526,16 @@ PitchVibrato::getRemainingFeatures()
         
         // Establish at least 10 valid pitches in range (3)
         int nValid = 0;
-        const int minValid = 10;
         for (int j = peaks[i] + 1; j < peaks[i+1]; ++j) {
             if (pitch[j] > 0.0) {
                 ++nValid;
             }
         }
-        if (nValid < minValid) {
+        if (nValid < minPitchedHops) {
 #ifdef DEBUG_PITCH_VIBRATO
             std::cerr << "Rejecting as only " << nValid << " valid pitch "
                       << "measurements found before following peak, at least "
-                      << minValid << " required" << std::endl;
+                      << minPitchedHops << " required" << std::endl;
 #endif
             continue;
         }
@@ -454,7 +551,6 @@ PitchVibrato::getRemainingFeatures()
         // Establish pitch criterion (5)
         double peakHeight =
             std::max(pitch[peaks[i]], pitch[peaks[i+1]]) - minimum;
-        const double minHeight = 0.2, maxHeight = 8.0; // semitones
         if (peakHeight < minHeight || peakHeight > maxHeight) {
 #ifdef DEBUG_PITCH_VIBRATO
             std::cerr << "Rejecting as peak height of " << peakHeight
@@ -621,8 +717,6 @@ PitchVibrato::getRemainingFeatures()
         elements[i].correlation = corr;
     }
 
-    const double correlationThreshold = 0.75;
-
 #ifdef WITH_DEBUG_OUTPUTS
     
     for (int i = 0; i < int(peaks.size()); ++i) {
@@ -642,7 +736,13 @@ PitchVibrato::getRemainingFeatures()
     }
 
     for (auto e: elements) {
-        if (e.correlation < correlationThreshold) {
+        if (e.correlation < m_correlationThreshold) {
+#ifdef DEBUG_PITCH_VIBRATO
+            std::cerr << "Not reporting element at step " << e.hop
+                      << ", as correlation " << e.correlation
+                      << " is below threshold " << m_correlationThreshold
+                      << std::endl;
+#endif
             continue;
         }
         for (int j = peaks[e.peakIndex]; j < peaks[e.peakIndex + 1]; ++j) {
