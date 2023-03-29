@@ -81,6 +81,10 @@ protected:
     float m_vibratoRateMaximum_Hz;
     float m_vibratoRangeMinimum_cents;
     float m_vibratoRangeMaximum_cents;
+    float m_rateBoundaryModerate_Hz;
+    float m_rateBoundaryFast_Hz;
+    float m_rangeBoundaryMedium_cents;
+    float m_rangeBoundaryWide_cents;
     float m_correlationThreshold;
     float m_scalingFactor;
     

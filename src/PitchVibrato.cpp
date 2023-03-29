@@ -27,6 +27,10 @@ static const float default_vibratoRateMinimum_Hz = 3.f;
 static const float default_vibratoRateMaximum_Hz = 12.f;
 static const float default_vibratoRangeMinimum_cents = 10.f;
 static const float default_vibratoRangeMaximum_cents = 500.f;
+static const float default_rateBoundaryModerate_Hz = 6.2f;
+static const float default_rateBoundaryFast_Hz = 7.2f;
+static const float default_rangeBoundaryMedium_cents = 40.f;
+static const float default_rangeBoundaryWide_cents = 60.f;
 static const float default_correlationThreshold = 0.75f;
 static const float default_scalingFactor = 11.1f;
 
@@ -39,6 +43,10 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_vibratoRateMaximum_Hz(default_vibratoRateMaximum_Hz),
     m_vibratoRangeMinimum_cents(default_vibratoRangeMinimum_cents),
     m_vibratoRangeMaximum_cents(default_vibratoRangeMaximum_cents),
+    m_rateBoundaryModerate_Hz(default_rateBoundaryModerate_Hz),
+    m_rateBoundaryFast_Hz(default_rateBoundaryFast_Hz),
+    m_rangeBoundaryMedium_cents(default_rangeBoundaryMedium_cents),
+    m_rangeBoundaryWide_cents(default_rangeBoundaryWide_cents),
     m_correlationThreshold(default_correlationThreshold),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
@@ -152,6 +160,22 @@ PitchVibrato::getParameterDescriptors() const
     d.defaultValue = default_vibratoRateMaximum_Hz;
     list.push_back(d);
     
+    d.identifier = "rateBoundaryModerate";
+    d.name = "Rate threshold: moderate";
+    d.unit = "Hz";
+    d.minValue = 0.f;
+    d.maxValue = 20.f;
+    d.defaultValue = default_rateBoundaryModerate_Hz;
+    list.push_back(d);
+    
+    d.identifier = "rateBoundaryFast";
+    d.name = "Rate threshold: fast";
+    d.unit = "Hz";
+    d.minValue = 0.f;
+    d.maxValue = 20.f;
+    d.defaultValue = default_rateBoundaryFast_Hz;
+    list.push_back(d);
+    
     d.identifier = "vibratoRangeMinimum";
     d.name = "Vibrato range: Minimum";
     d.unit = "cents";
@@ -166,6 +190,22 @@ PitchVibrato::getParameterDescriptors() const
     d.minValue = 1.f;
     d.maxValue = 1000.f;
     d.defaultValue = default_vibratoRangeMaximum_cents;
+    list.push_back(d);
+    
+    d.identifier = "rangeBoundaryMedium";
+    d.name = "Range threshold: medium";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 250.f;
+    d.defaultValue = default_rangeBoundaryMedium_cents;
+    list.push_back(d);
+    
+    d.identifier = "rangeBoundaryWide";
+    d.name = "Range threshold: wide";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 250.f;
+    d.defaultValue = default_rangeBoundaryWide_cents;
     list.push_back(d);
     
     d.identifier = "correlationThreshold";
@@ -199,10 +239,18 @@ PitchVibrato::getParameter(string identifier) const
         return m_vibratoRateMinimum_Hz;
     } else if (identifier == "vibratoRateMaximum") {
         return m_vibratoRateMaximum_Hz;
+    } else if (identifier == "rateBoundaryModerate") {
+        return m_rateBoundaryModerate_Hz;
+    } else if (identifier == "rateBoundaryFast") {
+        return m_rateBoundaryFast_Hz;
     } else if (identifier == "vibratoRangeMinimum") {
         return m_vibratoRangeMinimum_cents;
     } else if (identifier == "vibratoRangeMaximum") {
         return m_vibratoRangeMaximum_cents;
+    } else if (identifier == "rangeBoundaryMedium") {
+        return m_rangeBoundaryMedium_cents;
+    } else if (identifier == "rangeBoundaryWide") {
+        return m_rangeBoundaryWide_cents;
     } else if (identifier == "correlationThreshold") {
         return m_correlationThreshold;
     } else if (identifier == "scalingFactor") {
@@ -223,10 +271,18 @@ PitchVibrato::setParameter(string identifier, float value)
         m_vibratoRateMinimum_Hz = value;
     } else if (identifier == "vibratoRateMaximum") {
         m_vibratoRateMaximum_Hz = value;
+    } else if (identifier == "rateBoundaryModerate") {
+        m_rateBoundaryModerate_Hz = value;
+    } else if (identifier == "rateBoundaryFast") {
+        m_rateBoundaryFast_Hz = value;
     } else if (identifier == "vibratoRangeMinimum") {
         m_vibratoRangeMinimum_cents = value;
     } else if (identifier == "vibratoRangeMaximum") {
         m_vibratoRangeMaximum_cents = value;
+    } else if (identifier == "rangeBoundaryMedium") {
+        m_rangeBoundaryMedium_cents = value;
+    } else if (identifier == "rangeBoundaryWide") {
+        m_rangeBoundaryWide_cents = value;
     } else if (identifier == "correlationThreshold") {
         m_correlationThreshold = value;
     } else if (identifier == "scalingFactor") {
