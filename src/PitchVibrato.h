@@ -57,10 +57,6 @@ public:
 
     FeatureSet getRemainingFeatures();
 
-protected:
-    int m_stepSize;
-    int m_blockSize;
-
     struct VibratoElement {
         int hop;
         int peakIndex;
@@ -73,6 +69,150 @@ protected:
             range_semis(0.0), position_sec(0.0),
             waveLength_sec(0.0), correlation(0.0) { }
     };
+
+    enum class VibratoDuration {
+        Continuous, Onset, Offset, Section
+    };
+
+    static std::string vibratoDurationToString(VibratoDuration d) {
+        switch (d) {
+        case VibratoDuration::Continuous: return "Continuous";
+        case VibratoDuration::Onset: return "Onset";
+        case VibratoDuration::Offset: return "Offset";
+        case VibratoDuration::Section: return "Section";
+        default: throw std::logic_error("unknown VibratoDuration");
+        }
+    }
+
+    static std::string vibratoDurationToCode(VibratoDuration d) {
+        switch (d) {
+        case VibratoDuration::Continuous: return "4";
+        case VibratoDuration::Onset: return "3";
+        case VibratoDuration::Offset: return "2";
+        case VibratoDuration::Section: return "1";
+        default: throw std::logic_error("unknown VibratoDuration");
+        }
+    }
+    
+    static double vibratoDurationToFactor(VibratoDuration d) {
+        switch (d) {
+        case VibratoDuration::Continuous: return 1.0;
+        case VibratoDuration::Onset: return 0.8;
+        case VibratoDuration::Offset: return 0.8;
+        case VibratoDuration::Section: return 0.6;
+        default: throw std::logic_error("unknown VibratoDuration");
+        }
+    }
+
+    enum class VibratoRate {
+        Slow, Moderate, Fast
+    };
+
+    static std::string vibratoRateToString(VibratoRate d) {
+        switch (d) {
+        case VibratoRate::Slow: return "Slow";
+        case VibratoRate::Moderate: return "Moderate";
+        case VibratoRate::Fast: return "Fast";
+        default: throw std::logic_error("unknown VibratoRate");
+        }
+    }
+
+    static std::string vibratoRateToCode(VibratoRate d) {
+        switch (d) {
+        case VibratoRate::Slow: return "S";
+        case VibratoRate::Moderate: return "M";
+        case VibratoRate::Fast: return "F";
+        default: throw std::logic_error("unknown VibratoRate");
+        }
+    }
+    
+    static double vibratoRateToFactor(VibratoRate d) {
+        switch (d) {
+        case VibratoRate::Slow: return 1.0;
+        case VibratoRate::Moderate: return 2.0;
+        case VibratoRate::Fast: return 3.0;
+        default: throw std::logic_error("unknown VibratoRate");
+        }
+    }
+
+    enum class VibratoRange {
+        Narrow, Medium, Wide
+    };
+
+    static std::string vibratoRangeToString(VibratoRange d) {
+        switch (d) {
+        case VibratoRange::Narrow: return "Narrow";
+        case VibratoRange::Medium: return "Medium";
+        case VibratoRange::Wide: return "Wide";
+        default: throw std::logic_error("unknown VibratoRange");
+        }
+    }
+
+    static std::string vibratoRangeToCode(VibratoRange d) {
+        switch (d) {
+        case VibratoRange::Narrow: return "w";
+        case VibratoRange::Medium: return "m";
+        case VibratoRange::Wide: return "w";
+        default: throw std::logic_error("unknown VibratoRange");
+        }
+    }
+    
+    static double vibratoRangeToFactor(VibratoRange d) {
+        switch (d) {
+        case VibratoRange::Narrow: return 1.0;
+        case VibratoRange::Medium: return 2.0;
+        case VibratoRange::Wide: return 3.0;
+        default: throw std::logic_error("unknown VibratoRange");
+        }
+    }
+
+    enum class VibratoDevelopment {
+        Decreasing, DeAndIncreasing, Stable, InAndDecreasing, Increasing
+    };
+    
+    static std::string developmentToString(VibratoDevelopment d) {
+        switch (d) {
+        case VibratoDevelopment::Decreasing: return "Decreasing";
+        case VibratoDevelopment::DeAndIncreasing: return "De-and-Increasing";
+        case VibratoDevelopment::Stable: return "Stable";
+        case VibratoDevelopment::InAndDecreasing: return "In-And-Decreasing";
+        case VibratoDevelopment::Increasing: return "Increasing";
+        default: throw std::logic_error("unknown VibratoDevelopment");
+        }
+    }
+
+    static std::string developmentToCode(VibratoDevelopment d) {
+        switch (d) {
+        case VibratoDevelopment::Decreasing:      return ">";
+        case VibratoDevelopment::DeAndIncreasing: return ":";
+        case VibratoDevelopment::Stable:          return "=";
+        case VibratoDevelopment::InAndDecreasing: return ":";
+        case VibratoDevelopment::Increasing:      return "<";
+        default: throw std::logic_error("unknown VibratoDevelopment");
+        }
+    }
+
+    static double developmentToFactor(VibratoDevelopment d) {
+        switch (d) {
+        case VibratoDevelopment::Decreasing:      return 0.9;
+        case VibratoDevelopment::DeAndIncreasing: return 0.8;
+        case VibratoDevelopment::Stable:          return 1.0;
+        case VibratoDevelopment::InAndDecreasing: return 0.8;
+        case VibratoDevelopment::Increasing:      return 0.9;
+        default: throw std::logic_error("unknown VibratoDevelopment");
+        }
+    }
+
+    struct VibratoClassification {
+        VibratoDuration duration;
+        VibratoRate rate;
+        VibratoRange range;
+        VibratoDevelopment development;
+    };
+    
+protected:
+    int m_stepSize;
+    int m_blockSize;
     
     CoreFeatures m_coreFeatures;
 
