@@ -225,6 +225,8 @@ protected:
     float m_rateBoundaryFast_Hz;
     float m_rangeBoundaryMedium_cents;
     float m_rangeBoundaryWide_cents;
+    float m_sectionThreshold_ms;
+    float m_developmentThreshold_cents;
     float m_correlationThreshold;
     float m_scalingFactor;
     

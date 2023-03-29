@@ -19,6 +19,7 @@ using std::cerr;
 using std::endl;
 using std::vector;
 using std::set;
+using std::map;
 using std::ostringstream;
 
 #define DEBUG_PITCH_VIBRATO 1
@@ -31,6 +32,8 @@ static const float default_rateBoundaryModerate_Hz = 6.2f;
 static const float default_rateBoundaryFast_Hz = 7.2f;
 static const float default_rangeBoundaryMedium_cents = 40.f;
 static const float default_rangeBoundaryWide_cents = 60.f;
+static const float default_sectionThreshold_ms = 200.f;
+static const float default_developmentThreshold_cents = 10.f;
 static const float default_correlationThreshold = 0.75f;
 static const float default_scalingFactor = 11.1f;
 
@@ -47,6 +50,8 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_rateBoundaryFast_Hz(default_rateBoundaryFast_Hz),
     m_rangeBoundaryMedium_cents(default_rangeBoundaryMedium_cents),
     m_rangeBoundaryWide_cents(default_rangeBoundaryWide_cents),
+    m_sectionThreshold_ms(default_sectionThreshold_ms),
+    m_developmentThreshold_cents(default_developmentThreshold_cents),
     m_correlationThreshold(default_correlationThreshold),
     m_scalingFactor(default_scalingFactor),
     m_summaryOutput(-1),
@@ -208,6 +213,22 @@ PitchVibrato::getParameterDescriptors() const
     d.defaultValue = default_rangeBoundaryWide_cents;
     list.push_back(d);
     
+    d.identifier = "sectionThreshold";
+    d.name = "Section duration threshold";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 1000.f;
+    d.defaultValue = default_sectionThreshold_ms;
+    list.push_back(d);
+    
+    d.identifier = "developmentThreshold";
+    d.name = "Development threshold";
+    d.unit = "cents";
+    d.minValue = 0.f;
+    d.maxValue = 200.f;
+    d.defaultValue = default_developmentThreshold_cents;
+    list.push_back(d);
+    
     d.identifier = "correlationThreshold";
     d.name = "Vibrato shape: Correlation threshold";
     d.unit = "";
@@ -251,6 +272,10 @@ PitchVibrato::getParameter(string identifier) const
         return m_rangeBoundaryMedium_cents;
     } else if (identifier == "rangeBoundaryWide") {
         return m_rangeBoundaryWide_cents;
+    } else if (identifier == "sectionThreshold") {
+        return m_sectionThreshold_ms;
+    } else if (identifier == "developmentThreshold") {
+        return m_developmentThreshold_cents;
     } else if (identifier == "correlationThreshold") {
         return m_correlationThreshold;
     } else if (identifier == "scalingFactor") {
@@ -283,6 +308,10 @@ PitchVibrato::setParameter(string identifier, float value)
         m_rangeBoundaryMedium_cents = value;
     } else if (identifier == "rangeBoundaryWide") {
         m_rangeBoundaryWide_cents = value;
+    } else if (identifier == "sectionThreshold") {
+        m_sectionThreshold_ms = value;
+    } else if (identifier == "developmentThreshold") {
+        m_developmentThreshold_cents = value;
     } else if (identifier == "correlationThreshold") {
         m_correlationThreshold = value;
     } else if (identifier == "scalingFactor") {
@@ -787,6 +816,8 @@ PitchVibrato::getRemainingFeatures()
     auto eitr = elements.begin();
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
 
+    map<int, VibratoClassification> classifications; // key is onset hop
+    
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
         int onset = pitr->first;
@@ -801,13 +832,162 @@ PitchVibrato::getRemainingFeatures()
         vector<VibratoElement> ee; // elements associated with this onset
         while (eitr != elements.end() &&
                (followingOnset == onset || eitr->hop < followingOnset)) {
-            ee.push_back(*eitr);
+            if (eitr->correlation >= m_correlationThreshold) {
+                ee.push_back(*eitr);
+            }
             ++eitr;
         }
 
         int nelts = ee.size();
+
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "onset at " << onset << ": " << nelts
+             << " associated vibrato elements above correlation threshold"
+             << endl;
+#endif
         
-        if (nelts == 0) {
+        if (nelts == 0) {            
+            continue;
+        }
+
+        VibratoClassification classification;
+        
+        const VibratoElement &first = ee.at(0);
+        const VibratoElement &last = ee.at(nelts - 1);
+
+        double noteStart_ms =
+            m_coreFeatures.stepsToMs(onset, m_coreParams.stepSize);
+        double noteEnd_ms =
+            m_coreFeatures.stepsToMs(offset, m_coreParams.stepSize);
+
+        double vibratoStart_ms = first.position_sec * 1000.0;
+        double vibratoEnd_ms = (last.position_sec + last.waveLength_sec) * 1000.0;
+
+        bool nearStart =
+            (vibratoStart_ms < noteStart_ms + m_sectionThreshold_ms);
+        bool nearEnd =
+            (vibratoEnd_ms >= noteEnd_ms - m_sectionThreshold_ms);
+        
+        if (nearStart) {
+            if (nearEnd) {
+                classification.duration = VibratoDuration::Continuous;
+            } else {
+                classification.duration = VibratoDuration::Onset;
+            }
+        } else {
+            if (nearEnd) {
+                classification.duration = VibratoDuration::Offset;
+            } else {
+                classification.duration = VibratoDuration::Section;
+            }
+        }
+
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "onset at " << onset << ": note start (ms) " << noteStart_ms
+             << ", end " << noteEnd_ms << "; vibrato start " << vibratoStart_ms
+             << ", end " << vibratoEnd_ms << ": duration classification: "
+             << vibratoDurationToString(classification.duration)
+             << endl;
+#endif
+        
+        double meanRate_Hz = 0.0;
+        for (auto e : ee) {
+            meanRate_Hz += 1.0 / e.waveLength_sec;
+        }
+        meanRate_Hz /= nelts;
+
+        if (meanRate_Hz > m_rateBoundaryFast_Hz) {
+            classification.rate = VibratoRate::Fast;
+        } else if (meanRate_Hz > m_rateBoundaryModerate_Hz) {
+            classification.rate = VibratoRate::Moderate;
+        } else {
+            classification.rate = VibratoRate::Slow;
+        }
+
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "onset at " << onset << ": mean vibrato rate " << meanRate_Hz
+             << ": rate classification: "
+             << vibratoRateToString(classification.rate)
+             << endl;
+#endif
+
+        double meanRange_cents = 0.0;
+        double maxRange_cents = 0.0;
+        int maxRangeIndex = 0;
+        for (int i = 0; i < int(ee.size()); ++i) {
+            double r = 100.0 * ee.at(i).range_semis;
+            meanRange_cents += r;
+            if (i == 0 || r > maxRange_cents) {
+                maxRange_cents = r;
+                maxRangeIndex = i;
+            }
+        }
+        meanRange_cents /= nelts;
+
+        if (maxRange_cents > m_rangeBoundaryWide_cents) {
+            classification.range = VibratoRange::Wide;
+        } else if (maxRange_cents > m_rangeBoundaryMedium_cents) {
+            classification.range = VibratoRange::Medium;
+        } else {
+            classification.range = VibratoRange::Narrow;
+        }
+
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "onset at " << onset << ": max range " << maxRange_cents
+             << ": range classification: "
+             << vibratoRangeToString(classification.range)
+             << endl;
+#endif
+        
+        if (maxRange_cents - meanRange_cents < m_developmentThreshold_cents) {
+            classification.development = VibratoDevelopment::Stable;
+
+#ifdef DEBUG_PITCH_VIBRATO
+            cerr << "onset at " << onset << ": max range " << maxRange_cents
+                 << " is within " << m_developmentThreshold_cents
+                 << " of mean range " << meanRange_cents
+                 << ": development classification: "
+                 << developmentToString(classification.development)
+                 << endl;
+#endif
+        
+        } else {
+            double maxRangeTime_ms = ee[maxRangeIndex].position_sec * 1000.0;
+            double margin_ms = (vibratoEnd_ms - vibratoStart_ms) / 4.0;
+            double early_ms = vibratoStart_ms + margin_ms;
+            double late_ms = vibratoEnd_ms - margin_ms;
+            if (maxRangeTime_ms > late_ms) {
+                classification.development = VibratoDevelopment::Increasing;
+            } else if (maxRangeTime_ms < early_ms) {
+                classification.development = VibratoDevelopment::Decreasing;
+            } else {
+                classification.development = VibratoDevelopment::InAndDecreasing;
+            }
+            
+#ifdef DEBUG_PITCH_VIBRATO
+            cerr << "onset at " << onset << ": max range " << maxRange_cents
+                 << " is at (ms) " << maxRangeTime_ms
+                 << " with vibrato start at " << vibratoStart_ms
+                 << " and end at " << vibratoEnd_ms
+                 << ": development classification: "
+                 << developmentToString(classification.development)
+                 << endl;
+#endif
+        
+        }
+    }
+    
+    for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
+
+        int onset = pitr->first;
+
+        int followingOnset = onset;
+        auto pj = pitr;
+        if (++pj != onsetOffsets.end()) {
+            followingOnset = pj->first;
+        }
+
+        if (classifications.find(onset) == classifications.end()) {
             
 #ifdef DEBUG_PITCH_VIBRATO
             cerr << "returning features for onset " << onset
@@ -839,35 +1019,6 @@ PitchVibrato::getRemainingFeatures()
             fs[m_summaryOutput].push_back(f);
             
         } else {
-
-            const VibratoElement &first = ee.at(0);
-            const VibratoElement &last = ee.at(nelts - 1);
-
-            double noteDuration = 1000.0 *
-                (m_coreFeatures.stepsToMs(offset, m_coreParams.stepSize) -
-                 m_coreFeatures.stepsToMs(onset, m_coreParams.stepSize));
-            
-            double vibratoDuration =
-                last.position_sec + last.waveLength_sec - first.position_sec;
-
-            double meanRate_Hz = 0.0;
-            for (auto e : ee) {
-                meanRate_Hz += 1.0 / e.waveLength_sec;
-            }
-            meanRate_Hz /= nelts;
-
-            double meanRange_cents = 0.0;
-            double maxRange_cents = 0.0;
-            int maxRangeIndex = 0;
-            for (int i = 0; i < int(ee.size()); ++i) {
-                double r = 100.0 * ee.at(i).range_semis;
-                meanRange_cents += r;
-                if (i == 0 || r > maxRange_cents) {
-                    maxRange_cents = r;
-                    maxRangeIndex = i;
-                }
-            }
-            meanRange_cents /= nelts;
 
             
         }
