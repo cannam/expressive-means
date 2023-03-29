@@ -11,6 +11,8 @@
 
 #include "Glide.h"
 
+#define DEBUG_GLIDE 1
+
 #include "../ext/pyin/MeanFilter.h"
 #include "../ext/qm-dsp/maths/MedianFilter.h"
 
@@ -213,8 +215,10 @@ Glide::extract(const vector<double> &pitch_Hz,
         while (scout != onsetOffsets.end()) {
             int onset = scout->first;
             if (onset >= start && onset <= end) {
+#ifdef DEBUG_GLIDE
                 cerr << "for glide from " << start << " to " << end
                      << ", found onset within glide at " << onset << endl;
+#endif
                 GlideProperties props;
                 props.start = start;
                 props.end = end;
@@ -244,16 +248,20 @@ Glide::extract(const vector<double> &pitch_Hz,
                 ++scout;
             }
             if (found) {
+#ifdef DEBUG_GLIDE
                 cerr << "for glide from " << start << " to " << end
                      << ", found no onset within glide; using closest onset at "
                      << bestOnset << endl;
+#endif
                 GlideProperties props;
                 props.start = start;
                 props.end = end;
                 props.provisional = true;
                 if (onsetMappedGlides.find(bestOnset) ==
                     onsetMappedGlides.end()) {
+#ifdef DEBUG_GLIDE
                     cerr << "no prior glide found for this onset, marking this as provisionally best" << endl;
+#endif
                     onsetMappedGlides[bestOnset] = props;
                 } else {
                     // already recorded a glide for this onset
@@ -263,7 +271,9 @@ Glide::extract(const vector<double> &pitch_Hz,
                             // we must be closer to onset than that
                             // one (because we always see glides in
                             // ascending time order)
+#ifdef DEBUG_GLIDE
                             cerr << "closer to onset than prior glide, marking this as provisionally best" << endl;
+#endif
                             onsetMappedGlides[bestOnset] = props;
                         } else if (bestOnset > existing.end) {
                             if ((end - start > existing.end - existing.start)
@@ -273,20 +283,28 @@ Glide::extract(const vector<double> &pitch_Hz,
                                 // prefer it (and since we're after
                                 // onset now, it's unimprovable)
                                 props.provisional = false;
+#ifdef DEBUG_GLIDE
                                 cerr << "longer and closer to onset than prior glide, marking this as best" << endl;
+#endif
                                 onsetMappedGlides[bestOnset] = props;
                             } else {
+#ifdef DEBUG_GLIDE
                                 cerr << "existing glide is closer or longer, leaving it" << endl;
+#endif
                             }
                         } else {
+#ifdef DEBUG_GLIDE
                             cerr << "existing glide is already after onset, leaving it" << endl;
+#endif
                         }
                     }
                 }                            
             } else {
+#ifdef DEBUG_GLIDE
                 cerr << "for glide from " << start << " to " << end
                      << ", found no onset within glide or within proximity "
                      << "range; ignoring this glide" << endl;
+#endif
             }
         }
     }

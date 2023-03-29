@@ -64,14 +64,14 @@ protected:
     struct VibratoElement {
         int hop;
         int peakIndex;
-        double peakHeight; // min-to-max, in semitones
-        double position; // in seconds, interpolated for position
-        double waveLength; // time to the following element's position
+        double range_semis; // min-to-max, in semitones
+        double position_sec; // interpolated
+        double waveLength_sec; // time to the following element's position
         double correlation;
         VibratoElement() :
             hop(-1), peakIndex(-1),
-            peakHeight(0.0), position(0.0),
-            waveLength(0.0), correlation(0.0) { }
+            range_semis(0.0), position_sec(0.0),
+            waveLength_sec(0.0), correlation(0.0) { }
     };
     
     CoreFeatures m_coreFeatures;
@@ -84,13 +84,10 @@ protected:
     float m_correlationThreshold;
     float m_scalingFactor;
     
-    mutable int m_pitchTrackOutput;
-
-/*!!!
     mutable int m_summaryOutput;
-    mutable int m_pitchvibratoTypeOutput;
-    mutable int m_pitchvibratoIndexOutput;
-*/
+    mutable int m_pitchTrackOutput;
+    mutable int m_vibratoTypeOutput;
+    mutable int m_vibratoIndexOutput;
 
 #ifdef WITH_DEBUG_OUTPUTS
     mutable int m_rawPeaksOutput;

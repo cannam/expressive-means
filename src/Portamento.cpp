@@ -15,6 +15,8 @@
 #include <vector>
 #include <set>
 
+#define DEBUG_PORTAMENTO 1
+
 using std::cerr;
 using std::endl;
 using std::vector;
@@ -731,9 +733,11 @@ Portamento::getRemainingFeatures()
         }
 
         if (glides.find(onset) == glides.end()) {
-            
+
+#ifdef DEBUG_PORTAMENTO
             cerr << "returning features for onset " << onset
                  << " without glide" << endl;
+#endif
         
             Feature f;
             f.hasTimestamp = true;
@@ -767,10 +771,12 @@ Portamento::getRemainingFeatures()
             string code;
             double index = 1.0;
 
+#ifdef DEBUG_PORTAMENTO
             cerr << "returning features for glide " << glideNo
                  << " associated with onset " << onset
                  << " with glide from " << glideStart << " to " << glideEnd
                  << endl;
+#endif
         
             Feature f;
             f.hasTimestamp = true;
