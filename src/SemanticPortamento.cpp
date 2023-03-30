@@ -66,7 +66,7 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 8.f },
                { "glideThresholdPitch", 100.f }
              } },
-           { "Keys / Mallets",
+           { "Keys",
              { { "onsetSensitivityPitch", 90.f },
                { "onsetSensitivityNoise", 18.f },
                { "onsetSensitivityLevel", 8.f },
