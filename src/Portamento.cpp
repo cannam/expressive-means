@@ -750,6 +750,7 @@ Portamento::getRemainingFeatures()
             fs[m_portamentoTypeOutput].push_back(f);
 
             f.label = "";
+            f.values.clear();
             f.values.push_back(0.f);
             fs[m_portamentoIndexOutput].push_back(f);
         
@@ -809,6 +810,7 @@ Portamento::getRemainingFeatures()
             fs[m_portamentoTypeOutput].push_back(f);
 
             f.label = "";
+            f.values.clear();
             f.values.push_back(round(index));
             fs[m_portamentoIndexOutput].push_back(f);
         
@@ -830,7 +832,7 @@ Portamento::getRemainingFeatures()
                         (glideEnd - glideStart + 1, m_coreParams.stepSize))
                << "ms)\n"
                << emax2dp << "dB / " << emin2dp << "dB\n"
-               << "IPort = " << index;
+               << "IPort = " << round(index);
             f.label = os.str();
             f.values.clear();
             fs[m_summaryOutput].push_back(f);

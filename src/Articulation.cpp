@@ -856,6 +856,7 @@ Articulation::getRemainingFeatures()
         fs[m_articulationTypeOutput].push_back(f);
 
         f.label = "";
+        f.values.clear();
         f.values.push_back(round(index));
         fs[m_articulationIndexOutput].push_back(f);
 
@@ -872,7 +873,7 @@ Articulation::getRemainingFeatures()
            << relativeDuration << " ("
            << (m_coreFeatures.timeForStep(offset) -
                m_coreFeatures.timeForStep(onset)).toText() << ")\n"
-           << "IArt = " << index;
+           << "IArt = " << round(index);
         f.label = os.str();
         f.values.clear();
         fs[m_summaryOutput].push_back(f);

@@ -867,7 +867,7 @@ PitchVibrato::getRemainingFeatures()
             (vibratoStart_ms < noteStart_ms + m_sectionThreshold_ms);
         bool nearEnd =
             (vibratoEnd_ms >= noteEnd_ms - m_sectionThreshold_ms);
-        
+
         if (nearStart) {
             if (nearEnd) {
                 classification.duration = VibratoDuration::Continuous;
@@ -882,6 +882,11 @@ PitchVibrato::getRemainingFeatures()
             }
         }
 
+        classification.relativeDuration =
+            (vibratoEnd_ms - vibratoStart_ms) / (noteEnd_ms - noteStart_ms);
+
+        classification.soundDuration = (noteEnd_ms - noteStart_ms) / 1000.0;
+        
 #ifdef DEBUG_PITCH_VIBRATO
         cerr << "onset at " << onset << ": note start (ms) " << noteStart_ms
              << ", end " << noteEnd_ms << "; vibrato start " << vibratoStart_ms
@@ -896,6 +901,8 @@ PitchVibrato::getRemainingFeatures()
         }
         meanRate_Hz /= nelts;
 
+        classification.meanRate = meanRate_Hz;
+        
         if (meanRate_Hz > m_rateBoundaryFast_Hz) {
             classification.rate = VibratoRate::Fast;
         } else if (meanRate_Hz > m_rateBoundaryModerate_Hz) {
@@ -905,7 +912,11 @@ PitchVibrato::getRemainingFeatures()
         }
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "onset at " << onset << ": mean vibrato rate " << meanRate_Hz
+        cerr << "onset at " << onset << ": vibrato element rates (Hz):";
+        for (auto e : ee) {
+            cerr << " " << 1.0 / e.waveLength_sec;
+        }
+        cerr << ", mean rate " << meanRate_Hz
              << ": rate classification: "
              << vibratoRateToString(classification.rate)
              << endl;
@@ -924,6 +935,8 @@ PitchVibrato::getRemainingFeatures()
         }
         meanRange_cents /= nelts;
 
+        classification.maxRange = maxRange_cents;
+        
         if (maxRange_cents > m_rangeBoundaryWide_cents) {
             classification.range = VibratoRange::Wide;
         } else if (maxRange_cents > m_rangeBoundaryMedium_cents) {
@@ -938,6 +951,9 @@ PitchVibrato::getRemainingFeatures()
              << vibratoRangeToString(classification.range)
              << endl;
 #endif
+
+        classification.maxRangeTime = ee[maxRangeIndex].position_sec;
+        double maxRangeTime_ms = classification.maxRangeTime * 1000.0;
         
         if (maxRange_cents - meanRange_cents < m_developmentThreshold_cents) {
             classification.development = VibratoDevelopment::Stable;
@@ -952,7 +968,6 @@ PitchVibrato::getRemainingFeatures()
 #endif
         
         } else {
-            double maxRangeTime_ms = ee[maxRangeIndex].position_sec * 1000.0;
             double margin_ms = (vibratoEnd_ms - vibratoStart_ms) / 4.0;
             double early_ms = vibratoStart_ms + margin_ms;
             double late_ms = vibratoEnd_ms - margin_ms;
@@ -975,6 +990,8 @@ PitchVibrato::getRemainingFeatures()
 #endif
         
         }
+
+        classifications[onset] = classification;
     }
     
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
@@ -1005,6 +1022,7 @@ PitchVibrato::getRemainingFeatures()
             fs[m_vibratoTypeOutput].push_back(f);
 
             f.label = "";
+            f.values.clear();
             f.values.push_back(0.f);
             fs[m_vibratoIndexOutput].push_back(f);
         
@@ -1019,8 +1037,57 @@ PitchVibrato::getRemainingFeatures()
             fs[m_summaryOutput].push_back(f);
             
         } else {
-
             
+#ifdef DEBUG_PITCH_VIBRATO
+            cerr << "returning features for onset " << onset
+                 << " with vibrato" << endl;
+#endif
+
+            VibratoClassification classification = classifications.at(onset);
+
+            string code;
+            double index = 1.0;
+
+            code += vibratoDurationToCode(classification.duration);
+            index *= vibratoDurationToFactor(classification.duration);
+
+            code += vibratoRateToCode(classification.rate);
+            index *= vibratoRateToFactor(classification.rate);
+
+            code += vibratoRangeToCode(classification.range);
+            index *= vibratoRangeToFactor(classification.range);
+
+            code += developmentToCode(classification.development);
+            index *= developmentToFactor(classification.development);
+
+            index *= m_scalingFactor;
+            
+            Feature f;
+            f.hasTimestamp = true;
+            f.timestamp = m_coreFeatures.timeForStep(onset);
+            f.hasDuration = false;
+            f.label = code;
+            fs[m_vibratoTypeOutput].push_back(f);
+
+            f.label = "";
+            f.values.clear();
+            f.values.push_back(index);
+            fs[m_vibratoIndexOutput].push_back(f);
+
+            ostringstream os;
+            os << m_coreFeatures.timeForStep(onset).toText() << " / "
+               << (m_coreFeatures.timeForStep(followingOnset) -
+                   m_coreFeatures.timeForStep(onset)).toText() << "\n"
+               << code << "\n"
+               << int(round(classification.relativeDuration * 100.0)) << "%\n"
+               << classification.meanRate << "Hz\n"
+               << classification.maxRange << "c\n"
+               << classification.maxRangeTime << " ("
+               << classification.soundDuration << ")\n"
+               << "IVibr = " << round(index);
+            f.label = os.str();
+            f.values.clear();
+            fs[m_summaryOutput].push_back(f);
         }
     }        
         

@@ -205,8 +205,13 @@ public:
 
     struct VibratoClassification {
         VibratoDuration duration;
+        double relativeDuration;
+        double soundDuration;
         VibratoRate rate;
+        double meanRate;
         VibratoRange range;
+        double maxRange;
+        double maxRangeTime;
         VibratoDevelopment development;
     };
     
