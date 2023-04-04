@@ -99,32 +99,83 @@ Glide::extract(const vector<double> &pitch_Hz,
         bool belowMaxDiff = false;
         bool havePitch = (pitch[i] > 0.0);
 
-        if (havePitch) {
+#ifdef DEBUG_GLIDE
+        cerr << "At hop " << i << " pitch = " << pitch[i]
+             << " (" << pitch_Hz[i]
+             << " Hz), surpassed median = " << surpassedMedianThreshold
+             << ", surpassed hop = " << surpassedStartingHopDifference
+             << endl;
+#endif
+        
+        if (!havePitch) {
+#ifdef DEBUG_GLIDE
+            cerr << "No pitch" << endl;
+#endif
+            prevDelta = 0.0;
+        } else {
             if (pitch[i-1] > 0.0) {
                 double delta = pitch[i] - pitch[i-1];
                 double diff = fabs(delta);
                 sameDirection = ((delta > 0.0 && prevDelta > 0.0) ||
                                  (delta < 0.0 && prevDelta < 0.0));
                 belowMaxDiff = (diff <= maximumHopDifference_semis);
+#ifdef DEBUG_GLIDE
+                cerr << "Delta = " << delta << ", prevDelta = " << prevDelta
+                     << ", sameDirection = " << sameDirection
+                     << ", belowMaxDiff = " << belowMaxDiff << endl;
+#endif
                 if (diff > minimumHopDifference_semis) {
                     surpassedStartingHopDifference = true;
+#ifdef DEBUG_GLIDE
+                    cerr << "Latching surpassedStartingHopDifference" << endl;
+#endif
                 }
                 prevDelta = delta;
             } else {
+#ifdef DEBUG_GLIDE
+                cerr << "No previous pitch" << endl;
+#endif
                 prevDelta = 0.0;
             }
-            double medianDiff = fabs
-                (pitch[i] - medianFilteredPitch[i + halfMedianFilterLength]);
-            if (medianDiff > minimumPitchThreshold_semis) {
-                surpassedMedianThreshold = true;
+
+            if (!surpassedMedianThreshold) {
+                double medianDiff = fabs
+                    (pitch[i] - medianFilteredPitch[i + halfMedianFilterLength]);
+#ifdef DEBUG_GLIDE
+                cerr << "Median windowed pitch = "
+                     << medianFilteredPitch[i + halfMedianFilterLength]
+                     << ", medianDiff = " << medianDiff << endl;
+#endif
+                if (medianDiff > minimumPitchThreshold_semis) {
+                    surpassedMedianThreshold = true;
+#ifdef DEBUG_GLIDE
+                    cerr << "Latching surpassedMedianThreshold" << endl;
+#endif
+                }
+            } else {
+#ifdef DEBUG_GLIDE
+                cerr << "surpassedMedianThreshold is latched" << endl;
+#endif
             }
-        } else {
-            prevDelta = 0.0;
         }
 
+        if (!havePitch || !belowMaxDiff || !sameDirection) {
+            if (surpassedMedianThreshold || surpassedStartingHopDifference) {
+#ifdef DEBUG_GLIDE
+                cerr << "Failed some other criterion besides the latched ones; releasing latches" << endl;
+#endif
+                surpassedMedianThreshold = false;
+                surpassedStartingHopDifference = false;
+            }
+        }
+        
         bool isCandidate =
             (surpassedMedianThreshold && surpassedStartingHopDifference) &&
             (havePitch && belowMaxDiff && sameDirection);
+
+#ifdef DEBUG_GLIDE
+        cerr << "isCandidate = " << isCandidate << endl;
+#endif
         
         if (isCandidate) {
             candidates.push_back(i);
@@ -134,13 +185,28 @@ Glide::extract(const vector<double> &pitch_Hz,
             // threshold, record a glide ending here
             if (lastNonCandidate + m_parameters.durationThreshold_steps <= i) {
                 glides[lastNonCandidate + 1] = i-1;
-            }
+#ifdef DEBUG_GLIDE
+                cerr << "Noting a glide from " << lastNonCandidate + 1
+                     << " to " << i-1 << endl;
+#endif
+            } else {
+#ifdef DEBUG_GLIDE
+                cerr << "Duration threshold of "
+                     << m_parameters.durationThreshold_steps
+                     << " not exceeded between last non-candidate "
+                     << lastNonCandidate << " and " << i-1 << endl;
+#endif
+            }                
             lastNonCandidate = i;
         }
     }
 
     if (lastNonCandidate + m_parameters.durationThreshold_steps < n) {
         glides[lastNonCandidate + 1] = n-1;
+#ifdef DEBUG_GLIDE
+        cerr << "Noting a final glide from " << lastNonCandidate + 1
+             << " to " << n-1 << endl;
+#endif
     }
 
     int proximitySteps = m_parameters.onsetProximityThreshold_steps;
