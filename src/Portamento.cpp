@@ -710,7 +710,7 @@ Portamento::getRemainingFeatures()
     glideParams.useSmoothing = (m_smoothingEnabled > 0.5f);
 
     Glide glide(glideParams);
-    Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);
+    Glide::Extents glides = glide.extract_Hz(pyinPitch, onsetOffsets);
 
     // Using onset step number as the key
     map<int, GlideClassification> classifications;

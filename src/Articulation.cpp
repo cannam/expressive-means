@@ -681,7 +681,7 @@ Articulation::getRemainingFeatures()
     glideParams.useSmoothing = false;
 
     Glide glide(glideParams);
-    Glide::Extents glides = glide.extract(pyinPitch, onsetOffsets);
+    Glide::Extents glides = glide.extract_Hz(pyinPitch, onsetOffsets);
     
     int prevOnset = -1;
     for (auto pq: onsetOffsets) {

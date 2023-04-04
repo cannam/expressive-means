@@ -1,4 +1,3 @@
-
 /*
     Expressive Means
 
@@ -57,8 +56,18 @@ public:
      * using negative values) and the onset/offset map is as returned
      * by CoreFeatures::getOnsetOffsets().
      */     
-    Extents extract(const std::vector<double> &pitch_Hz,
-                    const CoreFeatures::OnsetOffsetMap &onsetOffsets);
+    Extents extract_Hz(const std::vector<double> &pitch_Hz,
+                       const CoreFeatures::OnsetOffsetMap &onsetOffsets);
+
+    /**
+     * Identify and return glide extents from the given pitch track
+     * and onset/offsets. pitch_semis is as returned by
+     * CoreFeatures::getPYinPitch_Hz() (with unvoiced steps indicated
+     * using negative values) and the onset/offset map is as returned
+     * by CoreFeatures::getOnsetOffsets().
+     */     
+    Extents extract_semis(const std::vector<double> &pitch_semis,
+                          const CoreFeatures::OnsetOffsetMap &onsetOffsets);
 
 private:
     Parameters m_parameters;

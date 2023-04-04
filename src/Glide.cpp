@@ -24,25 +24,39 @@ using std::vector;
 using std::map;
 
 Glide::Extents
-Glide::extract(const vector<double> &pitch_Hz,
-               const CoreFeatures::OnsetOffsetMap &onsetOffsets)
+Glide::extract_Hz(const vector<double> &pitch_Hz,
+                  const CoreFeatures::OnsetOffsetMap &onsetOffsets)
 {
-    int n = pitch_Hz.size();
-
-    vector<double> rawPitch;
+    int n = int(pitch_Hz.size());
+    vector<double> pitch_semis;
+    pitch_semis.reserve(n);
+    
     for (int i = 0; i < n; ++i) {
         if (pitch_Hz[i] > 0.0) {
-            rawPitch.push_back(CoreFeatures::hzToPitch(pitch_Hz[i]));
-        } else if (i > 0) {
-            rawPitch.push_back(rawPitch[i-1]);
+            pitch_semis.push_back(CoreFeatures::hzToPitch(pitch_Hz[i]));
         } else {
-            rawPitch.push_back(0.0);
+            pitch_semis.push_back(0.0);
         }
     }
+    
+    return extract_semis(pitch_semis, onsetOffsets);
+}
 
+Glide::Extents
+Glide::extract_semis(const vector<double> &rawPitch,
+                     const CoreFeatures::OnsetOffsetMap &onsetOffsets)
+{
+    int n = int(rawPitch.size());
+    
     int halfMedianFilterLength = m_parameters.medianFilterLength_steps / 2;
+    vector<double> medianFilterInput = rawPitch;
+    for (int i = 0; i < n; ++i) {
+        if (medianFilterInput[i] <= 0.0 && i > 0) {
+            medianFilterInput[i] = medianFilterInput[i-1];
+        }
+    }
     vector<double> medianFilteredPitch = MedianFilter<double>::filter
-        (m_parameters.medianFilterLength_steps, rawPitch);
+        (m_parameters.medianFilterLength_steps, medianFilterInput);
 
     vector<double> pitch(n, 0.0);
         
@@ -52,7 +66,7 @@ Glide::extract(const vector<double> &pitch_Hz,
         MeanFilter(5).filter(rawPitch.data(), pitch.data(), n);
 
         for (int i = 0; i < n; ++i) {
-            if (pitch_Hz[i] <= 0.0) {
+            if (rawPitch[i] <= 0.0) {
                 pitch[i] = 0.0;
             }
         }
@@ -75,7 +89,6 @@ Glide::extract(const vector<double> &pitch_Hz,
     // practical reasons we also need to end a glide if a hop is found
     // without a pitch measurement.
 
-    vector<int> candidates; // hop
     map<int, int> glides; // glide start hop -> glide end hop
 
     double minimumPitchThreshold_semis =
@@ -85,7 +98,7 @@ Glide::extract(const vector<double> &pitch_Hz,
     double maximumHopDifference_semis =
         m_parameters.maximumHopDifference_cents / 100.0;
 
-    int lastNonCandidate = -1;
+    int glideStart = -1;
     double prevDelta = 0.0;
 
     // Latches - when set true, these are not set false again until we
@@ -100,8 +113,8 @@ Glide::extract(const vector<double> &pitch_Hz,
         bool havePitch = (pitch[i] > 0.0);
 
 #ifdef DEBUG_GLIDE
-        cerr << "At hop " << i << " pitch = " << pitch[i]
-             << " (" << pitch_Hz[i]
+        cerr << "Hop " << i << ": pitch = " << pitch[i]
+             << " (" << (havePitch ? CoreFeatures::pitchToHz(pitch[i]) : 0.0)
              << " Hz), surpassed median = " << surpassedMedianThreshold
              << ", surpassed hop = " << surpassedStartingHopDifference
              << endl;
@@ -159,7 +172,14 @@ Glide::extract(const vector<double> &pitch_Hz,
             }
         }
 
-        if (!havePitch || !belowMaxDiff || !sameDirection) {
+        if (havePitch && belowMaxDiff && sameDirection) {
+            if (glideStart < 0) {
+#ifdef DEBUG_GLIDE
+                cerr << "This may be start of a glide if the median and hop thresholds are passed" << endl;
+#endif
+                glideStart = i;
+            }
+        } else {
             if (surpassedMedianThreshold || surpassedStartingHopDifference) {
 #ifdef DEBUG_GLIDE
                 cerr << "Failed some other criterion besides the latched ones; releasing latches" << endl;
@@ -174,37 +194,38 @@ Glide::extract(const vector<double> &pitch_Hz,
             (havePitch && belowMaxDiff && sameDirection);
 
 #ifdef DEBUG_GLIDE
-        cerr << "isCandidate = " << isCandidate << endl;
+        if (isCandidate) {
+            cerr << "This will be a glide if it is long enough" << endl;
+        }
 #endif
         
-        if (isCandidate) {
-            candidates.push_back(i);
-        } else {
-            // Not a candidate: If at least thresholdSteps candidates
-            // in a row previously with total pitch drift more than
-            // threshold, record a glide ending here
-            if (lastNonCandidate + m_parameters.durationThreshold_steps <= i) {
-                glides[lastNonCandidate + 1] = i-1;
+        if (!isCandidate && glideStart >= 0 && glideStart != i) {
+            // If at least thresholdSteps candidates in a row
+            // previously with total pitch drift more than threshold,
+            // record a glide ending here
+            if (glideStart + m_parameters.durationThreshold_steps <= i) {
+                glides[glideStart] = i-1;
 #ifdef DEBUG_GLIDE
-                cerr << "Noting a glide from " << lastNonCandidate + 1
+                cerr << "Noting a glide from " << glideStart
                      << " to " << i-1 << endl;
 #endif
             } else {
 #ifdef DEBUG_GLIDE
                 cerr << "Duration threshold of "
                      << m_parameters.durationThreshold_steps
-                     << " not exceeded between last non-candidate "
-                     << lastNonCandidate << " and " << i-1 << endl;
+                     << " not exceeded between potential glide start "
+                     << glideStart << " and " << i-1 << endl;
 #endif
             }                
-            lastNonCandidate = i;
+            glideStart = -1;
         }
     }
 
-    if (lastNonCandidate + m_parameters.durationThreshold_steps < n) {
-        glides[lastNonCandidate + 1] = n-1;
+    if (glideStart >= 0 &&
+        glideStart + m_parameters.durationThreshold_steps < n) {
+        glides[glideStart] = n-1;
 #ifdef DEBUG_GLIDE
-        cerr << "Noting a final glide from " << lastNonCandidate + 1
+        cerr << "Noting a final glide from " << glideStart
              << " to " << n-1 << endl;
 #endif
     }

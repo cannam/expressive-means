@@ -38,6 +38,7 @@ plugin_sources = [
 
 unit_test_sources = [
   'test/TestArticulation.cpp',
+  'test/TestGlide.cpp',
   'test/tests.cpp',
 ]
 
