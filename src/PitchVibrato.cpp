@@ -34,7 +34,7 @@ static const float default_rangeBoundaryMedium_cents = 40.f;
 static const float default_rangeBoundaryWide_cents = 60.f;
 static const float default_sectionThreshold_ms = 200.f;
 static const float default_developmentThreshold_cents = 10.f;
-static const float default_correlationThreshold = 0.75f;
+static const float default_correlationThreshold = 0.5f;
 static const float default_scalingFactor = 11.1f;
 
 PitchVibrato::PitchVibrato(float inputSampleRate) :
