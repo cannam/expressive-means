@@ -137,7 +137,8 @@ Glide::extract_semis(const vector<double> &rawPitch,
                      << ", sameDirection = " << sameDirection
                      << ", belowMaxDiff = " << belowMaxDiff << endl;
 #endif
-                if (diff > minimumHopDifference_semis) {
+                if (!surpassedStartingHopDifference &&
+                    (diff > minimumHopDifference_semis)) {
                     surpassedStartingHopDifference = true;
 #ifdef DEBUG_GLIDE
                     cerr << "Latching surpassedStartingHopDifference" << endl;
@@ -165,10 +166,6 @@ Glide::extract_semis(const vector<double> &rawPitch,
                     cerr << "Latching surpassedMedianThreshold" << endl;
 #endif
                 }
-            } else {
-#ifdef DEBUG_GLIDE
-                cerr << "surpassedMedianThreshold is latched" << endl;
-#endif
             }
         }
 
@@ -180,49 +177,48 @@ Glide::extract_semis(const vector<double> &rawPitch,
                 glideStart = i;
             }
         } else {
+
+            if (glideStart >= 0 &&
+                surpassedMedianThreshold &&
+                surpassedStartingHopDifference) {
+                
+                // If at least thresholdSteps candidates in a row
+                // previously with total pitch drift more than
+                // threshold, record a glide ending here
+                
+                if (glideStart + m_parameters.durationThreshold_steps <= i &&
+                    fabs(pitch[glideStart] - pitch[i-1]) >=
+                    minimumPitchThreshold_semis) {
+                    glides[glideStart] = i-1;
+#ifdef DEBUG_GLIDE
+                    cerr << "Noting a glide from " << glideStart
+                         << " to " << i-1 << endl;
+#endif
+                } else {
+#ifdef DEBUG_GLIDE
+                    cerr << "Glide ended without thresholds having been met "
+                         << "between potential glide start "
+                         << glideStart << " and " << i-1 << endl;
+#endif
+                }
+            }
+                
+            glideStart = -1;
+            
             if (surpassedMedianThreshold || surpassedStartingHopDifference) {
 #ifdef DEBUG_GLIDE
-                cerr << "Failed some other criterion besides the latched ones; releasing latches" << endl;
+                cerr << "Releasing latches" << endl;
 #endif
                 surpassedMedianThreshold = false;
                 surpassedStartingHopDifference = false;
             }
         }
-        
-        bool isCandidate =
-            (surpassedMedianThreshold && surpassedStartingHopDifference) &&
-            (havePitch && belowMaxDiff && sameDirection);
-
-#ifdef DEBUG_GLIDE
-        if (isCandidate) {
-            cerr << "This will be a glide if it is long enough" << endl;
-        }
-#endif
-        
-        if (!isCandidate && glideStart >= 0 && glideStart != i) {
-            // If at least thresholdSteps candidates in a row
-            // previously with total pitch drift more than threshold,
-            // record a glide ending here
-            if (glideStart + m_parameters.durationThreshold_steps <= i) {
-                glides[glideStart] = i-1;
-#ifdef DEBUG_GLIDE
-                cerr << "Noting a glide from " << glideStart
-                     << " to " << i-1 << endl;
-#endif
-            } else {
-#ifdef DEBUG_GLIDE
-                cerr << "Duration threshold of "
-                     << m_parameters.durationThreshold_steps
-                     << " not exceeded between potential glide start "
-                     << glideStart << " and " << i-1 << endl;
-#endif
-            }                
-            glideStart = -1;
-        }
     }
 
     if (glideStart >= 0 &&
-        glideStart + m_parameters.durationThreshold_steps < n) {
+        surpassedMedianThreshold && surpassedStartingHopDifference &&
+        glideStart + m_parameters.durationThreshold_steps < n &&
+        fabs(pitch[glideStart] - pitch[n-1]) >= minimumPitchThreshold_semis) {
         glides[glideStart] = n-1;
 #ifdef DEBUG_GLIDE
         cerr << "Noting a final glide from " << glideStart
