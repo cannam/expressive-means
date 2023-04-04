@@ -110,6 +110,7 @@ Glide::extract_semis(const vector<double> &rawPitch,
 
         bool sameDirection = false;
         bool belowMaxDiff = false;
+        bool backToMedian = false;
         bool havePitch = (pitch[i] > 0.0);
 
 #ifdef DEBUG_GLIDE
@@ -152,24 +153,26 @@ Glide::extract_semis(const vector<double> &rawPitch,
                 prevDelta = 0.0;
             }
 
-            if (!surpassedMedianThreshold) {
-                double medianDiff = fabs
-                    (pitch[i] - medianFilteredPitch[i + halfMedianFilterLength]);
+            double medianDiff = fabs
+                (pitch[i] - medianFilteredPitch[i + halfMedianFilterLength]);
 #ifdef DEBUG_GLIDE
-                cerr << "Median windowed pitch = "
-                     << medianFilteredPitch[i + halfMedianFilterLength]
-                     << ", medianDiff = " << medianDiff << endl;
+            cerr << "Median windowed pitch = "
+                 << medianFilteredPitch[i + halfMedianFilterLength]
+                 << ", medianDiff = " << medianDiff << endl;
 #endif
-                if (medianDiff > minimumPitchThreshold_semis) {
-                    surpassedMedianThreshold = true;
+
+            if (medianDiff < minimumHopDifference_semis) {
+                backToMedian = true;
+            } else if (!surpassedMedianThreshold &&
+                       medianDiff > minimumPitchThreshold_semis) {
+                surpassedMedianThreshold = true;
 #ifdef DEBUG_GLIDE
-                    cerr << "Latching surpassedMedianThreshold" << endl;
+                cerr << "Latching surpassedMedianThreshold" << endl;
 #endif
-                }
             }
         }
 
-        if (havePitch && belowMaxDiff && sameDirection) {
+        if (havePitch && belowMaxDiff && sameDirection && !backToMedian) {
             if (glideStart < 0) {
 #ifdef DEBUG_GLIDE
                 cerr << "This may be start of a glide if the median and hop thresholds are passed" << endl;

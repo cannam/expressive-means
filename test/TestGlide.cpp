@@ -45,12 +45,17 @@ BOOST_AUTO_TEST_CASE(roehn_2180)
         1190.16, 1197.5, 1202.4, 1203.23, 1203.09,
         1203.43, 1201.07, 1199.6, 1196.63, 1192.79,   // 40
         1190.64, 1190.08, 1189.3, 1189.37, 1189.26,
-        // Glide starts here
+        // Glide starts here at 50
         1187.98, 1186.45, 1184.93, 1182.86, 1180.24,  // 50
         1175.09, 1170.84, 1167.75, 1162.22, 1153.47,
-        1138.81, 1130, 1124.44, 1111.68, 1096.36,     // 60
+        1138.81, 1130, 1124.44, 1111.68,     // 60
+        // Glide ends here at 64 if we end it when pitch returns to
+        // median (the variation in the following few steps is then
+        // taken as vibrato)
+        1096.36,
         1082.16, 1067.72, 1059.89, 1040.02, 1027.41,
-        // Glide ends here
+        // Glide ends here at 70 if we end it only when the drift
+        // stops
         1026.17, 1031.77, 1052.97, 1095.3, 1112.98,   // 70
         1113.55, 1103.35, 1092.06, 1082.63, 1081.31,
         1079.66, 1079.68, 1080.79, 1082.17, 1083.31,  // 80
@@ -88,7 +93,7 @@ BOOST_AUTO_TEST_CASE(roehn_2180)
 */    
     BOOST_TEST(extents.size() == 1);
     BOOST_TEST(extents.begin()->second.start == 50);
-    BOOST_TEST(extents.begin()->second.end == 70);
+    BOOST_TEST(extents.begin()->second.end == 64);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
