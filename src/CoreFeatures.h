@@ -250,7 +250,7 @@ private:
     std::set<int> m_levelRiseOnsets;
     std::set<int> m_powerRiseOnsets;
     std::map<int, OnsetType> m_mergedOnsets;
-    std::map<int, std::pair<int, OffsetType>> m_onsetOffsets;
+    OnsetOffsetMap m_onsetOffsets;
 
     void assertFinished() const {
         if (!m_finished) {

@@ -214,6 +214,15 @@ public:
         double maxRangeTime;
         VibratoDevelopment development;
     };
+
+    std::vector<VibratoElement> extractElements
+    (const std::vector<double> &pyinPitch_Hz,
+     std::vector<double> &smoothedPitch_semis,
+     std::vector<int> &rawPeaks) const;
+
+    std::map<int, VibratoClassification> classify
+    (const std::vector<VibratoElement> &elements,
+     const CoreFeatures::OnsetOffsetMap &onsetOffsets) const;
     
 protected:
     int m_stepSize;

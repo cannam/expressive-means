@@ -498,22 +498,30 @@ PitchVibrato::process(const float *const *inputBuffers, Vamp::RealTime timestamp
     return {};
 }
 
-PitchVibrato::FeatureSet
-PitchVibrato::getRemainingFeatures()
+vector<PitchVibrato::VibratoElement>
+PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
+                              std::vector<double> &smoothedPitch_semis,
+                              std::vector<int> &rawPeaks) const
 {
-    FeatureSet fs;
-
-    m_coreFeatures.finish();
-
-    auto pyinPitch = m_coreFeatures.getPYinPitch_Hz();
-
     // The numbered comments correspond to the numbered steps in Tilo
     // Haehnel's paper
 
     // 1. Convert pitch track from Hz to cents and smooth with a 35ms
     // (either side? so 70ms total? or 35ms total?) mean filter
-    
-    auto unfilteredPitch = m_coreFeatures.getPitch_semis();
+
+    vector<double> unfilteredPitch;
+    double prevHz = 0.0;
+    for (auto hz : pyinPitch_Hz) {
+        if (hz > 0.0) {
+            unfilteredPitch.push_back(m_coreFeatures.hzToPitch(hz));
+            prevHz = hz;
+        } else if (prevHz > 0.0) {
+            unfilteredPitch.push_back(m_coreFeatures.hzToPitch(prevHz));
+        } else {
+            unfilteredPitch.push_back(0.0);
+        }
+    }
+
     int n = unfilteredPitch.size();
 
     MeanFilter meanFilter(m_coreFeatures.msToSteps
@@ -521,20 +529,16 @@ PitchVibrato::getRemainingFeatures()
     vector<double> pitch(n, 0.0);
     meanFilter.filter(unfilteredPitch.data(), pitch.data(), n);
 
-    // (Reinstate unvoiced pitches)
+    // Reinstate unvoiced pitches
     for (int i = 0; i < n; ++i) {
-        if (pyinPitch[i] <= 0) {
+        if (pyinPitch_Hz[i] <= 0) {
             pitch[i] = 0.0;
         }
     }
 
+    smoothedPitch_semis.clear();
     for (int i = 0; i < n; ++i) {
-        if (pitch[i] == 0.0) continue;
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(m_coreFeatures.pitchToHz(pitch[i]));
-        fs[m_pitchTrackOutput].push_back(f);
+        smoothedPitch_semis.push_back(pitch[i]);
     }
 
     // 2. Identify peaks - simply local maxima, with values greater
@@ -549,6 +553,7 @@ PitchVibrato::getRemainingFeatures()
             }
         }
     }
+    rawPeaks = peaks;
 
     // Use parabolic interpolation to identify a more precise peak
     // location. This is step 6 in the paper, but we'll do it now
@@ -666,6 +671,10 @@ PitchVibrato::getRemainingFeatures()
             continue;
         }
 
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "Accepting this peak, with range " << range << " semis" << endl;
+#endif
+        
         VibratoElement element;
         element.hop = peaks[i];
         element.peakIndex = i;
@@ -813,10 +822,16 @@ PitchVibrato::getRemainingFeatures()
         elements[i].correlation = corr;
     }
 
-    auto eitr = elements.begin();
-    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
+    return elements;
+}
 
-    map<int, VibratoClassification> classifications; // key is onset hop
+map<int, PitchVibrato::VibratoClassification>
+PitchVibrato::classify(const std::vector<VibratoElement> &elements,
+                       const CoreFeatures::OnsetOffsetMap &onsetOffsets) const
+{
+    map<int, VibratoClassification> classifications;
+
+    auto eitr = elements.begin();
     
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
@@ -993,6 +1008,38 @@ PitchVibrato::getRemainingFeatures()
 
         classifications[onset] = classification;
     }
+
+    return classifications;
+}
+
+PitchVibrato::FeatureSet
+PitchVibrato::getRemainingFeatures()
+{
+    FeatureSet fs;
+
+    m_coreFeatures.finish();
+
+    auto pyinPitch_Hz = m_coreFeatures.getPYinPitch_Hz();
+    vector<double> smoothedPitch_semis;
+    vector<int> rawPeaks;
+
+    auto elements = extractElements(pyinPitch_Hz, smoothedPitch_semis, rawPeaks);
+
+    int n = int(smoothedPitch_semis.size());
+    
+    for (int i = 0; i < n; ++i) {
+        if (smoothedPitch_semis[i] <= 0.0) continue;
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(i);
+        f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[i]));
+        fs[m_pitchTrackOutput].push_back(f);
+    }
+
+    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
+
+    map<int, VibratoClassification> classifications =
+        classify(elements, onsetOffsets);
     
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
@@ -1094,10 +1141,10 @@ PitchVibrato::getRemainingFeatures()
     
 #ifdef WITH_DEBUG_OUTPUTS
     
-    for (int i = 0; i < int(peaks.size()); ++i) {
+    for (int i = 0; i < int(rawPeaks.size()); ++i) {
         Feature f;
         f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(peaks[i]);
+        f.timestamp = m_coreFeatures.timeForStep(rawPeaks[i]);
         fs[m_rawPeaksOutput].push_back(f);
     }
     
@@ -1106,7 +1153,7 @@ PitchVibrato::getRemainingFeatures()
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.getStartTime() +
             Vamp::RealTime::fromSeconds(e.position_sec);
-        f.values.push_back(m_coreFeatures.pitchToHz(pitch[e.hop]));
+        f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[e.hop]));
         fs[m_acceptedPeaksOutput].push_back(f);
     }
 
@@ -1120,12 +1167,12 @@ PitchVibrato::getRemainingFeatures()
 #endif
             continue;
         }
-        for (int j = peaks[e.peakIndex]; j < peaks[e.peakIndex + 1]; ++j) {
-            if (j < n && pitch[j] > 0.0) {
+        for (int j = rawPeaks[e.peakIndex]; j < rawPeaks[e.peakIndex + 1]; ++j) {
+            if (j < n && smoothedPitch_semis[j] > 0.0) {
                 Feature f;
                 f.hasTimestamp = true;
                 f.timestamp = m_coreFeatures.timeForStep(j);
-                f.values.push_back(m_coreFeatures.pitchToHz(pitch[j]));
+                f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[j]));
                 fs[m_vibratoPitchTrackOutput].push_back(f);
             }
         }
