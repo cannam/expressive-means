@@ -218,7 +218,8 @@ public:
         double dynamicMin;
     };
 
-    GlideClassification classifyGlide(const Glide::Extent &,
+    GlideClassification classifyGlide(const std::pair<int, Glide::Extent> &,
+                                      const CoreFeatures::OnsetOffsetMap &onsetOffsets,
                                       const std::vector<double> &pyinPitch,
                                       const std::vector<double> &smoothedPower);
     
@@ -234,7 +235,7 @@ protected:
     float m_glideThresholdHopMaximum_cents;
     float m_glideThresholdDuration_ms;  // 3.2, g_2
     float m_glideThresholdProximity_ms; // 3.3, g_3
-    float m_linkThreshold_ms; // b_1
+    float m_linkThreshold_cents; // b_1
     float m_rangeBoundaryMedium_cents; // c_1.M
     float m_rangeBoundaryLarge_cents; // c_1.L
     float m_durationBoundaryMedium_ms; // d_1.m

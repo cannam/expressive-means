@@ -30,7 +30,7 @@ static const float default_glideThresholdHopMinimum_cents = 15.f;
 static const float default_glideThresholdHopMaximum_cents = 50.f;
 static const float default_glideThresholdDuration_ms = 70.f;
 static const float default_glideThresholdProximity_ms = 350.f;
-static const float default_linkThreshold_ms = 30.f;
+static const float default_linkThreshold_cents = 50.f;
 static const float default_rangeBoundaryMedium_cents = 250.f;
 static const float default_rangeBoundaryLarge_cents = 550.f;
 static const float default_durationBoundaryMedium_ms = 120.f;
@@ -49,7 +49,7 @@ Portamento::Portamento(float inputSampleRate) :
     m_glideThresholdHopMaximum_cents(default_glideThresholdHopMaximum_cents),
     m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
     m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
-    m_linkThreshold_ms(default_linkThreshold_ms),
+    m_linkThreshold_cents(default_linkThreshold_cents),
     m_rangeBoundaryMedium_cents(default_rangeBoundaryMedium_cents),
     m_rangeBoundaryLarge_cents(default_rangeBoundaryLarge_cents),
     m_durationBoundaryMedium_ms(default_durationBoundaryMedium_ms),
@@ -195,10 +195,10 @@ Portamento::getParameterDescriptors() const
     
     d.identifier = "linkThreshold";
     d.name = "Link threshold";
-    d.unit = "ms";
+    d.unit = "cents";
     d.minValue = 0.f;
-    d.maxValue = 150.f;
-    d.defaultValue = default_linkThreshold_ms;
+    d.maxValue = 200.f;
+    d.defaultValue = default_linkThreshold_cents;
     list.push_back(d);
     
     d.identifier = "rangeBoundaryMedium";
@@ -281,7 +281,7 @@ Portamento::getParameter(string identifier) const
     } else if (identifier == "glideThresholdProximity") {
         return m_glideThresholdProximity_ms;
     } else if (identifier == "linkThreshold") {
-        return m_linkThreshold_ms;
+        return m_linkThreshold_cents;
     } else if (identifier == "rangeBoundaryMedium") {
         return m_rangeBoundaryMedium_cents;
     } else if (identifier == "rangeBoundaryLarge") {
@@ -319,7 +319,7 @@ Portamento::setParameter(string identifier, float value)
     } else if (identifier == "glideThresholdProximity") {
         m_glideThresholdProximity_ms = value;
     } else if (identifier == "linkThreshold") {
-        m_linkThreshold_ms = value;
+        m_linkThreshold_cents = value;
     } else if (identifier == "rangeBoundaryMedium") {
         m_rangeBoundaryMedium_cents = value;
     } else if (identifier == "rangeBoundaryLarge") {
@@ -532,12 +532,16 @@ Portamento::process(const float *const *inputBuffers, Vamp::RealTime timestamp)
 }
 
 Portamento::GlideClassification
-Portamento::classifyGlide(const Glide::Extent &extent,
+Portamento::classifyGlide(const std::pair<int, Glide::Extent> &extentPair,
+                          const CoreFeatures::OnsetOffsetMap &onsetOffsets,
                           const vector<double> &pyinPitch,
                           const vector<double> &smoothedPower)
 {
     GlideClassification classification;
 
+    int onset = extentPair.first;
+    Glide::Extent extent = extentPair.second;
+    
     // Direction
     
     if (pyinPitch[extent.start] < pyinPitch[extent.end]) {
@@ -577,54 +581,67 @@ Portamento::classifyGlide(const Glide::Extent &extent,
     }
 
     // Link
-    
-    bool haveBefore = false, haveAfter = false;
 
-    int linkThresholdSteps = m_coreFeatures.msToSteps
-        (m_linkThreshold_ms, m_coreParams.stepSize, false);
+    bool matchingBefore = false, matchingAfter = false;
+
+    double startPitch_semis = m_coreFeatures.hzToPitch(pyinPitch[extent.start]);
+    double endPitch_semis = m_coreFeatures.hzToPitch(pyinPitch[extent.end]);
+
+    auto onsetItr = onsetOffsets.find(onset);
     
-    int dist = 1;
-    for (int i = extent.start - 1; i >= 0; --i) {
-        if (pyinPitch[i] > 0) {
-            break;
+    if (onsetItr != onsetOffsets.end()) {
+        if (onsetItr != onsetOffsets.begin()) {
+            auto prevItr = onsetItr;
+            --prevItr;
+            double prevPitch_semis =
+                m_coreFeatures.hzToPitch(pyinPitch[prevItr->first]);
+            if (100.0 * fabs(startPitch_semis - prevPitch_semis) <
+                m_linkThreshold_cents) {
+                matchingBefore = true;
+            }
+#ifdef DEBUG_PORTAMENTO
+            cerr << "start pitch at " << extent.start
+                 << " = " << startPitch_semis << ", prev pitch = "
+                 << prevPitch_semis << ", matchingBefore = " << matchingBefore
+                 << endl;
+#endif
         }
-        ++dist;
-    }
-    
-    if (dist < linkThresholdSteps) {
-        haveBefore = true;
-    }
-    
-    dist = 1;
-    int n = int(pyinPitch.size());
-    for (int i = extent.end + 1; i < n; ++i) {
-        if (pyinPitch[i] > 0) {
-            break;
+        auto nextItr = onsetItr;
+        if (++nextItr != onsetOffsets.end()) {
+            double nextPitch_semis =
+                m_coreFeatures.hzToPitch(pyinPitch[nextItr->first]);
+            if (100.0 * fabs(endPitch_semis - nextPitch_semis) <
+                m_linkThreshold_cents) {
+                matchingAfter = true;
+            }
+#ifdef DEBUG_PORTAMENTO
+            cerr << "end pitch at " << extent.end
+                 << " = " << endPitch_semis << ", next pitch = "
+                 << nextPitch_semis << ", matchingAfter = " << matchingAfter
+                 << endl;
+#endif
         }
-        ++dist;
-    }
-    if (dist < linkThresholdSteps) {
-        haveAfter = true;
     }
     
-    if (haveBefore) {
-        if (haveAfter) {
+    if (matchingBefore) {
+        if (matchingAfter) {
             classification.link = GlideLink::Interconnecting;
         } else {
-            classification.link = GlideLink::Targeting;
+            classification.link = GlideLink::Starting;
         }
     } else {
-        if (haveAfter) {
-            classification.link = GlideLink::Starting;
+        if (matchingAfter) {
+            classification.link = GlideLink::Targeting;
         } else {
-            classification.link = GlideLink::Interconnecting;
+            classification.link = GlideLink::Starting;
         }
     }
 
     // Dynamic
 
     double preceding, succeeding;
-
+    int n = int(smoothedPower.size());
+    
     if (extent.start > 0) {
         preceding = smoothedPower[extent.start - 1];
     } else {
@@ -717,7 +734,7 @@ Portamento::getRemainingFeatures()
     
     for (auto m : glides) {
         classifications[m.first] =
-            classifyGlide(m.second, pyinPitch, smoothedPower);
+            classifyGlide(m, onsetOffsets, pyinPitch, smoothedPower);
     }
     
     int glideNo = 1;
