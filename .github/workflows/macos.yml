@@ -19,6 +19,7 @@ jobs:
       run: |
         ninja -C build
         cp build/expressive-means.dylib .
+        cp build/tests .
     - name: archive-plugin
       uses: actions/upload-artifact@v3
       with:
