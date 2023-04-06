@@ -150,7 +150,7 @@ public:
 
     static std::string vibratoRangeToCode(VibratoRange d) {
         switch (d) {
-        case VibratoRange::Narrow: return "w";
+        case VibratoRange::Narrow: return "n";
         case VibratoRange::Medium: return "m";
         case VibratoRange::Wide: return "w";
         default: throw std::logic_error("unknown VibratoRange");
@@ -216,13 +216,16 @@ public:
     };
 
     std::vector<VibratoElement> extractElements
-    (const std::vector<double> &pyinPitch_Hz,
-     std::vector<double> &smoothedPitch_semis,
-     std::vector<int> &rawPeaks) const;
+    (const std::vector<double> &pyinPitch_Hz,  // in
+     std::vector<double> &smoothedPitch_semis, // out
+     std::vector<int> &rawPeaks) const;        // out
 
     std::map<int, VibratoClassification> classify
     (const std::vector<VibratoElement> &elements,
      const CoreFeatures::OnsetOffsetMap &onsetOffsets) const;
+
+    std::string classificationToCode(const VibratoClassification &) const;
+    double classificationToIndex(const VibratoClassification &) const;
     
 protected:
     int m_stepSize;

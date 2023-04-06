@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: deps
-      run: brew install polyml boost meson ninja mercurial
+      run: brew install polyml boost meson ninja mercurial boost
     - name: repoint
       run: ./repoint install
     - name: configure
@@ -26,5 +26,8 @@ jobs:
         path: |
           expressive-means.dylib
           expressive-means.cat
+        name: tests
+        path: |
+          tests
 
 

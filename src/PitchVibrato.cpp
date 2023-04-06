@@ -507,8 +507,19 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     // Haehnel's paper
 
     // 1. Convert pitch track from Hz to cents and smooth with a 35ms
-    // (either side? so 70ms total? or 35ms total?) mean filter
+    // mean filter. (The paper says 35ms but it appears from the R
+    // code that it is 35ms either side of the centre, so 70ms
+    // total?)
 
+    double filterLength_ms = 70.0;
+    int filterLength_steps = m_coreFeatures.msToSteps
+        (filterLength_ms, m_coreParams.stepSize, true);
+    
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 1. Smooth pitch track with a mean filter of "
+         << filterLength_ms << "ms (" << filterLength_steps << " hops)" << endl;
+#endif
+    
     vector<double> unfilteredPitch;
     double prevHz = 0.0;
     for (auto hz : pyinPitch_Hz) {
@@ -523,12 +534,10 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     }
 
     int n = unfilteredPitch.size();
-
-    MeanFilter meanFilter(m_coreFeatures.msToSteps
-                          (35.f, m_coreParams.stepSize, true));
+    MeanFilter meanFilter(filterLength_steps);
     vector<double> pitch(n, 0.0);
     meanFilter.filter(unfilteredPitch.data(), pitch.data(), n);
-
+    
     // Reinstate unvoiced pitches
     for (int i = 0; i < n; ++i) {
         if (pyinPitch_Hz[i] <= 0) {
@@ -541,25 +550,46 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         smoothedPitch_semis.push_back(pitch[i]);
     }
 
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 1. Complete, have " << smoothedPitch_semis.size() << " hops" << endl;
+#endif
+
     // 2. Identify peaks - simply local maxima, with values greater
     // then their immediate neighbours (where they all have valid
     // pitch values)
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 2. Identify local maxima in smoothed pitch track" << endl;
+#endif
     
     vector<int> peaks;
     for (int i = 1; i + 1 < n; ++i) {
         if (pitch[i] >= pitch[i-1] && pitch[i] > pitch[i+1]) {
             if (pitch[i] > 0.0 && pitch[i-1] > 0.0 && pitch[i+1] > 0.0) {
+#ifdef DEBUG_PITCH_VIBRATO
+                cerr << "-- Local maximum at " << i << ": " << pitch[i] << " >= "
+                     << pitch[i-1] << " (before) and > " << pitch[i+1]
+                     << " (after)" << endl;
+#endif
                 peaks.push_back(i);
             }
         }
     }
     rawPeaks = peaks;
 
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 2. Complete, found " << rawPeaks.size() << " local maxima" << endl;
+#endif
+
     // Use parabolic interpolation to identify a more precise peak
     // location. This is step 6 in the paper, but we'll do it now
     // because we want to ensure the location of the "following" peak
     // for every accepted peak is available even if the following peak
     // is itself not accepted.
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 2a (6 in paper). Interpolate precise peak timings" << endl;
+#endif
 
     vector<double> positions; // positions[i] is time in sec of peaks[i]
     
@@ -579,8 +609,18 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
               double((m_coreParams.blockSize / m_coreParams.stepSize) / 2)) *
              double(m_coreParams.stepSize))
             / double(m_inputSampleRate);
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Peak at hop " << hop << " refined to hop " << refinedStep
+             << ", from nominal time "
+             << ((double(hop) + double((m_coreParams.blockSize / m_coreParams.stepSize) / 2)) * double(m_coreParams.stepSize)) / double(m_inputSampleRate)
+             << " to " << sec << "s" << endl;
+#endif
         positions.push_back(sec);
     }
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 2a (6 in paper). Complete" << endl;
+#endif
     
     // Number of peak-to-peak ranges found (NB this could be -1 if no
     // peaks at all found!)
@@ -603,6 +643,10 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     // only has 11.7 hops per cycle in the first place. Let's ask for
     // at least 0.8x the total number of hops.
 
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 3-5. Evaluate peak-to-peak pairs against basic vibrato criteria" << endl;
+#endif
+    
     int minDistSteps = m_coreFeatures.msToSteps
         (1000.0 / m_vibratoRateMaximum_Hz, m_coreParams.stepSize, false);
     int maxDistSteps = m_coreFeatures.msToSteps
@@ -618,7 +662,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     for (int i = 0; i < npairs; ++i) {
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "Considering peak at step " << peaks[i]
+        cerr << "-- Considering peak at step " << peaks[i]
              << " (following peak is at " << peaks[i+1] << ")"
              << endl;
 #endif
@@ -627,7 +671,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         int steps = peaks[i+1] - peaks[i];
         if (steps < minDistSteps || steps > maxDistSteps) {
 #ifdef DEBUG_PITCH_VIBRATO
-            cerr << "Rejecting as step count to following peak ("
+            cerr << "-- Rejecting as step count to following peak ("
                  << steps << ") is outside range " << minDistSteps
                  << " - " << maxDistSteps << endl;
 #endif
@@ -643,7 +687,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         }
         if (nValid < minPitchedHops) {
 #ifdef DEBUG_PITCH_VIBRATO
-            cerr << "Rejecting as only " << nValid << " valid pitch "
+            cerr << "-- Rejecting as only " << nValid << " valid pitch "
                  << "measurements found before following peak, at least "
                  << minPitchedHops << " required" << endl;
 #endif
@@ -663,7 +707,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
             std::max(pitch[peaks[i]], pitch[peaks[i+1]]) - minimum;
         if (range < minHeight || range > maxHeight) {
 #ifdef DEBUG_PITCH_VIBRATO
-            cerr << "Rejecting as peak height (range) of " << range
+            cerr << "-- Rejecting as peak height (range) of " << range
                       << " semitones relative to intervening minimum is "
                       << "outside range " << minHeight << " to " << maxHeight
                       << endl;
@@ -672,7 +716,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         }
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "Accepting this peak, with range " << range << " semis" << endl;
+        cerr << "-- Accepting this peak, with range " << range << " semis" << endl;
 #endif
         
         VibratoElement element;
@@ -683,6 +727,10 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         elements.push_back(element);
     }
 
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 3-5. Complete, have " << elements.size() << " peak pairs afterwards" << endl;
+#endif
+    
     // 6. Use parabolic interpolation to identify a more precise peak
     // location - we already did this, the results are in positions
 
@@ -712,6 +760,10 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     // the section of the signal under test are both Hann windowed and
     // their correlation checked.
 
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 7-8. Fit a sinusoidal model and calculate correlation within two Hann-windowed cycles" << endl;
+#endif
+    
     auto hann = [](int i, int n) {
         return 0.5 - 0.5 * cos(2.0 * M_PI * double(i) / double(n));
     };
@@ -749,12 +801,14 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
             }
         }
             
-        cerr << "for accepted peak at " << peaks[peakIndex]
+        cerr << "-- For accepted peak at hop" << peaks[peakIndex]
              << " with pitch " << pitch[peaks[peakIndex]]
-             << " we have previous minimum " << pitch[min0]
-             << " at " << min0 << " and following-following minimum "
-             << pitch[min1] << " at " << min1
-             << "; overall minimum is " << minInRange
+             << " we have:" << endl;
+        cerr << "-- Previous minimum at hop " << min0
+             << " has pitch " << pitch[min0] << endl;
+        cerr << "-- Next-but-one minimum at hop " << min1
+             << " has pitch " << pitch[min1] << endl;
+        cerr << "-- Overall minimum within these two cycles is " << minInRange
              << " and maximum is " << maxInRange << endl;
         
         if (maxInRange <= minInRange) {
@@ -762,6 +816,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         }
 
 #ifdef DEBUG_PITCH_VIBRATO
+        /*
         cerr << "window of signal (" << m << "): ";
         for (int j = 0; j < m; ++j) {
             double signal = (pitch[min0 + j] - minInRange) /
@@ -776,6 +831,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
             cerr << winSine(j, m) << " ";
         }
         cerr << endl;
+        */
 #endif
 
         // The R implementation appears to use Pearson correlation
@@ -816,11 +872,15 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         }
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "correlation = " << corr << endl;
+        cerr << "-- Calculated correlation of " << corr << endl;
 #endif
 
         elements[i].correlation = corr;
     }
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 7-8. Complete, returning resulting elements" << endl;
+#endif
 
     return elements;
 }
@@ -832,6 +892,8 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
     map<int, VibratoClassification> classifications;
 
     auto eitr = elements.begin();
+
+    cerr << "** Classify: considering " << onsetOffsets.size() << " onsets" << endl;
     
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
@@ -856,7 +918,7 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
         int nelts = ee.size();
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "onset at " << onset << ": " << nelts
+        cerr << "-- Onset at " << onset << " has " << nelts
              << " associated vibrato elements above correlation threshold"
              << endl;
 #endif
@@ -903,9 +965,10 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
         classification.soundDuration = (noteEnd_ms - noteStart_ms) / 1000.0;
         
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "onset at " << onset << ": note start (ms) " << noteStart_ms
+        cerr << "-- Onset at " << onset << ": note start (ms) " << noteStart_ms
              << ", end " << noteEnd_ms << "; vibrato start " << vibratoStart_ms
-             << ", end " << vibratoEnd_ms << ": duration classification: "
+             << ", end " << vibratoEnd_ms << endl;
+        cerr << "-> Duration classification: "
              << vibratoDurationToString(classification.duration)
              << endl;
 #endif
@@ -927,12 +990,12 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
         }
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "onset at " << onset << ": vibrato element rates (Hz):";
+        cerr << "-- Onset at " << onset << ": vibrato element rates (Hz):";
         for (auto e : ee) {
             cerr << " " << 1.0 / e.waveLength_sec;
         }
-        cerr << ", mean rate " << meanRate_Hz
-             << ": rate classification: "
+        cerr << ", mean rate " << meanRate_Hz << endl;
+        cerr << "-> Rate classification: "
              << vibratoRateToString(classification.rate)
              << endl;
 #endif
@@ -961,8 +1024,9 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
         }
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "onset at " << onset << ": max range " << maxRange_cents
-             << ": range classification: "
+        cerr << "-- Onset at " << onset << ": max range (cents) "
+             << maxRange_cents << endl;
+        cerr << "-> Range classification: "
              << vibratoRangeToString(classification.range)
              << endl;
 #endif
@@ -974,10 +1038,11 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
             classification.development = VibratoDevelopment::Stable;
 
 #ifdef DEBUG_PITCH_VIBRATO
-            cerr << "onset at " << onset << ": max range " << maxRange_cents
+            cerr << "-- Onset at " << onset << ": max range " << maxRange_cents
                  << " is within " << m_developmentThreshold_cents
                  << " of mean range " << meanRange_cents
-                 << ": development classification: "
+                 << endl;
+            cerr << "-> Development classification: "
                  << developmentToString(classification.development)
                  << endl;
 #endif
@@ -995,11 +1060,12 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
             }
             
 #ifdef DEBUG_PITCH_VIBRATO
-            cerr << "onset at " << onset << ": max range " << maxRange_cents
+            cerr << "-- Onset at " << onset << ": max range " << maxRange_cents
                  << " is at (ms) " << maxRangeTime_ms
                  << " with vibrato start at " << vibratoStart_ms
                  << " and end at " << vibratoEnd_ms
-                 << ": development classification: "
+                 << endl;
+            cerr << "-> Development classification: "
                  << developmentToString(classification.development)
                  << endl;
 #endif
@@ -1009,7 +1075,36 @@ PitchVibrato::classify(const std::vector<VibratoElement> &elements,
         classifications[onset] = classification;
     }
 
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** Classify: complete" << endl;
+#endif
+    
     return classifications;
+}
+
+string
+PitchVibrato::classificationToCode(const PitchVibrato::VibratoClassification &
+                                   classification) const
+{
+    string code;
+    code += vibratoDurationToCode(classification.duration);
+    code += vibratoRateToCode(classification.rate);
+    code += vibratoRangeToCode(classification.range);
+    code += developmentToCode(classification.development);
+    return code;
+}
+
+double
+PitchVibrato::classificationToIndex(const PitchVibrato::VibratoClassification &
+                                    classification) const
+{
+    double index = 1.0;
+    index *= vibratoDurationToFactor(classification.duration);
+    index *= vibratoRateToFactor(classification.rate);
+    index *= vibratoRangeToFactor(classification.range);
+    index *= developmentToFactor(classification.development);
+    index *= m_scalingFactor;
+    return index;
 }
 
 PitchVibrato::FeatureSet
@@ -1092,22 +1187,8 @@ PitchVibrato::getRemainingFeatures()
 
             VibratoClassification classification = classifications.at(onset);
 
-            string code;
-            double index = 1.0;
-
-            code += vibratoDurationToCode(classification.duration);
-            index *= vibratoDurationToFactor(classification.duration);
-
-            code += vibratoRateToCode(classification.rate);
-            index *= vibratoRateToFactor(classification.rate);
-
-            code += vibratoRangeToCode(classification.range);
-            index *= vibratoRangeToFactor(classification.range);
-
-            code += developmentToCode(classification.development);
-            index *= developmentToFactor(classification.development);
-
-            index *= m_scalingFactor;
+            string code = classificationToCode(classification);
+            double index = classificationToIndex(classification);
             
             Feature f;
             f.hasTimestamp = true;
