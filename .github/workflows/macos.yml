@@ -19,13 +19,16 @@ jobs:
       run: |
         ninja -C build
         cp build/expressive-means.dylib .
-    - name: archive
+    - name: archive-plugin
       uses: actions/upload-artifact@v3
       with:
         name: plugin
         path: |
           expressive-means.dylib
           expressive-means.cat
+    - name: archive-tests
+      uses: actions/upload-artifact@v3
+      with:
         name: tests
         path: |
           tests
