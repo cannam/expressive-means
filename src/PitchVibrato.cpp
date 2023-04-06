@@ -801,13 +801,13 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
             }
         }
             
-        cerr << "-- For accepted peak at hop" << peaks[peakIndex]
+        cerr << "-- For accepted peak at hop " << peaks[peakIndex]
              << " with pitch " << pitch[peaks[peakIndex]]
              << " we have:" << endl;
-        cerr << "-- Previous minimum at hop " << min0
-             << " has pitch " << pitch[min0] << endl;
-        cerr << "-- Next-but-one minimum at hop " << min1
-             << " has pitch " << pitch[min1] << endl;
+        cerr << "-- Minimum prior to this peak is at hop " << min0
+             << " with pitch " << pitch[min0] << endl;
+        cerr << "-- Minimum following the next peak is at hop " << min1
+             << " with pitch " << pitch[min1] << endl;
         cerr << "-- Overall minimum within these two cycles is " << minInRange
              << " and maximum is " << maxInRange << endl;
         
