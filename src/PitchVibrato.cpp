@@ -520,34 +520,30 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
          << filterLength_ms << "ms (" << filterLength_steps << " hops)" << endl;
 #endif
     
-    vector<double> unfilteredPitch;
+    vector<double> unsmoothedPitch_semis;
     double prevHz = 0.0;
     for (auto hz : pyinPitch_Hz) {
         if (hz > 0.0) {
-            unfilteredPitch.push_back(m_coreFeatures.hzToPitch(hz));
+            unsmoothedPitch_semis.push_back(m_coreFeatures.hzToPitch(hz));
             prevHz = hz;
         } else if (prevHz > 0.0) {
-            unfilteredPitch.push_back(m_coreFeatures.hzToPitch(prevHz));
+            unsmoothedPitch_semis.push_back(m_coreFeatures.hzToPitch(prevHz));
         } else {
-            unfilteredPitch.push_back(0.0);
+            unsmoothedPitch_semis.push_back(0.0);
         }
     }
 
-    int n = unfilteredPitch.size();
+    int n = unsmoothedPitch_semis.size();
     MeanFilter meanFilter(filterLength_steps);
-    vector<double> pitch(n, 0.0);
-    meanFilter.filter(unfilteredPitch.data(), pitch.data(), n);
+    smoothedPitch_semis = vector<double>(n, 0.0);
+    meanFilter.filter(unsmoothedPitch_semis.data(), smoothedPitch_semis.data(), n);
     
     // Reinstate unvoiced pitches
     for (int i = 0; i < n; ++i) {
         if (pyinPitch_Hz[i] <= 0) {
-            pitch[i] = 0.0;
+            unsmoothedPitch_semis[i] = 0.0;
+            smoothedPitch_semis[i] = 0.0;
         }
-    }
-
-    smoothedPitch_semis.clear();
-    for (int i = 0; i < n; ++i) {
-        smoothedPitch_semis.push_back(pitch[i]);
     }
 
 #ifdef DEBUG_PITCH_VIBRATO
@@ -564,15 +560,18 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     
     vector<int> peaks;
     for (int i = 1; i + 1 < n; ++i) {
-        if (pitch[i] >= pitch[i-1] && pitch[i] > pitch[i+1]) {
-            if (pitch[i] > 0.0 && pitch[i-1] > 0.0 && pitch[i+1] > 0.0) {
+        if (smoothedPitch_semis[i] >= smoothedPitch_semis[i-1] &&
+            smoothedPitch_semis[i] >  smoothedPitch_semis[i+1] &&
+            smoothedPitch_semis[i-1] > 0.0 &&
+            smoothedPitch_semis[i+1] > 0.0) {
 #ifdef DEBUG_PITCH_VIBRATO
-                cerr << "-- Local maximum at " << i << ": " << pitch[i] << " >= "
-                     << pitch[i-1] << " (before) and > " << pitch[i+1]
-                     << " (after)" << endl;
+            cerr << "-- Local maximum at " << i << ": smoothed pitch "
+                 << smoothedPitch_semis[i] << " >= "
+                 << smoothedPitch_semis[i-1] << " (before) and > "
+                 << smoothedPitch_semis[i+1]
+                 << " (after)" << endl;
 #endif
-                peaks.push_back(i);
-            }
+            peaks.push_back(i);
         }
     }
     rawPeaks = peaks;
@@ -597,9 +596,9 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         int hop = peaks[i];
         double refinedStep = hop;
         if (hop >= 1 && hop + 1 < n) {
-            double alpha = pitch[hop - 1];
-            double beta = pitch[hop];
-            double gamma = pitch[hop + 1];
+            double alpha = smoothedPitch_semis[hop - 1];
+            double beta = smoothedPitch_semis[hop];
+            double gamma = smoothedPitch_semis[hop + 1];
             double denom = alpha - 2.0 * beta + gamma;
             double p = (denom != 0.0 ? ((alpha - gamma) / denom * 0.5) : 0.0);
             refinedStep += p;
@@ -681,7 +680,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         // Establish at least 10 valid pitches in range (3)
         int nValid = 0;
         for (int j = peaks[i] + 1; j < peaks[i+1]; ++j) {
-            if (pitch[j] > 0.0) {
+            if (unsmoothedPitch_semis[j] > 0.0) {
                 ++nValid;
             }
         }
@@ -695,16 +694,17 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         }
 
         // Find the minimum
-        double minimum = pitch[peaks[i]];
+        double minimum = unsmoothedPitch_semis[peaks[i]];
         for (int j = peaks[i] + 1; j < peaks[i+1]; ++j) {
-            if (pitch[j] > 0.0 && pitch[j] < minimum) {
-                minimum = pitch[j];
+            if (unsmoothedPitch_semis[j] > 0.0 &&
+                unsmoothedPitch_semis[j] < minimum) {
+                minimum = unsmoothedPitch_semis[j];
             }
         }
 
         // Establish pitch criterion (5)
-        double range =
-            std::max(pitch[peaks[i]], pitch[peaks[i+1]]) - minimum;
+        double range = std::max(unsmoothedPitch_semis[peaks[i]],
+                                unsmoothedPitch_semis[peaks[i+1]]) - minimum;
         if (range < minHeight || range > maxHeight) {
 #ifdef DEBUG_PITCH_VIBRATO
             cerr << "-- Rejecting as peak height (range) of " << range
@@ -778,12 +778,14 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         int peakIndex = elements[i].peakIndex;
         
         int min0 = peaks[peakIndex];
-        while (min0 > 0 && pitch[min0 - 1] < pitch[min0]) {
+        while (min0 > 0 &&
+               unsmoothedPitch_semis[min0 - 1] < unsmoothedPitch_semis[min0]) {
             --min0;
         }
         
         int min1 = peaks[peakIndex + 1];
-        while (min1 < n-1 && pitch[min1 + 1] < pitch[min1]) {
+        while (min1 < n-1 &&
+               unsmoothedPitch_semis[min1 + 1] < unsmoothedPitch_semis[min1]) {
             ++min1;
         }
 
@@ -792,22 +794,23 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         double minInRange = 0.0, maxInRange = 0.0;
 
         for (int j = 0; j < m; ++j) {
-            if (pitch[min0 + j] > 0.0 &&
-                (minInRange == 0.0 || pitch[min0 + j] < minInRange)) {
-                minInRange = pitch[min0 + j];
+            if (unsmoothedPitch_semis[min0 + j] > 0.0 &&
+                (minInRange == 0.0 ||
+                 unsmoothedPitch_semis[min0 + j] < minInRange)) {
+                minInRange = unsmoothedPitch_semis[min0 + j];
             }
-            if (pitch[min0 + j] > maxInRange) {
-                maxInRange = pitch[min0 + j];
+            if (unsmoothedPitch_semis[min0 + j] > maxInRange) {
+                maxInRange = unsmoothedPitch_semis[min0 + j];
             }
         }
             
         cerr << "-- For accepted peak at hop " << peaks[peakIndex]
-             << " with pitch " << pitch[peaks[peakIndex]]
+             << " with pitch " << unsmoothedPitch_semis[peaks[peakIndex]]
              << " we have:" << endl;
         cerr << "-- Minimum prior to this peak is at hop " << min0
-             << " with pitch " << pitch[min0] << endl;
+             << " with pitch " << unsmoothedPitch_semis[min0] << endl;
         cerr << "-- Minimum following the next peak is at hop " << min1
-             << " with pitch " << pitch[min1] << endl;
+             << " with pitch " << unsmoothedPitch_semis[min1] << endl;
         cerr << "-- Overall minimum within these two cycles is " << minInRange
              << " and maximum is " << maxInRange << endl;
         
@@ -837,7 +840,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         // The R implementation appears to use Pearson correlation
         
         auto measured = [&](int i) {
-            double s = (pitch[min0 + i] - minInRange) /
+            double s = (smoothedPitch_semis[min0 + i] - minInRange) /
                 (maxInRange - minInRange);
             return s * hann(i, m);
         };
@@ -1253,7 +1256,7 @@ PitchVibrato::getRemainingFeatures()
                 Feature f;
                 f.hasTimestamp = true;
                 f.timestamp = m_coreFeatures.timeForStep(j);
-                f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[j]));
+                f.values.push_back(pyinPitch_Hz[j]);
                 fs[m_vibratoPitchTrackOutput].push_back(f);
             }
         }
