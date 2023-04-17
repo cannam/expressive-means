@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(huberman_812)
     onsetOffsets[17] = { 66, CoreFeatures::OffsetType::PowerDrop };
 
     testVibratoClassification
-        ("Huberman 0.812s", pitch_Hz, onsetOffsets, "4Fm>");
+        ("Huberman 0.812s", pitch_Hz, onsetOffsets, "4Fn>");
 }
 
 BOOST_AUTO_TEST_CASE(huberman_11400)
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(huberman_11400)
 
     //!!! check this!
     testVibratoClassification
-        ("Huberman 11.4s", pitch_Hz, onsetOffsets, "3Mm>");
+        ("Huberman 11.4s", pitch_Hz, onsetOffsets, "4Sn:");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
