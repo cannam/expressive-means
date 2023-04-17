@@ -105,6 +105,7 @@ Glide::extract_semis(const vector<double> &rawPitch,
     // reach a hop that fails the other thresholds for candidacy
     bool surpassedMedianThreshold = false;
     bool surpassedStartingHopDifference = false;
+    bool surpassedStepThreshold = false;
     
     for (int i = 1; i + halfMedianFilterLength < n; ++i) {
 
@@ -172,25 +173,38 @@ Glide::extract_semis(const vector<double> &rawPitch,
             }
         }
 
-        if (havePitch && belowMaxDiff && sameDirection && !backToMedian) {
+        if (havePitch &&
+            belowMaxDiff &&
+            (sameDirection || surpassedStepThreshold) &&
+            !backToMedian) {
+
             if (glideStart < 0) {
+
 #ifdef DEBUG_GLIDE
-                cerr << "This may be start of a glide if the median and hop thresholds are passed" << endl;
+                cerr << "This may be start of a glide if the median, hop, and step thresholds are passed" << endl;
 #endif
                 glideStart = i;
-            }
-        } else {
 
-            if (glideStart >= 0 &&
-                surpassedMedianThreshold &&
-                surpassedStartingHopDifference) {
+            } else if (!surpassedStepThreshold &&
+                       glideStart >= 0 &&
+                       glideStart + m_parameters.durationThreshold_steps <= i) {
+
+#ifdef DEBUG_GLIDE
+                cerr << "Step threshold is passed" << endl;
+#endif
+                surpassedStepThreshold = true;
+            }
                 
-                // If at least thresholdSteps candidates in a row
-                // previously with total pitch drift more than
-                // threshold, record a glide ending here
+        } else { // Not a glide candidate
+
+            if (surpassedMedianThreshold &&
+                surpassedStartingHopDifference &&
+                surpassedStepThreshold) {
                 
-                if (glideStart + m_parameters.durationThreshold_steps <= i &&
-                    fabs(pitch[glideStart] - pitch[i-1]) >=
+                // If total pitch drift more than threshold, record a
+                // glide ending here
+                
+                if (fabs(pitch[glideStart] - pitch[i-1]) >=
                     minimumPitchThreshold_semis) {
                     glides[glideStart] = i-1;
 #ifdef DEBUG_GLIDE
@@ -199,28 +213,38 @@ Glide::extract_semis(const vector<double> &rawPitch,
 #endif
                 } else {
 #ifdef DEBUG_GLIDE
-                    cerr << "Glide ended without thresholds having been met "
-                         << "between potential glide start "
+                    cerr << "Glide ended without pitch threshold having been "
+                         << "met between potential glide start "
                          << glideStart << " and " << i-1 << endl;
 #endif
                 }
+            } else if (glideStart >= 0) {
+#ifdef DEBUG_GLIDE
+                cerr << "Glide ended without all thresholds having been "
+                     << "met between potential glide start "
+                     << glideStart << " and " << i-1 << endl;
+#endif
             }
                 
             glideStart = -1;
             
-            if (surpassedMedianThreshold || surpassedStartingHopDifference) {
+            if (surpassedMedianThreshold ||
+                surpassedStartingHopDifference ||
+                surpassedStepThreshold) {
 #ifdef DEBUG_GLIDE
                 cerr << "Releasing latches" << endl;
 #endif
-                surpassedMedianThreshold = false;
-                surpassedStartingHopDifference = false;
             }
+
+            surpassedMedianThreshold = false;
+            surpassedStartingHopDifference = false;
+            surpassedStepThreshold = false;
         }
     }
 
-    if (glideStart >= 0 &&
-        surpassedMedianThreshold && surpassedStartingHopDifference &&
-        glideStart + m_parameters.durationThreshold_steps < n &&
+    if (surpassedStepThreshold &&
+        surpassedMedianThreshold &&
+        surpassedStartingHopDifference &&
         fabs(pitch[glideStart] - pitch[n-1]) >= minimumPitchThreshold_semis) {
         glides[glideStart] = n-1;
 #ifdef DEBUG_GLIDE

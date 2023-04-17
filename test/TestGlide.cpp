@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(huberman_11987)
         379.011
     };
 
-    testSingleGlide(pitch_Hz, 100, 160);
+    testSingleGlide(pitch_Hz, 84, 159);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
