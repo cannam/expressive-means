@@ -33,17 +33,10 @@ static void testVibratoClassification(std::string testName,
 
     cerr << endl << testName << " test: Running extractElements" << endl;
     
-    vector<double> smoothedPitch;
     vector<int> rawPeaks;
-    auto elements = pv.extractElements(pitch_Hz, smoothedPitch, rawPeaks);
+    auto elements = pv.extractElements(pitch_Hz, rawPeaks);
 
     cerr << endl << testName << " test: extractElements finished" << endl;
-    
-    cerr << testName << ": extractElements returned the following smoothed pitch curve (semitones):" << endl;
-    for (auto p : smoothedPitch) {
-        cerr << p << " ";
-    }
-    cerr << endl;
     
     cerr << testName << ": extractElements returned the following raw peak indices:" << endl;
     for (auto p : rawPeaks) {

@@ -499,9 +499,8 @@ PitchVibrato::process(const float *const *inputBuffers, Vamp::RealTime timestamp
 }
 
 vector<PitchVibrato::VibratoElement>
-PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
-                              std::vector<double> &smoothedPitch_semis,
-                              std::vector<int> &rawPeaks) const
+PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
+                              vector<int> &rawPeaks) const
 {
     // The numbered comments correspond to the numbered steps in Tilo
     // Haehnel's paper
@@ -535,7 +534,7 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
 
     int n = unsmoothedPitch_semis.size();
     MeanFilter meanFilter(filterLength_steps);
-    smoothedPitch_semis = vector<double>(n, 0.0);
+    vector<double> smoothedPitch_semis(n, 0.0);
     meanFilter.filter(unsmoothedPitch_semis.data(), smoothedPitch_semis.data(), n);
     
     // Reinstate unvoiced pitches
@@ -889,8 +888,43 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
     return elements;
 }
 
+vector<PitchVibrato::VibratoElement>
+PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
+                                       const CoreFeatures::OnsetOffsetMap &onsetOffsets,
+                                       vector<int> &rawPeaks) const
+{
+    vector<PitchVibrato::VibratoElement> elements;
+
+    int peakCount = 0;
+    
+    for (auto pp : onsetOffsets) {
+
+        int onset = pp.first;
+        int offset = pp.second.first;
+
+        vector<double> notePitches(pyinPitch_Hz.begin() + onset,
+                                   pyinPitch_Hz.begin() + offset);
+        vector<int> notePeaks;
+        
+        auto noteElements = extractElements(notePitches, notePeaks);
+
+        for (auto e : noteElements) {
+            e.hop += onset;
+            e.peakIndex += peakCount;
+            elements.push_back(e);
+        }
+
+        for (auto p : notePeaks) {
+            rawPeaks.push_back(p + onset);
+            ++peakCount;
+        }
+    }
+    
+    return elements;
+}
+
 map<int, PitchVibrato::VibratoClassification>
-PitchVibrato::classify(const std::vector<VibratoElement> &elements,
+PitchVibrato::classify(const vector<VibratoElement> &elements,
                        const CoreFeatures::OnsetOffsetMap &onsetOffsets) const
 {
     map<int, VibratoClassification> classifications;
@@ -1119,23 +1153,22 @@ PitchVibrato::getRemainingFeatures()
     m_coreFeatures.finish();
 
     auto pyinPitch_Hz = m_coreFeatures.getPYinPitch_Hz();
-    vector<double> smoothedPitch_semis;
+    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
+
     vector<int> rawPeaks;
 
-    auto elements = extractElements(pyinPitch_Hz, smoothedPitch_semis, rawPeaks);
+    auto elements = extractElements(pyinPitch_Hz, rawPeaks);
 
-    int n = int(smoothedPitch_semis.size());
+    int n = int(pyinPitch_Hz.size());
     
     for (int i = 0; i < n; ++i) {
-        if (smoothedPitch_semis[i] <= 0.0) continue;
+        if (pyinPitch_Hz[i] <= 0.0) continue;
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[i]));
+        f.values.push_back(m_coreFeatures.pitchToHz(pyinPitch_Hz[i]));
         fs[m_pitchTrackOutput].push_back(f);
     }
-
-    auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
 
     map<int, VibratoClassification> classifications =
         classify(elements, onsetOffsets);
@@ -1238,7 +1271,7 @@ PitchVibrato::getRemainingFeatures()
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.getStartTime() +
             Vamp::RealTime::fromSeconds(e.position_sec);
-        f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[e.hop]));
+        f.values.push_back(pyinPitch_Hz[e.hop]);
         fs[m_acceptedPeaksOutput].push_back(f);
     }
 
@@ -1253,7 +1286,7 @@ PitchVibrato::getRemainingFeatures()
             continue;
         }
         for (int j = rawPeaks[e.peakIndex]; j < rawPeaks[e.peakIndex + 1]; ++j) {
-            if (j < n && smoothedPitch_semis[j] > 0.0) {
+            if (j < n && pyinPitch_Hz[j] > 0.0) {
                 Feature f;
                 f.hasTimestamp = true;
                 f.timestamp = m_coreFeatures.timeForStep(j);

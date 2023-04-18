@@ -217,7 +217,11 @@ public:
 
     std::vector<VibratoElement> extractElements
     (const std::vector<double> &pyinPitch_Hz,  // in
-     std::vector<double> &smoothedPitch_semis, // out
+     std::vector<int> &rawPeaks) const;        // out
+
+    std::vector<VibratoElement> extractElementsSegmented
+    (const std::vector<double> &pyinPitch_Hz,  // in
+     const CoreFeatures::OnsetOffsetMap &onsetOffsets, // in
      std::vector<int> &rawPeaks) const;        // out
 
     std::map<int, VibratoClassification> classify
