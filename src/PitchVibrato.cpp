@@ -566,7 +566,8 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
             smoothedPitch_semis[i+1] > 0.0) {
 #ifdef DEBUG_PITCH_VIBRATO
             cerr << "-- Local maximum at " << i << ": smoothed pitch "
-                 << smoothedPitch_semis[i] << " >= "
+                 << smoothedPitch_semis[i] << " (original pitch "
+                 << pyinPitch_Hz[i] << ") >= "
                  << smoothedPitch_semis[i-1] << " (before) and > "
                  << smoothedPitch_semis[i+1]
                  << " (after)" << endl;
@@ -779,13 +780,13 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         
         int min0 = peaks[peakIndex];
         while (min0 > 0 &&
-               unsmoothedPitch_semis[min0 - 1] < unsmoothedPitch_semis[min0]) {
+               smoothedPitch_semis[min0 - 1] < smoothedPitch_semis[min0]) {
             --min0;
         }
         
         int min1 = peaks[peakIndex + 1];
         while (min1 < n-1 &&
-               unsmoothedPitch_semis[min1 + 1] < unsmoothedPitch_semis[min1]) {
+               smoothedPitch_semis[min1 + 1] < smoothedPitch_semis[min1]) {
             ++min1;
         }
 
@@ -794,23 +795,23 @@ PitchVibrato::extractElements(const std::vector<double> &pyinPitch_Hz,
         double minInRange = 0.0, maxInRange = 0.0;
 
         for (int j = 0; j < m; ++j) {
-            if (unsmoothedPitch_semis[min0 + j] > 0.0 &&
+            if (smoothedPitch_semis[min0 + j] > 0.0 &&
                 (minInRange == 0.0 ||
-                 unsmoothedPitch_semis[min0 + j] < minInRange)) {
-                minInRange = unsmoothedPitch_semis[min0 + j];
+                 smoothedPitch_semis[min0 + j] < minInRange)) {
+                minInRange = smoothedPitch_semis[min0 + j];
             }
-            if (unsmoothedPitch_semis[min0 + j] > maxInRange) {
-                maxInRange = unsmoothedPitch_semis[min0 + j];
+            if (smoothedPitch_semis[min0 + j] > maxInRange) {
+                maxInRange = smoothedPitch_semis[min0 + j];
             }
         }
             
         cerr << "-- For accepted peak at hop " << peaks[peakIndex]
-             << " with pitch " << unsmoothedPitch_semis[peaks[peakIndex]]
+             << " with smoothed pitch " << smoothedPitch_semis[peaks[peakIndex]]
              << " we have:" << endl;
         cerr << "-- Minimum prior to this peak is at hop " << min0
-             << " with pitch " << unsmoothedPitch_semis[min0] << endl;
+             << " with pitch " << smoothedPitch_semis[min0] << endl;
         cerr << "-- Minimum following the next peak is at hop " << min1
-             << " with pitch " << unsmoothedPitch_semis[min1] << endl;
+             << " with pitch " << smoothedPitch_semis[min1] << endl;
         cerr << "-- Overall minimum within these two cycles is " << minInRange
              << " and maximum is " << maxInRange << endl;
         
