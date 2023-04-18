@@ -36,6 +36,8 @@ static const float default_sectionThreshold_ms = 200.f;
 static const float default_developmentThreshold_cents = 10.f;
 static const float default_correlationThreshold = 0.5f;
 static const float default_scalingFactor = 11.1f;
+static const float default_smoothingWindowLength_ms = 70.f;
+static const bool default_useSegmentedExtraction = true;
 
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -54,6 +56,8 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_developmentThreshold_cents(default_developmentThreshold_cents),
     m_correlationThreshold(default_correlationThreshold),
     m_scalingFactor(default_scalingFactor),
+    m_smoothingWindowLength_ms(default_smoothingWindowLength_ms),
+    m_useSegmentedExtraction(default_useSegmentedExtraction),
     m_summaryOutput(-1),
     m_pitchTrackOutput(-1),
     m_vibratoTypeOutput(-1),
@@ -244,6 +248,26 @@ PitchVibrato::getParameterDescriptors() const
     d.maxValue = 30.f;
     d.defaultValue = default_scalingFactor;
     list.push_back(d);
+
+    d.identifier = "smoothingWindowLength";
+    d.name = "[Experimental] Smoothing window length";
+    d.description = "Length of mean filter used to smooth the pitch track for peak selection. Other measurements are always performed from the un-smoothed track.";
+    d.unit = "ms";
+    d.minValue = 0.f;
+    d.maxValue = 150.f;
+    d.defaultValue = default_smoothingWindowLength_ms;
+    list.push_back(d);
+
+    d.identifier = "useSegmentedExtraction";
+    d.name = "[Experimental] Use segmented extraction";
+    d.description = "If true, segment the pitch track into notes and perform vibrato identification on each note. If false, perform vibrato identification on whole pitch track before segmenting into notes.";
+    d.unit = "";
+    d.minValue = 0.f;
+    d.maxValue = 1.f;
+    d.isQuantized = true;
+    d.quantizeStep = 1.f;
+    d.defaultValue = default_useSegmentedExtraction;
+    list.push_back(d);
         
     return list;
 }
@@ -280,6 +304,10 @@ PitchVibrato::getParameter(string identifier) const
         return m_correlationThreshold;
     } else if (identifier == "scalingFactor") {
         return m_scalingFactor;
+    } else if (identifier == "smoothingWindowLength") {
+        return m_smoothingWindowLength_ms;
+    } else if (identifier == "useSegmentedExtraction") {
+        return m_useSegmentedExtraction ? 1.f : 0.f;
     }
     
     return 0.f;
@@ -316,6 +344,10 @@ PitchVibrato::setParameter(string identifier, float value)
         m_correlationThreshold = value;
     } else if (identifier == "scalingFactor") {
         m_scalingFactor = value;
+    } else if (identifier == "smoothingWindowLength") {
+        m_smoothingWindowLength_ms = value;
+    } else if (identifier == "useSegmentedExtraction") {
+        m_useSegmentedExtraction = (value > 0.5f);
     }
 }
 
@@ -506,17 +538,16 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
     // Haehnel's paper
 
     // 1. Convert pitch track from Hz to cents and smooth with a 35ms
-    // mean filter. (The paper says 35ms but it appears from the R
+    // mean filter. (The paper says 35ms, but it appears from the R
     // code that it is 35ms either side of the centre, so 70ms
-    // total?)
+    // total. We make the value configurable but with 70ms default.)
 
-    double filterLength_ms = 70.0;
     int filterLength_steps = m_coreFeatures.msToSteps
-        (filterLength_ms, m_coreParams.stepSize, true);
+        (m_smoothingWindowLength_ms, m_coreParams.stepSize, true);
     
 #ifdef DEBUG_PITCH_VIBRATO
     cerr << "** 1. Smooth pitch track with a mean filter of "
-         << filterLength_ms << "ms (" << filterLength_steps << " hops)" << endl;
+         << m_smoothingWindowLength_ms << "ms (" << filterLength_steps << " hops)" << endl;
 #endif
     
     vector<double> unsmoothedPitch_semis;
@@ -1157,7 +1188,10 @@ PitchVibrato::getRemainingFeatures()
 
     vector<int> rawPeaks;
 
-    auto elements = extractElements(pyinPitch_Hz, rawPeaks);
+    auto elements =
+        (m_useSegmentedExtraction ?
+         extractElementsSegmented(pyinPitch_Hz, onsetOffsets, rawPeaks) :
+         extractElements(pyinPitch_Hz, rawPeaks));
 
     int n = int(pyinPitch_Hz.size());
     

@@ -250,6 +250,9 @@ protected:
     float m_developmentThreshold_cents;
     float m_correlationThreshold;
     float m_scalingFactor;
+
+    float m_smoothingWindowLength_ms;
+    bool m_useSegmentedExtraction;
     
     mutable int m_summaryOutput;
     mutable int m_pitchTrackOutput;
