@@ -96,7 +96,7 @@ PitchVibrato::getDescription() const
 string
 PitchVibrato::getMaker() const
 {
-    return "Frithjof Vollmer and Chris Cannam";
+    return "Frithjof Vollmer, Tilo Haehnel, and Chris Cannam";
 }
 
 int
