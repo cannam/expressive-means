@@ -379,9 +379,9 @@ PitchVibrato::getOutputDescriptors() const
     d.sampleType = OutputDescriptor::FixedSampleRate;
     d.sampleRate = (m_inputSampleRate / m_stepSize);
     
-    d.identifier = "pitchTrack";
-    d.name = "Pitch Track";
-    d.description = "The pitch track computed by pYIN, with further smoothing.";
+    d.identifier = "smoothedPitchTrack";
+    d.name = "Smoothed Pitch Track";
+    d.description = "The pitch track computed by pYIN, with further smoothing as used for peak selection.";
     d.unit = "Hz";
     d.hasFixedBinCount = true;
     d.binCount = 1;
@@ -532,6 +532,7 @@ PitchVibrato::process(const float *const *inputBuffers, Vamp::RealTime timestamp
 
 vector<PitchVibrato::VibratoElement>
 PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
+                              vector<double> &smoothedPitch_semis,
                               vector<int> &rawPeaks) const
 {
     // The numbered comments correspond to the numbered steps in Tilo
@@ -560,7 +561,7 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
     }
 
     int n = unsmoothedPitch_semis.size();
-    vector<double> smoothedPitch_semis(n, 0.0);
+    smoothedPitch_semis = vector<double>(n, 0.0);
 
     // Filter in a way that accounts correctly for missing data (zero
     // pitch values)
@@ -966,22 +967,41 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
 vector<PitchVibrato::VibratoElement>
 PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
                                        const CoreFeatures::OnsetOffsetMap &onsetOffsets,
+                                       vector<double> &smoothedPitch_semis,
                                        vector<int> &rawPeaks) const
 {
     vector<PitchVibrato::VibratoElement> elements;
 
     int peakCount = 0;
+
+    smoothedPitch_semis.clear();
+    rawPeaks.clear();
     
-    for (auto pp : onsetOffsets) {
+    for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
 
-        int onset = pp.first;
-        int offset = pp.second.first;
+        int onset = itr->first;
+        int followingOnset = itr->second.first;
 
-        vector<double> notePitches(pyinPitch_Hz.begin() + onset,
-                                   pyinPitch_Hz.begin() + offset);
-        vector<int> notePeaks;
+        auto jtr = itr;
+        ++jtr;
+        if (jtr != onsetOffsets.end()) {
+            followingOnset = jtr->first;
+        }
+
+        if (itr == onsetOffsets.begin()) {
+            for (int i = 0; i < onset; ++i) {
+                smoothedPitch_semis.push_back(0.0);
+            }
+        }
         
-        auto noteElements = extractElements(notePitches, notePeaks);
+        vector<double> notePitches(pyinPitch_Hz.begin() + onset,
+                                   pyinPitch_Hz.begin() + followingOnset);
+
+        vector<int> notePeaks;
+        vector<double> noteSmoothedPitch;
+        
+        auto noteElements = extractElements
+            (notePitches, noteSmoothedPitch, notePeaks);
 
         for (auto e : noteElements) {
             e.hop += onset;
@@ -992,6 +1012,10 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
         for (auto p : notePeaks) {
             rawPeaks.push_back(p + onset);
             ++peakCount;
+        }
+
+        for (auto p : noteSmoothedPitch) {
+            smoothedPitch_semis.push_back(p);
         }
     }
     
@@ -1231,20 +1255,23 @@ PitchVibrato::getRemainingFeatures()
     auto onsetOffsets = m_coreFeatures.getOnsetOffsets();
 
     vector<int> rawPeaks;
+    vector<double> smoothedPitch_semis;
 
     auto elements =
         (m_useSegmentedExtraction ?
-         extractElementsSegmented(pyinPitch_Hz, onsetOffsets, rawPeaks) :
-         extractElements(pyinPitch_Hz, rawPeaks));
+         extractElementsSegmented
+         (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks) :
+         extractElements
+         (pyinPitch_Hz, smoothedPitch_semis, rawPeaks));
 
     int n = int(pyinPitch_Hz.size());
     
     for (int i = 0; i < n; ++i) {
-        if (pyinPitch_Hz[i] <= 0.0) continue;
+        if (smoothedPitch_semis[i] <= 0.0) continue;
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(m_coreFeatures.pitchToHz(pyinPitch_Hz[i]));
+        f.values.push_back(m_coreFeatures.pitchToHz(smoothedPitch_semis[i]));
         fs[m_pitchTrackOutput].push_back(f);
     }
 
