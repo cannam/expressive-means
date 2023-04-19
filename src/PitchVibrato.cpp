@@ -551,31 +551,45 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
 #endif
     
     vector<double> unsmoothedPitch_semis;
-    double prevHz = 0.0;
     for (auto hz : pyinPitch_Hz) {
         if (hz > 0.0) {
             unsmoothedPitch_semis.push_back(m_coreFeatures.hzToPitch(hz));
-            prevHz = hz;
-        } else if (prevHz > 0.0) {
-            unsmoothedPitch_semis.push_back(m_coreFeatures.hzToPitch(prevHz));
         } else {
             unsmoothedPitch_semis.push_back(0.0);
         }
     }
 
     int n = unsmoothedPitch_semis.size();
-    MeanFilter meanFilter(filterLength_steps);
     vector<double> smoothedPitch_semis(n, 0.0);
-    meanFilter.filter(unsmoothedPitch_semis.data(), smoothedPitch_semis.data(), n);
-    
-    // Reinstate unvoiced pitches
+
+    // Filter in a way that accounts correctly for missing data (zero
+    // pitch values)
     for (int i = 0; i < n; ++i) {
-        if (pyinPitch_Hz[i] <= 0) {
-            unsmoothedPitch_semis[i] = 0.0;
-            smoothedPitch_semis[i] = 0.0;
+        if (unsmoothedPitch_semis[i] != 0.0) {
+            double total = 0.0;
+            int count = 0;
+            for (int j = 0; j < filterLength_steps/2; ++j) {
+                int ix = i - j;
+                if (ix < 0 || unsmoothedPitch_semis[ix] == 0.0) {
+                    break;
+                }
+                total += unsmoothedPitch_semis[ix];
+                count += 1;
+            }
+            for (int j = 0; j < filterLength_steps/2; ++j) {
+                int ix = i + j;
+                if (ix >= n || unsmoothedPitch_semis[ix] == 0.0) {
+                    break;
+                }
+                total += unsmoothedPitch_semis[ix];
+                count += 1;
+            }
+            if (count > 0) {
+                smoothedPitch_semis[i] = total / count;
+            }
         }
     }
-
+    
 #ifdef DEBUG_PITCH_VIBRATO
     cerr << "** 1. Complete, have " << smoothedPitch_semis.size() << " hops" << endl;
 #endif
@@ -795,104 +809,134 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
     cerr << "** 7-8. Fit a sinusoidal model and calculate correlation within two Hann-windowed cycles" << endl;
 #endif
     
-    auto hann = [](int i, int n) {
-        return 0.5 - 0.5 * cos(2.0 * M_PI * double(i) / double(n));
+    auto hann = [](int j, int m) {
+        return 0.5 - 0.5 * cos(2.0 * M_PI * double(j) / double(m));
     };
 
-    auto winSine = [&](int i, int n) {
-        return hann(i, n) *
-            (0.5 - 0.5 * cos(4.0 * M_PI * double(i) / double(n)));
+    auto model = [](int j, int m) {
+        return 0.5 - 0.5 * cos(4.0 * M_PI * double(j) / double(m));
+    };
+    
+    auto windowedModel = [&](int j, int m) {
+        return hann(j, m) * model(j, m);
     };
 
     for (int i = 0; i < int(elements.size()); ++i) {
 
         int peakIndex = elements[i].peakIndex;
+
+        int peak0 = peaks[peakIndex];
+        int peak1 = peaks[peakIndex + 1];
         
-        int min0 = peaks[peakIndex];
+        int min0 = peak0;
         while (min0 > 0 &&
+               smoothedPitch_semis[min0 - 1] > 0.0 &&
                smoothedPitch_semis[min0 - 1] < smoothedPitch_semis[min0]) {
+//            cerr << "at hop " << min0-1 << " we see " << smoothedPitch_semis[min0 - 1] << " (unsmoothed = " << unsmoothedPitch_semis[min0 - 1] << ", " << m_coreFeatures.pitchToHz(unsmoothedPitch_semis[min0 - 1]) << " Hz)" << endl;
             --min0;
         }
         
-        int min1 = peaks[peakIndex + 1];
+        int min1 = peak1;
         while (min1 < n-1 &&
+               smoothedPitch_semis[min1 + 1] > 0.0 &&
                smoothedPitch_semis[min1 + 1] < smoothedPitch_semis[min1]) {
             ++min1;
         }
 
-        int m = min1 - min0;
-
         double minInRange = 0.0, maxInRange = 0.0;
 
-        for (int j = 0; j < m; ++j) {
-            if (smoothedPitch_semis[min0 + j] > 0.0 &&
-                (minInRange == 0.0 ||
-                 smoothedPitch_semis[min0 + j] < minInRange)) {
-                minInRange = smoothedPitch_semis[min0 + j];
+        for (int j = min0; j <= min1; ++j) {
+            if (smoothedPitch_semis[j] > 0.0 &&
+                (minInRange == 0.0 || smoothedPitch_semis[j] < minInRange)) {
+                minInRange = smoothedPitch_semis[j];
             }
-            if (smoothedPitch_semis[min0 + j] > maxInRange) {
-                maxInRange = smoothedPitch_semis[min0 + j];
+            if (smoothedPitch_semis[j] > maxInRange) {
+                maxInRange = smoothedPitch_semis[j];
             }
         }
-            
+
+//        if (m_useSegmentedExtraction) {
+//            if (min0 < 2 && min0 > peak0 - (peak1 - peak0) / 3) {
+//                min0 = peak0 - (peak1 - peak0) / 2;
+//            }
+//            if (min1 > n - 3 && min1 < peak1 + (peak1 - peak0) / 3) {
+//                min1 = peak1 + (peak1 - peak0) / 2;
+//            }
+//        }
+        
+        int m = min1 - min0;
+
+#ifdef DEBUG_PITCH_VIBRATO
         cerr << "-- For accepted peak at hop " << peaks[peakIndex]
              << " with smoothed pitch " << smoothedPitch_semis[peaks[peakIndex]]
              << " we have:" << endl;
-        cerr << "-- Minimum prior to this peak is at hop " << min0
-             << " with pitch " << smoothedPitch_semis[min0] << endl;
-        cerr << "-- Minimum following the next peak is at hop " << min1
-             << " with pitch " << smoothedPitch_semis[min1] << endl;
+        cerr << "-- Minimum prior to this peak is at hop " << min0;
+        if (min0 < 0) {
+            cerr << " (synthetic minimum, off start)" << endl;
+        } else {
+            cerr << " with pitch " << smoothedPitch_semis[min0] << endl;
+        }
+        cerr << "-- Minimum following the next peak is at hop " << min1;
+        if (min1 >= n) {
+            cerr << " (synthetic minimum, off end)" << endl;
+        } else {
+            cerr << " with pitch " << smoothedPitch_semis[min1] << endl;
+        }
         cerr << "-- Overall minimum within these two cycles is " << minInRange
              << " and maximum is " << maxInRange << endl;
+#endif
         
         if (maxInRange <= minInRange) {
             continue;
         }
 
+        auto normalisedSignal = [&](int j) {
+            double x = 0.0;
+            if (min0 + j >= 0 && min0 + j < n) {
+                x = (smoothedPitch_semis[min0 + j] - minInRange) /
+                    (maxInRange - minInRange);
+            }
+            return x;
+        };
+
+        auto windowedSignal = [&](int j, int m) {
+            return hann(j, m) * normalisedSignal(j);
+        };
+        
 #ifdef DEBUG_PITCH_VIBRATO
-        /*
-        cerr << "window of signal (" << m << "): ";
+        cerr << "Normalised Signal,Windowed Signal,Model,Windowed Model" << endl;
         for (int j = 0; j < m; ++j) {
-            double signal = (pitch[min0 + j] - minInRange) /
-                (maxInRange - minInRange);
-            double winSignal = signal * hann(j, m);
-            cerr << winSignal << " ";
+            cerr << normalisedSignal(j) << ","
+                 << windowedSignal(j, m) << ","
+                 << model(j, m) << ","
+                 << windowedModel(j, m)
+                 << endl;
         }
-        cerr << endl;
-            
-        cerr << "window of modelled sinusoid (" << m << "): ";
-        for (int j = 0; j < m; ++j) {
-            cerr << winSine(j, m) << " ";
-        }
-        cerr << endl;
-        */
 #endif
 
         // The R implementation appears to use Pearson correlation
         
-        auto measured = [&](int i) {
-            double s = (smoothedPitch_semis[min0 + i] - minInRange) /
-                (maxInRange - minInRange);
-            return s * hann(i, m);
+        auto measured = [&](int j) {
+            return windowedSignal(j, m);
         };
 
-        auto modelled = [&](int i) {
-            return winSine(i, m);
+        auto modelled = [&](int j) {
+            return windowedModel(j, m);
         };
 
         double measuredTotal = 0.0, modelledTotal = 0.0;
-        for (int i = 0; i < m; ++i) {
-            measuredTotal += measured(i);
-            modelledTotal += modelled(i);
+        for (int j = 0; j < m; ++j) {
+            measuredTotal += measured(j);
+            modelledTotal += modelled(j);
         }
 
         double xmean = measuredTotal / double(m);
         double ymean = modelledTotal / double(m);
         
         double num = 0.0, xdenom = 0.0, ydenom = 0.0;
-        for (int i = 0; i < m; ++i) {
-            double x = measured(i);
-            double y = modelled(i);
+        for (int j = 0; j < m; ++j) {
+            double x = measured(j);
+            double y = modelled(j);
             num += (x - xmean) * (y - ymean);
             xdenom += (x - xmean) * (x - xmean);
             ydenom += (y - ymean) * (y - ymean);
