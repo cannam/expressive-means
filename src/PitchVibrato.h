@@ -226,13 +226,25 @@ public:
      std::vector<double> &smoothedPitch_semis, // out
      std::vector<int> &rawPeaks) const;        // out
 
+    std::vector<VibratoElement> extractElementsFlattened
+    (const std::vector<double> &pyinPitch_Hz,  // in
+     const CoreFeatures::OnsetOffsetMap &onsetOffsets, // in
+     std::vector<double> &smoothedPitch_semis, // out
+     std::vector<int> &rawPeaks) const;        // out
+
     std::map<int, VibratoClassification> classify
     (const std::vector<VibratoElement> &elements,
      const CoreFeatures::OnsetOffsetMap &onsetOffsets) const;
 
     std::string classificationToCode(const VibratoClassification &) const;
     double classificationToIndex(const VibratoClassification &) const;
-    
+
+    enum class SegmentationType {
+        Unsegmented,
+        Segmented,
+        Flattened
+    };
+
 protected:
     int m_stepSize;
     int m_blockSize;
@@ -254,7 +266,8 @@ protected:
     float m_scalingFactor;
 
     float m_smoothingWindowLength_ms;
-    bool m_useSegmentedExtraction;
+
+    SegmentationType m_segmentationType;
     
     mutable int m_summaryOutput;
     mutable int m_pitchTrackOutput;

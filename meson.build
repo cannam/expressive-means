@@ -52,7 +52,7 @@ vamp_sources = [
 
 qmdsp_dir = 'ext/qm-dsp'
 qmdsp_sources = [
-#  qmdsp_dir / 'dsp/signalconditioning/Filter.cpp',
+  qmdsp_dir / 'maths/MathUtilities.cpp',
 #  qmdsp_dir / 'dsp/signalconditioning/FiltFilt.cpp',
 ]
 

@@ -11,6 +11,8 @@
 
 #include "PitchVibrato.h"
 
+#include "../ext/qm-dsp/maths/MathUtilities.h"
+
 #include <vector>
 #include <set>
 #include <sstream>
@@ -37,7 +39,8 @@ static const float default_developmentThreshold_cents = 10.f;
 static const float default_correlationThreshold = 0.5f;
 static const float default_scalingFactor = 11.1f;
 static const float default_smoothingWindowLength_ms = 70.f;
-static const bool default_useSegmentedExtraction = true;
+static const PitchVibrato::SegmentationType default_segmentationType =
+    PitchVibrato::SegmentationType::Unsegmented;
 
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -57,7 +60,7 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_correlationThreshold(default_correlationThreshold),
     m_scalingFactor(default_scalingFactor),
     m_smoothingWindowLength_ms(default_smoothingWindowLength_ms),
-    m_useSegmentedExtraction(default_useSegmentedExtraction),
+    m_segmentationType(default_segmentationType),
     m_summaryOutput(-1),
     m_pitchTrackOutput(-1),
     m_vibratoTypeOutput(-1),
@@ -258,15 +261,18 @@ PitchVibrato::getParameterDescriptors() const
     d.defaultValue = default_smoothingWindowLength_ms;
     list.push_back(d);
 
-    d.identifier = "useSegmentedExtraction";
-    d.name = "[Experimental] Use segmented extraction";
-    d.description = "If true, segment the pitch track into notes and perform vibrato identification on each note. If false, perform vibrato identification on whole pitch track before segmenting into notes.";
+    d.identifier = "segmentationType";
+    d.name = "[Experimental] Note segmentation";
+    d.description = "Selection of note-boundary-based preprocessing before vibrato peak selection";
     d.unit = "";
     d.minValue = 0.f;
-    d.maxValue = 1.f;
+    d.maxValue = 2.f;
     d.isQuantized = true;
     d.quantizeStep = 1.f;
-    d.defaultValue = default_useSegmentedExtraction;
+    d.valueNames.push_back("None - peak selection on whole pitch track (standard)");
+    d.valueNames.push_back("Segmented - peak selection within individual notes (test)");
+    d.valueNames.push_back("Flattened - filter out note pitch and select peaks on residual only (test)");
+    d.defaultValue = int(default_segmentationType);
     list.push_back(d);
         
     return list;
@@ -306,8 +312,8 @@ PitchVibrato::getParameter(string identifier) const
         return m_scalingFactor;
     } else if (identifier == "smoothingWindowLength") {
         return m_smoothingWindowLength_ms;
-    } else if (identifier == "useSegmentedExtraction") {
-        return m_useSegmentedExtraction ? 1.f : 0.f;
+    } else if (identifier == "segmentationType") {
+        return int(m_segmentationType);
     }
     
     return 0.f;
@@ -346,8 +352,14 @@ PitchVibrato::setParameter(string identifier, float value)
         m_scalingFactor = value;
     } else if (identifier == "smoothingWindowLength") {
         m_smoothingWindowLength_ms = value;
-    } else if (identifier == "useSegmentedExtraction") {
-        m_useSegmentedExtraction = (value > 0.5f);
+    } else if (identifier == "segmentationType") {
+        if (value < 0.5f) {
+            m_segmentationType = SegmentationType::Unsegmented;
+        } else if (value < 1.5f) {
+            m_segmentationType = SegmentationType::Segmented;
+        } else {
+            m_segmentationType = SegmentationType::Flattened;
+        }
     }
 }
 
@@ -1022,6 +1034,57 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
     return elements;
 }
 
+vector<PitchVibrato::VibratoElement>
+PitchVibrato::extractElementsFlattened(const vector<double> &pyinPitch_Hz,
+                                       const CoreFeatures::OnsetOffsetMap &onsetOffsets,
+                                       vector<double> &smoothedPitch_semis,
+                                       vector<int> &rawPeaks) const
+{
+    vector<double> flattenedPitch_Hz;
+
+    int extent = 0;
+    
+    for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
+
+        int onset = itr->first;
+        int followingOnset = itr->second.first;
+
+        auto jtr = itr;
+        ++jtr;
+        if (jtr != onsetOffsets.end()) {
+            followingOnset = jtr->first;
+        }
+
+        if (itr == onsetOffsets.begin()) {
+            for (int i = 0; i < onset; ++i) {
+                flattenedPitch_Hz.push_back(0.0);
+            }
+        }
+
+        double medianNotePitch_Hz =
+            MathUtilities::median(pyinPitch_Hz.data() + onset,
+                                  followingOnset - onset);
+
+        for (int j = onset; j < followingOnset; ++j) {
+            if (medianNotePitch_Hz > 0.0) {
+                flattenedPitch_Hz.push_back
+                    ((pyinPitch_Hz[j] / medianNotePitch_Hz) * 440.0);
+            } else {
+                flattenedPitch_Hz.push_back(pyinPitch_Hz[j]);
+            }
+        }
+
+        extent = followingOnset;
+    }
+
+    while (extent < int(pyinPitch_Hz.size())) {
+        flattenedPitch_Hz.push_back(pyinPitch_Hz[extent]);
+        ++extent;
+    }
+    
+    return extractElements(flattenedPitch_Hz, smoothedPitch_semis, rawPeaks);
+}
+
 map<int, PitchVibrato::VibratoClassification>
 PitchVibrato::classify(const vector<VibratoElement> &elements,
                        const CoreFeatures::OnsetOffsetMap &onsetOffsets) const
@@ -1256,13 +1319,24 @@ PitchVibrato::getRemainingFeatures()
 
     vector<int> rawPeaks;
     vector<double> smoothedPitch_semis;
+    vector<VibratoElement> elements;
 
-    auto elements =
-        (m_useSegmentedExtraction ?
-         extractElementsSegmented
-         (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks) :
-         extractElements
-         (pyinPitch_Hz, smoothedPitch_semis, rawPeaks));
+    switch (m_segmentationType) {
+    case SegmentationType::Unsegmented:
+        elements = extractElements
+            (pyinPitch_Hz, smoothedPitch_semis, rawPeaks);
+        break;
+
+    case SegmentationType::Segmented:
+        elements = extractElementsSegmented
+            (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
+        break;
+
+    case SegmentationType::Flattened:
+        elements = extractElementsFlattened
+            (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
+        break;
+    }
 
     int n = int(pyinPitch_Hz.size());
     
