@@ -41,7 +41,7 @@ static const float default_correlationThreshold = 0.5f;
 static const float default_scalingFactor = 11.1f;
 static const float default_smoothingWindowLength_ms = 70.f;
 static const PitchVibrato::SegmentationType default_segmentationType =
-    PitchVibrato::SegmentationType::Unsegmented;
+    PitchVibrato::SegmentationType::WithoutGlides;
 
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
