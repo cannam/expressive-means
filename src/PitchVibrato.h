@@ -226,6 +226,12 @@ public:
      std::vector<double> &smoothedPitch_semis, // out
      std::vector<int> &rawPeaks) const;        // out
 
+    std::vector<VibratoElement> extractElementsWithoutGlides
+    (const std::vector<double> &pyinPitch_Hz,  // in
+     const CoreFeatures::OnsetOffsetMap &onsetOffsets, // in
+     std::vector<double> &smoothedPitch_semis, // out
+     std::vector<int> &rawPeaks) const;        // out
+
     std::vector<VibratoElement> extractElementsFlattened
     (const std::vector<double> &pyinPitch_Hz,  // in
      const CoreFeatures::OnsetOffsetMap &onsetOffsets, // in
@@ -242,6 +248,7 @@ public:
     enum class SegmentationType {
         Unsegmented,
         Segmented,
+        WithoutGlides,
         Flattened
     };
 

@@ -35,7 +35,8 @@ static void testVibratoClassification(std::string testName,
     
     vector<int> rawPeaks;
     vector<double> smoothedPitch_semis;
-    auto elements = pv.extractElements(pitch_Hz, smoothedPitch_semis, rawPeaks);
+    auto elements = pv.extractElementsWithoutGlides
+        (pitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
 
     cerr << endl << testName << " test: extractElements finished" << endl;
     
@@ -213,10 +214,12 @@ BOOST_AUTO_TEST_CASE(szeryng_300)
     // (the type is irrelevant)
     onsetOffsets[30] = { 138, CoreFeatures::OffsetType::PowerDrop };
 
-    //!!! I just made this code up, but at this point the important
-    //!!! thing is that vibrato is detected at all!
+    // Here we have a range of about 51 cents (medium, with the
+    // default boundaries), a rate around 7.2 Hz (just on the boundary
+    // between moderate and fast, annoyingly), and stable development.
+    
     testVibratoClassification
-        ("Szeryng 0.3s", pitch_Hz, onsetOffsets, "4Mm=");
+        ("Szeryng 0.3s", pitch_Hz, onsetOffsets, "4Fm=");
 }
 
 BOOST_AUTO_TEST_CASE(szeryng_6400)
@@ -259,15 +262,12 @@ BOOST_AUTO_TEST_CASE(szeryng_6400)
     // (the type is irrelevant)
     onsetOffsets[22] = { 97, CoreFeatures::OffsetType::PowerDrop };
 
-    //!!! I just made this code up, but at this point the important
-    //!!! thing is that vibrato is detected at all!
-
-    // (Actually we really want to test that it is detected throughout
-    // the note, since in visual checks just now it appears we have
-    // two segments that are not joined up)
+    // Here we have a range of about 52 cents (medium, with the
+    // default boundaries), a rate around 7.5 Hz (fast), and stable
+    // development.
     
     testVibratoClassification
-        ("Szeryng 6.4s", pitch_Hz, onsetOffsets, "4Mn=");
+        ("Szeryng 6.4s", pitch_Hz, onsetOffsets, "4Fm=");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

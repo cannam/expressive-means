@@ -10,6 +10,7 @@
 */
 
 #include "PitchVibrato.h"
+#include "Glide.h"
 
 #include "../ext/qm-dsp/maths/MathUtilities.h"
 
@@ -266,11 +267,12 @@ PitchVibrato::getParameterDescriptors() const
     d.description = "Selection of note-boundary-based preprocessing before vibrato peak selection";
     d.unit = "";
     d.minValue = 0.f;
-    d.maxValue = 2.f;
+    d.maxValue = 3.f;
     d.isQuantized = true;
     d.quantizeStep = 1.f;
     d.valueNames.push_back("None - peak selection on whole pitch track (standard)");
     d.valueNames.push_back("Segmented - peak selection within individual notes (test)");
+    d.valueNames.push_back("Without Glides - filter out glides first (test)");
     d.valueNames.push_back("Flattened - filter out note pitch and select peaks on residual only (test)");
     d.defaultValue = int(default_segmentationType);
     list.push_back(d);
@@ -357,6 +359,8 @@ PitchVibrato::setParameter(string identifier, float value)
             m_segmentationType = SegmentationType::Unsegmented;
         } else if (value < 1.5f) {
             m_segmentationType = SegmentationType::Segmented;
+        } else if (value < 2.5f) {
+            m_segmentationType = SegmentationType::WithoutGlides;
         } else {
             m_segmentationType = SegmentationType::Flattened;
         }
@@ -1035,6 +1039,54 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
 }
 
 vector<PitchVibrato::VibratoElement>
+PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
+                                           const CoreFeatures::OnsetOffsetMap &onsetOffsets,
+                                           vector<double> &smoothedPitch_semis,
+                                           vector<int> &rawPeaks) const
+{
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 0. Identify glides" << endl;
+#endif
+    
+    Glide::Parameters glideParams;
+    //!!! params?
+    Glide glide(glideParams);
+    Glide::Extents glides = glide.extract_Hz(pyinPitch_Hz, onsetOffsets);
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "-- Identified " << glides.size() << " glides and "
+         << onsetOffsets.size() << " onsets" << endl;
+#endif
+
+    vector<double> glideFilteredPitch_Hz = pyinPitch_Hz;
+    for (auto g : glides) {
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Removing glide from " << g.second.start << " to "
+             << g.second.end << endl;
+#endif
+        for (auto i = g.second.start; i < g.second.end; ++i) {
+            glideFilteredPitch_Hz[i] = 0.0;
+        }
+    }
+/*!!!
+    for (auto p : onsetOffsets) {
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Introducing tiny discontinuity before onset at "
+             << p.first << endl;
+#endif
+        if (p.first > 0) {
+            glideFilteredPitch_Hz[p.first - 1] = 0.0;
+        }
+    }
+*/
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 0. Complete" << endl;
+#endif
+
+    return extractElements(glideFilteredPitch_Hz, smoothedPitch_semis, rawPeaks);
+}
+
+vector<PitchVibrato::VibratoElement>
 PitchVibrato::extractElementsFlattened(const vector<double> &pyinPitch_Hz,
                                        const CoreFeatures::OnsetOffsetMap &onsetOffsets,
                                        vector<double> &smoothedPitch_semis,
@@ -1330,6 +1382,11 @@ PitchVibrato::getRemainingFeatures()
     case SegmentationType::Segmented:
         elements = extractElementsSegmented
             (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
+        break;
+
+    case SegmentationType::WithoutGlides:
+        elements = extractElementsWithoutGlides 
+           (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
         break;
 
     case SegmentationType::Flattened:

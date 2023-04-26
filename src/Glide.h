@@ -53,8 +53,8 @@ public:
      * Identify and return glide extents from the given pitch track
      * and onset/offsets. pitch_Hz is as returned by
      * CoreFeatures::getPYinPitch_Hz() (with unvoiced steps indicated
-     * using negative values) and the onset/offset map is as returned
-     * by CoreFeatures::getOnsetOffsets().
+     * using zero or negative values) and the onset/offset map is as
+     * returned by CoreFeatures::getOnsetOffsets().
      */     
     Extents extract_Hz(const std::vector<double> &pitch_Hz,
                        const CoreFeatures::OnsetOffsetMap &onsetOffsets);
@@ -63,8 +63,8 @@ public:
      * Identify and return glide extents from the given pitch track
      * and onset/offsets. pitch_semis is as returned by
      * CoreFeatures::getPYinPitch_Hz() (with unvoiced steps indicated
-     * using negative values) and the onset/offset map is as returned
-     * by CoreFeatures::getOnsetOffsets().
+     * using zero or negative values) and the onset/offset map is as
+     * returned by CoreFeatures::getOnsetOffsets().
      */     
     Extents extract_semis(const std::vector<double> &pitch_semis,
                           const CoreFeatures::OnsetOffsetMap &onsetOffsets);
