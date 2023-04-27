@@ -29,7 +29,7 @@ using std::ostringstream;
 
 static const float default_vibratoRateMinimum_Hz = 3.f;
 static const float default_vibratoRateMaximum_Hz = 12.f;
-static const float default_vibratoRangeMinimum_cents = 10.f;
+static const float default_vibratoRangeMinimum_cents = 15.f;
 static const float default_vibratoRangeMaximum_cents = 500.f;
 static const float default_rateBoundaryModerate_Hz = 6.2f;
 static const float default_rateBoundaryFast_Hz = 7.2f;
@@ -37,7 +37,7 @@ static const float default_rangeBoundaryMedium_cents = 40.f;
 static const float default_rangeBoundaryWide_cents = 60.f;
 static const float default_sectionThreshold_ms = 200.f;
 static const float default_developmentThreshold_cents = 10.f;
-static const float default_correlationThreshold = 0.5f;
+static const float default_correlationThreshold = 0.3f;
 static const float default_scalingFactor = 11.1f;
 static const float default_smoothingWindowLength_ms = 70.f;
 static const PitchVibrato::SegmentationType default_segmentationType =
