@@ -24,7 +24,8 @@ using std::endl;
 //#define DEBUG_CORE_FEATURES 1
 
 void
-CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::ParameterList &list)
+CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::ParameterList &list,
+                                                         bool includeOffsetParameters)
 {
     PYinVamp tempPYin(48000.f);
     auto pyinParams = tempPYin.getParameterDescriptors();
@@ -113,30 +114,33 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.maxValue = 100.f;
     d.defaultValue = defaultCoreParams.onsetSensitivityRawPowerThreshold_dB;
     list.push_back(d);
+
+    if (includeOffsetParameters) {
     
-    d.identifier = "sustainBeginThreshold";
-    d.name = "Sustain phase begin threshold";
-    d.unit = "ms";
-    d.minValue = 0.f;
-    d.maxValue = 1000.f;
-    d.defaultValue = defaultCoreParams.sustainBeginThreshold_ms;
-    list.push_back(d);
+        d.identifier = "sustainBeginThreshold";
+        d.name = "Sustain phase begin threshold";
+        d.unit = "ms";
+        d.minValue = 0.f;
+        d.maxValue = 1000.f;
+        d.defaultValue = defaultCoreParams.sustainBeginThreshold_ms;
+        list.push_back(d);
     
-    d.identifier = "noteDurationThreshold";
-    d.name = "Offset sensitivity: Power drop threshold";
-    d.unit = "dB";
-    d.minValue = 0.f;
-    d.maxValue = 100.f;
-    d.defaultValue = defaultCoreParams.noteDurationThreshold_dB;
-    list.push_back(d);
+        d.identifier = "noteDurationThreshold";
+        d.name = "Offset sensitivity: Power drop threshold";
+        d.unit = "dB";
+        d.minValue = 0.f;
+        d.maxValue = 100.f;
+        d.defaultValue = defaultCoreParams.noteDurationThreshold_dB;
+        list.push_back(d);
     
-    d.identifier = "spectralDropFloor";
-    d.name = "Offset sensitivity: Spectral drop floor level";
-    d.unit = "dB";
-    d.minValue = -120.f;
-    d.maxValue = 0.f;
-    d.defaultValue = defaultCoreParams.spectralDropFloor_dB;
-    list.push_back(d);
+        d.identifier = "spectralDropFloor";
+        d.name = "Offset sensitivity: Spectral drop floor level";
+        d.unit = "dB";
+        d.minValue = -120.f;
+        d.maxValue = 0.f;
+        d.defaultValue = defaultCoreParams.spectralDropFloor_dB;
+        list.push_back(d);
+    }
 }
 
 bool

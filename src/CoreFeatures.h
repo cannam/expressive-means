@@ -75,7 +75,8 @@ public:
             spectralFrequencyMax_Hz(4000.f)
         {}
 
-        static void appendVampParameterDescriptors(Vamp::Plugin::ParameterList &);
+        static void appendVampParameterDescriptors(Vamp::Plugin::ParameterList &,
+                                                   bool includeOffsetParameters);
 
         bool acceptVampParameter(std::string identifier, float value);
         bool obtainVampParameter(std::string identifier, float &value) const;

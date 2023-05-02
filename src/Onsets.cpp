@@ -106,7 +106,7 @@ Onsets::ParameterList
 Onsets::getParameterDescriptors() const
 {
     ParameterList list;
-    m_coreParams.appendVampParameterDescriptors(list);
+    m_coreParams.appendVampParameterDescriptors(list, true);
     return list;
 }
 
