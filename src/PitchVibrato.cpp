@@ -620,17 +620,24 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
 #endif
     
     vector<int> peaks;
-    for (int i = 1; i + 1 < n; ++i) {
-        if (smoothedPitch_semis[i] >= smoothedPitch_semis[i-1] &&
-            smoothedPitch_semis[i] >  smoothedPitch_semis[i+1] &&
-            smoothedPitch_semis[i-1] > 0.0 &&
-            smoothedPitch_semis[i+1] > 0.0) {
+    for (int i = 0; i < n; ++i) {
+        if (smoothedPitch_semis[i] <= 0.0) {
+            continue;
+        }
+        bool left = (i == 0 ||
+                     smoothedPitch_semis[i-1] <= 0.0 ||
+                     smoothedPitch_semis[i] > smoothedPitch_semis[i-1]);
+        bool right = (i + 1 == n ||
+                      smoothedPitch_semis[i+1] <= 0.0 ||
+                      smoothedPitch_semis[i] >= smoothedPitch_semis[i+1]);
+        if (left && right) {
 #ifdef DEBUG_PITCH_VIBRATO
             cerr << "-- Local maximum at " << i << ": smoothed pitch "
                  << smoothedPitch_semis[i] << " (original pitch "
                  << pyinPitch_Hz[i] << ") >= "
-                 << smoothedPitch_semis[i-1] << " (before) and > "
-                 << smoothedPitch_semis[i+1]
+                 << (i > 0 ? smoothedPitch_semis[i-1] : -999.0)
+                 << " (before) and > "
+                 << (i + 1 < n ? smoothedPitch_semis[i+1] : -999.0)
                  << " (after)" << endl;
 #endif
             peaks.push_back(i);
