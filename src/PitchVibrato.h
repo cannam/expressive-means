@@ -232,6 +232,12 @@ public:
      std::vector<double> &smoothedPitch_semis, // out
      std::vector<int> &rawPeaks) const;        // out
 
+    std::vector<VibratoElement> extractElementsWithoutGlidesAndSegmented
+    (const std::vector<double> &pyinPitch_Hz,  // in
+     const CoreFeatures::OnsetOffsetMap &onsetOffsets, // in
+     std::vector<double> &smoothedPitch_semis, // out
+     std::vector<int> &rawPeaks) const;        // out
+
     std::vector<VibratoElement> extractElementsFlattened
     (const std::vector<double> &pyinPitch_Hz,  // in
      const CoreFeatures::OnsetOffsetMap &onsetOffsets, // in
@@ -249,6 +255,7 @@ public:
         Unsegmented,
         Segmented,
         WithoutGlides,
+        WithoutGlidesAndSegmented,
         Flattened
     };
 
