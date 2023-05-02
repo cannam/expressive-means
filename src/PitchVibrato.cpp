@@ -240,7 +240,7 @@ PitchVibrato::getParameterDescriptors() const
     d.identifier = "correlationThreshold";
     d.name = "Vibrato shape: Correlation threshold";
     d.unit = "";
-    d.minValue = 0.3f;
+    d.minValue = 0.1f;
     d.maxValue = 1.f;
     d.defaultValue = default_correlationThreshold;
     list.push_back(d);
