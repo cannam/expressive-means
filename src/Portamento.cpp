@@ -12,10 +12,12 @@
 #include "Portamento.h"
 #include "Glide.h"
 
+#include "../ext/qm-dsp/maths/MathUtilities.h"
+
 #include <vector>
 #include <set>
 
-#define DEBUG_PORTAMENTO 1
+//#define DEBUG_PORTAMENTO 1
 
 using std::cerr;
 using std::endl;
@@ -582,55 +584,86 @@ Portamento::classifyGlide(const std::pair<int, Glide::Extent> &extentPair,
 
     // Link
 
-    bool matchingBefore = false, matchingAfter = false;
-
     double startPitch_semis = m_coreFeatures.hzToPitch(pyinPitch[extent.start]);
     double endPitch_semis = m_coreFeatures.hzToPitch(pyinPitch[extent.end]);
 
+    bool matchingPreceding = false, matchingAssociated = false;
+
+    int matchingMedianLength = m_coreFeatures.msToSteps
+        (50.0, m_coreParams.stepSize, false);
+    
     auto onsetItr = onsetOffsets.find(onset);
+    
+    // See https://github.com/cannam/expressive-means/issues/15
     
     if (onsetItr != onsetOffsets.end()) {
         if (onsetItr != onsetOffsets.begin()) {
             auto prevItr = onsetItr;
             --prevItr;
-            double prevPitch_semis =
-                m_coreFeatures.hzToPitch(pyinPitch[prevItr->first]);
-            if (100.0 * fabs(startPitch_semis - prevPitch_semis) <
+            int p0 = prevItr->first;
+            int p1 = p0 + 1;
+            while (p1 <= p0 + matchingMedianLength) {
+                if (p1 >= prevItr->second.first || p1 >= extent.start) {
+                    break;
+                } else if (pyinPitch[p1] <= 0.0) {
+                    break;
+                }
+                ++p1;
+            }
+            double prevMedian = MathUtilities::median(pyinPitch.data() + p0,
+                                                      p1 - p0);
+            double prevMedian_semis = m_coreFeatures.hzToPitch(prevMedian);
+            if (100.0 * fabs(startPitch_semis - prevMedian_semis) <
                 m_linkThreshold_cents) {
-                matchingBefore = true;
+                matchingPreceding = true;
             }
 #ifdef DEBUG_PORTAMENTO
-            cerr << "start pitch at " << extent.start
-                 << " = " << startPitch_semis << ", prev pitch = "
-                 << prevPitch_semis << ", matchingBefore = " << matchingBefore
+            cerr << "extent from " << extent.start << " to " << extent.end
+                 << " has starting pitch " << startPitch_semis
+                 << "; median of first " << p1 - p0
+                 << " hop pitches from preceding onset at " << p0
+                 << " is " << prevMedian_semis
+                 << "; matchingPreceding = " << matchingPreceding
                  << endl;
 #endif
         }
-        auto nextItr = onsetItr;
-        if (++nextItr != onsetOffsets.end()) {
-            double nextPitch_semis =
-                m_coreFeatures.hzToPitch(pyinPitch[nextItr->first]);
-            if (100.0 * fabs(endPitch_semis - nextPitch_semis) <
-                m_linkThreshold_cents) {
-                matchingAfter = true;
+
+        int p0 = onsetItr->first;
+        int p1 = p0 + 1;
+        while (p1 <= p0 + matchingMedianLength) {
+            if (p1 >= onsetItr->second.first) {
+                break;
+            } else if (pyinPitch[p1] <= 0.0) {
+                break;
             }
-#ifdef DEBUG_PORTAMENTO
-            cerr << "end pitch at " << extent.end
-                 << " = " << endPitch_semis << ", next pitch = "
-                 << nextPitch_semis << ", matchingAfter = " << matchingAfter
-                 << endl;
-#endif
+            ++p1;
         }
+        double assocMedian = MathUtilities::median(pyinPitch.data() + p0,
+                                                   p1 - p0);
+        double assocMedian_semis = m_coreFeatures.hzToPitch(assocMedian);
+        if (100.0 * fabs(endPitch_semis - assocMedian_semis) <
+            m_linkThreshold_cents) {
+            matchingAssociated = true;
+        }
+#ifdef DEBUG_PORTAMENTO
+        cerr << "extent from " << extent.start << " to " << extent.end
+             << " has ending pitch " << endPitch_semis
+             << "; median of first " << p1 - p0
+             << " hop pitches from associated onset at " << p0
+             << " is " << assocMedian_semis
+             << "; matchingAssociated = " << matchingAssociated
+             << endl;
+#endif
     }
     
-    if (matchingBefore) {
-        if (matchingAfter) {
+    if (matchingPreceding) {
+        if (matchingAssociated) {
             classification.link = GlideLink::Interconnecting;
         } else {
             classification.link = GlideLink::Starting;
         }
     } else {
-        if (matchingAfter) {
+        if (matchingAssociated) {
             classification.link = GlideLink::Targeting;
         } else {
             classification.link = GlideLink::Starting;

@@ -11,12 +11,12 @@
 
 #include "Glide.h"
 
-//#define DEBUG_GLIDE 1
-
 #include "../ext/pyin/MeanFilter.h"
 #include "../ext/qm-dsp/maths/MedianFilter.h"
 
 #include <iostream>
+
+//#define DEBUG_GLIDE 1
 
 using std::cerr;
 using std::endl;
