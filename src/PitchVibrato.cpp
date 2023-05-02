@@ -668,9 +668,11 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
             double alpha = smoothedPitch_semis[hop - 1];
             double beta = smoothedPitch_semis[hop];
             double gamma = smoothedPitch_semis[hop + 1];
-            double denom = alpha - 2.0 * beta + gamma;
-            double p = (denom != 0.0 ? ((alpha - gamma) / denom * 0.5) : 0.0);
-            refinedStep += p;
+            if (alpha > 0.0 && beta > 0.0 && gamma > 0.0) {
+                double denom = alpha - 2.0 * beta + gamma;
+                double p = (denom != 0.0 ? ((alpha - gamma) / denom * 0.5) : 0.0);
+                refinedStep += p;
+            }
         }
         double sec =
             ((refinedStep +
