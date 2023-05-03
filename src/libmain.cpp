@@ -37,13 +37,13 @@ vampGetPluginDescriptor(unsigned int version, unsigned int index)
     if (version < 1) return 0;
 
     switch (index) {
-    case  0: return onsetsPluginAdapter.getDescriptor();
-    case  1: return articulationPluginAdapter.getDescriptor();
-    case  2: return pitchVibratoPluginAdapter.getDescriptor();
-    case  3: return portamentoPluginAdapter.getDescriptor();
-    case  4: return semanticArticulationPluginAdapter.getDescriptor();
-    case  5: return semanticPitchVibratoPluginAdapter.getDescriptor();
-    case  6: return semanticPortamentoPluginAdapter.getDescriptor();
+    case  0: return semanticArticulationPluginAdapter.getDescriptor();
+    case  1: return semanticPitchVibratoPluginAdapter.getDescriptor();
+    case  2: return semanticPortamentoPluginAdapter.getDescriptor();
+    case  3: return articulationPluginAdapter.getDescriptor();
+    case  4: return pitchVibratoPluginAdapter.getDescriptor();
+    case  5: return portamentoPluginAdapter.getDescriptor();
+    case  6: return onsetsPluginAdapter.getDescriptor();
     default: return 0;
     }
 }

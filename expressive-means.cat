@@ -1,3 +1,7 @@
 vamp:expressive-means:articulation::Notes > Expression
+vamp:expressive-means:articulation-semantic::Notes > Expression
 vamp:expressive-means:pitch-vibrato::Notes > Expression
+vamp:expressive-means:pitch-vibrato-semantic::Notes > Expression
 vamp:expressive-means:portamento::Notes > Expression
+vamp:expressive-means:portamento-semantic::Notes > Expression
+vamp:expressive-means:onsets::Time > Onsets
