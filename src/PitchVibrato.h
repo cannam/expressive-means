@@ -254,9 +254,7 @@ public:
     enum class SegmentationType {
         Unsegmented,
         Segmented,
-        WithoutGlides,
-        WithoutGlidesAndSegmented,
-        Flattened
+        WithoutGlides
     };
 
 protected:
