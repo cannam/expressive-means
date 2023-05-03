@@ -150,7 +150,7 @@ PitchVibrato::getParameterDescriptors() const
 {
     ParameterList list;
 
-    m_coreParams.appendVampParameterDescriptors(list, false);
+    m_coreParams.appendVampParameterDescriptors(list, true);
     
     ParameterDescriptor d;
 
