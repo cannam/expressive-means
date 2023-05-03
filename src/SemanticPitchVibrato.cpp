@@ -1,6 +1,6 @@
 
 /*
-    Expressive Means Semantic Portamento
+    Expressive Means Semantic Pitch Vibrato
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -9,13 +9,13 @@
     COPYING included with this distribution for more information.
 */
 
-#include "SemanticPortamento.h"
+#include "SemanticPitchVibrato.h"
 
-SemanticPortamento::SemanticPortamento(float inputSampleRate) :
-    SemanticAdapter<Portamento>
+SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
+    SemanticAdapter<PitchVibrato>
     (inputSampleRate,
      // Output selection (to be passed through)
-     { "summary", "portamentoType", "portamentoIndex" },
+     { "summary", "vibratoType", "vibratoIndex" },
      // Parameter selection (passed through, or new)
      { "clef", "instrumentType", "noteDurations"
      },
@@ -55,32 +55,28 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityNoise", 24.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 6.f },
-               { "glideThresholdPitch", 60.f }
+               { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
            { "Voice",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 40.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 8.f },
-               { "glideThresholdPitch", 100.f }
+               { "onsetSensitivityRawPowerThreshold", 8.f }
              } },
            { "Keys",
              { { "onsetSensitivityPitch", 90.f },
                { "onsetSensitivityNoise", 18.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f },
-               { "glideThresholdPitch", 40.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
            { "Wind",
              { { "onsetSensitivityPitch", 10.f },
                { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 12.f },
-               { "glideThresholdPitch", 40.f }
+               { "onsetSensitivityRawPowerThreshold", 12.f }
              } }                  
          }
        },
@@ -115,32 +111,32 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
     {}
     
 string
-SemanticPortamento::getIdentifier() const {
-    return "portamento-semantic";
+SemanticPitchVibrato::getIdentifier() const {
+    return "pitch-vibrato-semantic";
 }
 
 string
-SemanticPortamento::getName() const {
-    return "Expressive Means: Portamento";
+SemanticPitchVibrato::getName() const {
+    return "Expressive Means: Pitch Vibrato";
 }
 
 string
-SemanticPortamento::getDescription() const {
+SemanticPitchVibrato::getDescription() const {
     return ""; //!!! todo
 }
 
 string
-SemanticPortamento::getMaker() const {
+SemanticPitchVibrato::getMaker() const {
     return m_adapted.getMaker();
 }
 
 int
-SemanticPortamento::getPluginVersion() const {
+SemanticPitchVibrato::getPluginVersion() const {
     return m_adapted.getPluginVersion();
 }
 
 string
-SemanticPortamento::getCopyright() const {
+SemanticPitchVibrato::getCopyright() const {
     return m_adapted.getCopyright();
 }
 

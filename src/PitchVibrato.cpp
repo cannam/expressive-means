@@ -88,7 +88,7 @@ PitchVibrato::getIdentifier() const
 string
 PitchVibrato::getName() const
 {
-    return "Expressive Means: Pitch Vibrato";
+    return "Expressive Means (advanced): Pitch Vibrato";
 }
 
 string
