@@ -58,7 +58,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
            { "Voice",
-             { { "onsetSensitivityPitch", 10.f },
+             { { "onsetSensitivityPitch", 100.f },
                { "onsetSensitivityNoise", 50.f },
                { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
