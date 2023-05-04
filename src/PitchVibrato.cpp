@@ -1534,12 +1534,17 @@ PitchVibrato::getRemainingFeatures()
             f.values.push_back(index);
             fs[m_vibratoIndexOutput].push_back(f);
 
+            double clampedRelativeDuration =
+                (classification.relativeDuration > 1.0 ?
+                 1.0 :
+                 classification.relativeDuration);
+            
             ostringstream os;
             os << m_coreFeatures.timeForStep(onset).toText() << " / "
                << (m_coreFeatures.timeForStep(followingOnset) -
                    m_coreFeatures.timeForStep(onset)).toText() << "\n"
                << code << "\n"
-               << int(round(classification.relativeDuration * 100.0)) << "%\n"
+               << int(round(clampedRelativeDuration * 100.0)) << "%\n"
                << classification.meanRate << "Hz\n"
                << classification.maxRange << "c\n"
                << classification.maxRangeTime << " ("
