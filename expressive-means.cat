@@ -5,3 +5,4 @@ vamp:expressive-means:pitch-vibrato-semantic::Notes > Expression
 vamp:expressive-means:portamento::Notes > Expression
 vamp:expressive-means:portamento-semantic::Notes > Expression
 vamp:expressive-means:onsets::Time > Onsets
+vamp:expressive-means:onsets-semantic::Time > Onsets

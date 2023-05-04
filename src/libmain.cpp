@@ -18,6 +18,7 @@
 #include "PitchVibrato.h"
 #include "Portamento.h"
 
+#include "SemanticOnsets.h"
 #include "SemanticArticulation.h"
 #include "SemanticPitchVibrato.h"
 #include "SemanticPortamento.h"
@@ -27,6 +28,7 @@ static Vamp::PluginAdapter<Articulation> articulationPluginAdapter;
 static Vamp::PluginAdapter<PitchVibrato> pitchVibratoPluginAdapter;
 static Vamp::PluginAdapter<Portamento> portamentoPluginAdapter;
 
+static Vamp::PluginAdapter<SemanticOnsets> semanticOnsetsPluginAdapter;
 static Vamp::PluginAdapter<SemanticArticulation> semanticArticulationPluginAdapter;
 static Vamp::PluginAdapter<SemanticPitchVibrato> semanticPitchVibratoPluginAdapter;
 static Vamp::PluginAdapter<SemanticPortamento> semanticPortamentoPluginAdapter;
@@ -37,13 +39,14 @@ vampGetPluginDescriptor(unsigned int version, unsigned int index)
     if (version < 1) return 0;
 
     switch (index) {
-    case  0: return semanticArticulationPluginAdapter.getDescriptor();
-    case  1: return semanticPitchVibratoPluginAdapter.getDescriptor();
-    case  2: return semanticPortamentoPluginAdapter.getDescriptor();
-    case  3: return articulationPluginAdapter.getDescriptor();
-    case  4: return pitchVibratoPluginAdapter.getDescriptor();
-    case  5: return portamentoPluginAdapter.getDescriptor();
-    case  6: return onsetsPluginAdapter.getDescriptor();
+    case  0: return semanticOnsetsPluginAdapter.getDescriptor();
+    case  1: return semanticArticulationPluginAdapter.getDescriptor();
+    case  2: return semanticPitchVibratoPluginAdapter.getDescriptor();
+    case  3: return semanticPortamentoPluginAdapter.getDescriptor();
+    case  4: return onsetsPluginAdapter.getDescriptor();
+    case  5: return articulationPluginAdapter.getDescriptor();
+    case  6: return pitchVibratoPluginAdapter.getDescriptor();
+    case  7: return portamentoPluginAdapter.getDescriptor();
     default: return 0;
     }
 }

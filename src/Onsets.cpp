@@ -45,7 +45,7 @@ Onsets::getIdentifier() const
 string
 Onsets::getName() const
 {
-    return "Expressive Means: Onsets";
+    return "Expressive Means (advanced): Onsets";
 }
 
 string
