@@ -58,11 +58,11 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
            { "Voice",
-             { { "onsetSensitivityPitch", 15.f },
-               { "onsetSensitivityNoise", 40.f },
-               { "onsetSensitivityLevel", 8.f },
+             { { "onsetSensitivityPitch", 10.f },
+               { "onsetSensitivityNoise", 50.f },
+               { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 8.f }
+               { "onsetSensitivityRawPowerThreshold", 10.f }
              } },
            { "Keys",
              { { "onsetSensitivityPitch", 90.f },
@@ -82,11 +82,11 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
        },
        { "noteDurations",
          { { "Long (> 300 ms)",
-             { { "minimumOnsetInterval", 250.f },
+             { { "minimumOnsetInterval", 280.f },
                { "pitchAverageWindow", 200.f }
              } },
            { "Moderate (150-300 ms)",
-             { { "minimumOnsetInterval", 100.f },
+             { { "minimumOnsetInterval", 150.f },
                { "pitchAverageWindow", 150.f }
              } },
            { "Short (< 150 ms)",
