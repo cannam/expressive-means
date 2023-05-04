@@ -1,9 +1,9 @@
 
 # Expressive Means Vamp Plugins
 
-* Method by Frithjof Vollmer, HMDK Stuttgart
-* Code by Chris Cannam, Particular Programs Ltd
-* Makes use of pYIN by Matthias Mauch
+* Method by Frithjof Vollmer, Stuttgart University of Music and the Performing Arts (Germany)
+* Code by Chris Cannam, Particular Programs Ltd (London, UK)
+* Makes use of "pYIN" by Matthias Mauch and of Tilo Haehnel's method deployed in "vibratoanalyse.R"
 
 ## To build:
 
