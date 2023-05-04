@@ -112,13 +112,14 @@ BOOST_AUTO_TEST_CASE(huberman_812)
     // (the type is irrelevant)
     onsetOffsets[17] = { 66, CoreFeatures::OffsetType::PowerDrop };
 
-    // Tilo's app finds nothing in this pitch track when I run it, and
-    // neither do we. There is an audible vibrato, but the only
-    // element that passes the other criteria has slightly too low
-    // correlation (0.498).
+    // There is one vibrato element found here, with a low correlation
+    // of 0.498 - which we find but Tilo's app doesn't as its lowest
+    // correlation threshold is above this. It has rate of 7.11 Hz
+    // (medium) and range of 71.6 cents (wide). Development must
+    // always be stable if only one element is found.
     
     testVibratoClassification
-        ("Huberman 0.812s", pitch_Hz, onsetOffsets, "");
+        ("Huberman 0.812s", pitch_Hz, onsetOffsets, "4Mw=");
 
     // Frithjof's manual classification:
     
