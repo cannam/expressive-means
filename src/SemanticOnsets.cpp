@@ -122,7 +122,7 @@ SemanticOnsets::getIdentifier() const {
 
 string
 SemanticOnsets::getName() const {
-    return "Expressive Means: Onsets";
+    return "Expressive Means";
 }
 
 string
