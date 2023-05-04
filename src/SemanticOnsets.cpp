@@ -85,6 +85,21 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 50.f }
              } }                  
          }
+        },
+       { "noteDurations",
+         { { "Long (> 300 ms)",
+             { { "minimumOnsetInterval", 280.f },
+               { "pitchAverageWindow", 200.f }
+             } },
+           { "Moderate (150-300 ms)",
+             { { "minimumOnsetInterval", 150.f },
+               { "pitchAverageWindow", 150.f }
+             } },
+           { "Short (< 150 ms)",
+             { { "minimumOnsetInterval", 60.f },
+               { "pitchAverageWindow", 60.f }
+             } }
+          }
        }
      },
      // Numbered options parameters (map)
