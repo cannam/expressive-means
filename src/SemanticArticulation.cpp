@@ -109,11 +109,11 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
        },
        { "noteDurations",
          { { "Long (> 300 ms)",
-             { { "minimumOnsetInterval", 250.f },
+             { { "minimumOnsetInterval", 280.f },
                { "pitchAverageWindow", 200.f }
              } },
            { "Moderate (150-300 ms)",
-             { { "minimumOnsetInterval", 100.f },
+             { { "minimumOnsetInterval", 150.f },
                { "pitchAverageWindow", 150.f }
              } },
            { "Short (< 150 ms)",
