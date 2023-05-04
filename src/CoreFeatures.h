@@ -41,6 +41,7 @@ public:
     struct Parameters {
         int stepSize;
         int blockSize;
+        bool normalise;
         float pyinThresholdDistribution;
         float pyinLowAmpSuppressionThreshold;
         float pitchAverageWindow_ms;                // 2.1, o_1
@@ -59,6 +60,7 @@ public:
         Parameters() :
             stepSize(256),
             blockSize(2048),
+            normalise(false),
             pyinThresholdDistribution(2.f),
             pyinLowAmpSuppressionThreshold(0.1f),
             pitchAverageWindow_ms(150.f),
@@ -99,6 +101,12 @@ public:
     void process(const float *input, Vamp::RealTime timestamp);
     void finish();
 
+    float
+    getNormalisationGain() const {
+        assertFinished();
+        return m_normalisationGain;
+    }
+    
     std::vector<double>
     getPYinPitch_Hz() const {
         assertFinished();
@@ -252,6 +260,12 @@ private:
     std::set<int> m_powerRiseOnsets;
     std::map<int, OnsetType> m_mergedOnsets;
     OnsetOffsetMap m_onsetOffsets;
+
+    // For normalisation
+    std::vector<std::pair<std::vector<float>, Vamp::RealTime>> m_pending;
+    float m_normalisationGain;
+    void actualProcess(const float *input, Vamp::RealTime timestamp);
+    void actualFinish();
 
     void assertFinished() const {
         if (!m_finished) {

@@ -27,21 +27,33 @@ void
 CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::ParameterList &list,
                                                          bool includeOffsetParameters)
 {
+    Vamp::Plugin::ParameterDescriptor d;
+    
+    d.identifier = "normaliseAudio";
+    d.name = "Normalise audio";
+    d.unit = "";
+    d.description = "Normalise the audio signal to peak 1.0 before further processing. Requires that signal be short enough to fit in memory.";
+    d.minValue = 0.f;
+    d.maxValue = 1.f;
+    d.isQuantized = true;
+    d.quantizeStep = 1.f;
+    d.defaultValue = defaultCoreParams.normalise;
+    list.push_back(d);
+
     PYinVamp tempPYin(48000.f);
     auto pyinParams = tempPYin.getParameterDescriptors();
-    for (auto d: pyinParams) {
-        if (d.identifier == "threshdistr" ||
-            d.identifier == "lowampsuppression") {
-            d.identifier = "pyin-" + d.identifier;
-            d.name = "pYIN: " + d.name;
-            list.push_back(d);
+    for (auto pd: pyinParams) {
+        if (pd.identifier == "threshdistr" ||
+            pd.identifier == "lowampsuppression") {
+            pd.identifier = "pyin-" + pd.identifier;
+            pd.name = "pYIN: " + pd.name;
+            list.push_back(pd);
         }
     }
-    
-    Vamp::Plugin::ParameterDescriptor d;
 
     d.description = "";
     d.isQuantized = false;
+    d.quantizeStep = 0.f;
     
     d.identifier = "spectralFrequencyMin";
     d.name = "Spectral detection range minimum frequency";
@@ -174,6 +186,8 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
         value = spectralFrequencyMin_Hz;
     } else if (identifier == "spectralFrequencyMax") {
         value = spectralFrequencyMax_Hz;
+    } else if (identifier == "normaliseAudio") {
+        value = (normalise ? 1.f : 0.f);
     } else {
         return false;
     }
@@ -211,6 +225,8 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
         spectralFrequencyMin_Hz = value;
     } else if (identifier == "spectralFrequencyMax") {
         spectralFrequencyMax_Hz = value;
+    } else if (identifier == "normaliseAudio") {
+        normalise = (value > 0.5f);
     } else {
         return false;
     }
@@ -222,13 +238,14 @@ CoreFeatures::CoreFeatures(double sampleRate) :
     m_initialised(false),
     m_finished(false),
     m_haveStartTime(false),
-    m_pyin(sampleRate)
+    m_pyin(sampleRate),
+    m_normalisationGain(1.f)
 { }
 
 void
 CoreFeatures::initialise(Parameters parameters) {
     if (m_initialised) {
-        throw logic_error("Features::initialise: Already initialised");
+        throw logic_error("CoreFeatures::initialise: Already initialised");
     }
 
     m_parameters = parameters;
@@ -285,7 +302,7 @@ void
 CoreFeatures::reset()
 {
     if (!m_initialised) {
-        throw logic_error("Features::reset: Never initialised");
+        throw logic_error("CoreFeatures::reset: Never initialised");
     }
     m_finished = false;
 
@@ -304,17 +321,19 @@ CoreFeatures::reset()
     m_powerRiseOnsets.clear();
     m_mergedOnsets.clear();
     m_onsetOffsets.clear();
+    m_normalisationGain = 1.f;
 
     m_haveStartTime = false;
 }
 
 void
-CoreFeatures::process(const float *input, Vamp::RealTime timestamp) {
+CoreFeatures::process(const float *input, Vamp::RealTime timestamp)
+{
     if (!m_initialised) {
-        throw logic_error("Features::process: Not initialised");
+        throw logic_error("CoreFeatures::process: Not initialised");
     }
     if (m_finished) {
-        throw logic_error("Features::process: Already finished");
+        throw logic_error("CoreFeatures::process: Already finished");
     }
 
     if (!m_haveStartTime) {
@@ -322,6 +341,17 @@ CoreFeatures::process(const float *input, Vamp::RealTime timestamp) {
         m_haveStartTime = true;
     }
 
+    if (!m_parameters.normalise) {
+        actualProcess(input, timestamp);
+    } else {
+        vector<float> buf(input, input + m_parameters.blockSize);
+        m_pending.push_back({ buf, timestamp });
+    }
+}
+
+void
+CoreFeatures::actualProcess(const float *input, Vamp::RealTime timestamp)
+{
     const float *const *iptr = &input;
     auto pyinFeatures = m_pyin.process(iptr, timestamp);
     for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
@@ -336,9 +366,40 @@ void
 CoreFeatures::finish()
 {
     if (m_finished) {
-        throw logic_error("Features::finish: Already finished");
+        throw logic_error("CoreFeatures::finish: Already finished");
     }
 
+    if (m_parameters.normalise) {
+        float max = 0.f;
+        for (const auto &p: m_pending) {
+            for (float f: p.first) {
+                float m = fabsf(f);
+                if (m > max) {
+                    max = m;
+                }
+            }
+        }
+        m_normalisationGain = 1.f / max;
+#ifdef DEBUG_CORE_FEATURES
+        cerr << "CoreFeatures::finish: signal max = " << max
+             << ", normalisation gain = " << m_normalisationGain << endl;
+#endif
+        for (auto &p: m_pending) {
+            auto v = p.first;
+            for (int i = 0; i < int(v.size()); ++i) {
+                v[i] *= m_normalisationGain;
+            }
+            actualProcess(v.data(), p.second);
+        }
+        m_pending.clear();
+    }
+    
+    actualFinish();
+}
+
+void
+CoreFeatures::actualFinish()
+{
     // It's important to make sure the timings align for the values
     // returned by the various feature extractors.  They have the
     // following characteristics:
