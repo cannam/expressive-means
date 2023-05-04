@@ -56,11 +56,11 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f },
-               { "glideThresholdPitch", 60.f }
-               { "glideThresholdHopMinimum", 10.f }
-               { "glideThresholdHopMaximum", 50.f }
-               { "glideThresholdDuration", 50.f }
-               { "glideThresholdProximity", 350.f }
+               { "glideThresholdPitch", 60.f },
+               { "glideThresholdHopMinimum", 10.f },
+               { "glideThresholdHopMaximum", 50.f },
+               { "glideThresholdDuration", 50.f },
+               { "glideThresholdProximity", 350.f },
                { "linkThreshold", 70.f }
              } },
            { "Voice",
@@ -69,11 +69,11 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 8.f },
-               { "glideThresholdPitch", 60.f }
-               { "glideThresholdHopMinimum", 10.f }
-               { "glideThresholdHopMaximum", 70.f }
-               { "glideThresholdDuration", 50.f }
-               { "glideThresholdProximity", 500.f }
+               { "glideThresholdPitch", 60.f },
+               { "glideThresholdHopMinimum", 10.f },
+               { "glideThresholdHopMaximum", 70.f },
+               { "glideThresholdDuration", 50.f },
+               { "glideThresholdProximity", 500.f },
                { "linkThreshold", 100.f }
              } }               
          }
