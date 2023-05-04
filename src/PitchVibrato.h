@@ -60,12 +60,13 @@ public:
     struct VibratoElement {
         int hop;
         int peakIndex;
+        int followingHop; // hop of second peak in pair
         double range_semis; // min-to-max, in semitones
         double position_sec; // interpolated
-        double waveLength_sec; // time to the following element's position
+        double waveLength_sec; // corrected time to the following element's position
         double correlation;
         VibratoElement() :
-            hop(-1), peakIndex(-1),
+            hop(-1), peakIndex(-1), followingHop(-1),
             range_semis(0.0), position_sec(0.0),
             waveLength_sec(0.0), correlation(0.0) { }
     };
@@ -292,6 +293,14 @@ protected:
     mutable int m_vibratoPitchTrackOutput;
 #endif
 
+    typedef std::vector<VibratoElement> VibratoChain;
+    typedef std::vector<VibratoChain> VibratoChains;
+
+    VibratoChains groupElementsIntoChains
+    (const std::vector<VibratoElement> &elements) const;
+    
+    VibratoChain selectBestChainForNote
+    (const VibratoChains &allChains, int onset, int offset) const;
 };
 
 #endif

@@ -790,6 +790,7 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
         VibratoElement element;
         element.hop = peaks[i];
         element.peakIndex = i;
+        element.followingHop = peaks[i+1];
         element.range_semis = range;
         // fill in the remaining elements below
         elements.push_back(element);
@@ -918,6 +919,7 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
         };
         
 #ifdef DEBUG_PITCH_VIBRATO
+        /*
         cerr << "Normalised Signal,Windowed Signal,Model,Windowed Model" << endl;
         for (int j = 0; j < m; ++j) {
             cerr << normalisedSignal(j) << ","
@@ -926,6 +928,7 @@ PitchVibrato::extractElements(const vector<double> &pyinPitch_Hz,
                  << windowedModel(j, m)
                  << endl;
         }
+        */
 #endif
 
         // The R implementation appears to use Pearson correlation
@@ -1087,42 +1090,153 @@ PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
     return extractElements(glideFilteredPitch_Hz, smoothedPitch_semis, rawPeaks);
 }
 
+PitchVibrato::VibratoChains
+PitchVibrato::groupElementsIntoChains(const vector<VibratoElement> &elements)
+    const
+{
+    PitchVibrato::VibratoChains chains;
+    PitchVibrato::VibratoChain currentChain;
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** Chain: grouping " << elements.size() << " elements into chains"
+         << endl;
+#endif
+
+    // Elements must be in ascending order of hop - check this
+    int prevHop = -1;
+    for (const auto &e : elements) {
+        if (e.hop <= prevHop) {
+            cerr << "PitchVibrato::groupElementsIntoChains: Elements are not in ascending order of hop (" << e.hop << " <= " << prevHop << "), can't continue" << endl;
+            return {};
+        }
+    }
+    
+    for (auto e : elements) {
+        if (e.correlation < m_correlationThreshold) {
+#ifdef DEBUG_PITCH_VIBRATO
+            cerr << "-- Skipping element from " << e.hop << " to "
+                 << e.followingHop << " as correlation " << e.correlation
+                 << " is below threshold " << m_correlationThreshold << endl;
+#endif
+        } else {
+#ifdef DEBUG_PITCH_VIBRATO
+            cerr << "-- Accepting element from " << e.hop << " to "
+                 << e.followingHop << " with correlation " << e.correlation
+                 << endl;
+#endif
+            if (!currentChain.empty() &&
+                e.hop != currentChain.rbegin()->followingHop) {
+                chains.push_back(currentChain);
+                currentChain = {};
+            }
+            currentChain.push_back(e);
+        }
+    }
+
+    if (!currentChain.empty()) {
+        chains.push_back(currentChain);
+    }
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "-- Have " << chains.size() << " chains:" << endl;
+    for (const auto &c : chains) {
+        cerr << "-- Chain from hop " << c.begin()->hop << ": ";
+        for (const auto &e : c) {
+            cerr << e.hop << "-" << e.followingHop << " ";
+        }
+        cerr << endl;
+    }
+    cerr << "** Chain: complete" << endl;
+#endif
+
+    return chains;
+}
+
+PitchVibrato::VibratoChain
+PitchVibrato::selectBestChainForNote(const VibratoChains &allChains,
+                                     int onset, int offset) const
+{
+    // Select the best vibrato chain (series of contiguous elements)
+    // associated with a note. There may be more than one chain
+    // intersecting with the duration of this note: we want the one
+    // that spans the longest time within the note
+
+    vector<VibratoElement> bestChain;
+    int bestChainSpan = -1;
+
+    // Start with the first chain that ends at least at the onset
+    auto chainItr = std::lower_bound
+        (allChains.begin(), allChains.end(), onset,
+         [](const VibratoChain &chain, int onset) {
+             return chain.rbegin()->followingHop < onset;
+         });
+
+    if (chainItr == allChains.end()) {
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Note onset " << onset
+             << " is later than all vibrato chains" << endl;
+#endif
+        return {};
+    }
+
+    for (auto i = chainItr; i != allChains.end(); ++i) {
+        const auto &chain = *i;
+        int chainStart = chain.begin()->hop;
+        if (chainStart >= offset) break;
+        int chainEnd = chain.rbegin()->followingHop;
+        int span = std::min(chainEnd, offset) - std::max(chainStart, onset);
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Chain from " << chainStart << " to " << chainEnd
+             << " spans " << span << " hops within note from " << onset
+             << " to " << offset << endl;
+#endif
+        if (span > bestChainSpan) {
+            bestChain = chain;
+            bestChainSpan = span;
+        }
+    }
+
+#ifdef DEBUG_PITCH_VIBRATO
+    if (bestChainSpan < 0) {
+        cerr << "-- No best chain found for this note" << endl;
+    } else {
+        cerr << "-- Best chain is from " << bestChain.begin()->hop
+             << " to " << bestChain.rbegin()->followingHop << endl;
+    }
+#endif
+    return bestChain;
+}
+
 map<int, PitchVibrato::VibratoClassification>
 PitchVibrato::classify(const vector<VibratoElement> &elements,
                        const CoreFeatures::OnsetOffsetMap &onsetOffsets) const
 {
     map<int, VibratoClassification> classifications;
 
-    auto eitr = elements.begin();
-
+#ifdef DEBUG_PITCH_VIBRATO
     cerr << "** Classify: considering " << onsetOffsets.size() << " onsets" << endl;
+#endif
+
+    VibratoChains allChains = groupElementsIntoChains(elements);
     
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
+        // Identify onset, offset, and the following onset
+        
         int onset = pitr->first;
         int offset = pitr->second.first;
 
-        int followingOnset = onset;
-        auto pj = pitr;
-        if (++pj != onsetOffsets.end()) {
-            followingOnset = pj->first;
-        }
-        
-        vector<VibratoElement> ee; // elements associated with this onset
-        while (eitr != elements.end() &&
-               (followingOnset == onset || eitr->hop < followingOnset)) {
-            if (eitr->correlation >= m_correlationThreshold) {
-                ee.push_back(*eitr);
-            }
-            ++eitr;
-        }
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Classifying note from " << onset << " to " << offset << endl;
+#endif
 
-        int nelts = ee.size();
+        VibratoChain chain = selectBestChainForNote(allChains, onset, offset);
+
+        int nelts = chain.size();
 
 #ifdef DEBUG_PITCH_VIBRATO
-        cerr << "-- Onset at " << onset << " has " << nelts
-             << " associated vibrato elements above correlation threshold"
-             << endl;
+        cerr << "-- Onset at " << onset << " has chain of " << nelts
+             << " associated vibrato elements" << endl;
 #endif
         
         if (nelts == 0) {            
@@ -1131,8 +1245,8 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
 
         VibratoClassification classification;
         
-        const VibratoElement &first = ee.at(0);
-        const VibratoElement &last = ee.at(nelts - 1);
+        const VibratoElement &first = chain.at(0);
+        const VibratoElement &last = chain.at(nelts - 1);
 
         double noteStart_ms =
             m_coreFeatures.stepsToMs(onset, m_coreParams.stepSize);
@@ -1176,7 +1290,7 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
 #endif
         
         double meanRate_Hz = 0.0;
-        for (auto e : ee) {
+        for (auto e : chain) {
             meanRate_Hz += 1.0 / e.waveLength_sec;
         }
         meanRate_Hz /= nelts;
@@ -1193,7 +1307,7 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
 
 #ifdef DEBUG_PITCH_VIBRATO
         cerr << "-- Onset at " << onset << ": vibrato element rates (Hz):";
-        for (auto e : ee) {
+        for (auto e : chain) {
             cerr << " " << 1.0 / e.waveLength_sec;
         }
         cerr << ", mean rate " << meanRate_Hz << endl;
@@ -1205,8 +1319,8 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
         double meanRange_cents = 0.0;
         double maxRange_cents = 0.0;
         int maxRangeIndex = 0;
-        for (int i = 0; i < int(ee.size()); ++i) {
-            double r = 100.0 * ee.at(i).range_semis;
+        for (int i = 0; i < int(chain.size()); ++i) {
+            double r = 100.0 * chain.at(i).range_semis;
             meanRange_cents += r;
             if (i == 0 || r > maxRange_cents) {
                 maxRange_cents = r;
@@ -1233,7 +1347,7 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
              << endl;
 #endif
 
-        classification.maxRangeTime = ee[maxRangeIndex].position_sec;
+        classification.maxRangeTime = chain[maxRangeIndex].position_sec;
         double maxRangeTime_ms = classification.maxRangeTime * 1000.0;
         
         if (maxRange_cents - meanRange_cents < m_developmentThreshold_cents) {
@@ -1358,7 +1472,7 @@ PitchVibrato::getRemainingFeatures()
 
         int onset = pitr->first;
 
-        int followingOnset = onset;
+        int followingOnset = n;
         auto pj = pitr;
         if (++pj != onsetOffsets.end()) {
             followingOnset = pj->first;
