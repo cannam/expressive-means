@@ -50,13 +50,18 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
          }
         },
        { "instrumentType",
-         { { "Strings",
+         { { "Instrumental",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 24.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f },
                { "glideThresholdPitch", 60.f }
+               { "glideThresholdHopMinimum", 10.f }
+               { "glideThresholdHopMaximum", 50.f }
+               { "glideThresholdDuration", 50.f }
+               { "glideThresholdProximity", 350.f }
+               { "linkThreshold", 70.f }
              } },
            { "Voice",
              { { "onsetSensitivityPitch", 15.f },
@@ -64,33 +69,22 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 8.f },
-               { "glideThresholdPitch", 100.f }
-             } },
-           { "Keys",
-             { { "onsetSensitivityPitch", 90.f },
-               { "onsetSensitivityNoise", 18.f },
-               { "onsetSensitivityLevel", 8.f },
-               { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f },
-               { "glideThresholdPitch", 40.f }
-             } },
-           { "Wind",
-             { { "onsetSensitivityPitch", 10.f },
-               { "onsetSensitivityNoise", 30.f },
-               { "onsetSensitivityLevel", 8.f },
-               { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 12.f },
-               { "glideThresholdPitch", 40.f }
-             } }                  
+               { "glideThresholdPitch", 60.f }
+               { "glideThresholdHopMinimum", 10.f }
+               { "glideThresholdHopMaximum", 70.f }
+               { "glideThresholdDuration", 50.f }
+               { "glideThresholdProximity", 500.f }
+               { "linkThreshold", 100.f }
+             } }               
          }
        },
        { "noteDurations",
          { { "Long (> 300 ms)",
-             { { "minimumOnsetInterval", 250.f },
+             { { "minimumOnsetInterval", 280.f },
                { "pitchAverageWindow", 200.f }
              } },
            { "Moderate (150-300 ms)",
-             { { "minimumOnsetInterval", 100.f },
+             { { "minimumOnsetInterval", 150.f },
                { "pitchAverageWindow", 150.f }
              } },
            { "Short (< 150 ms)",
