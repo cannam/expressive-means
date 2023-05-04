@@ -78,11 +78,11 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
            { "Voice",
-             { { "onsetSensitivityPitch", 15.f },
-               { "onsetSensitivityNoise", 40.f },
-               { "onsetSensitivityLevel", 8.f },
+             { { "onsetSensitivityPitch", 100.f },
+               { "onsetSensitivityNoise", 50.f },
+               { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 8.f }
+               { "onsetSensitivityRawPowerThreshold", 10.f }
              } },
            { "Keys / Mallets",
              { { "onsetSensitivityPitch", 90.f },
