@@ -25,8 +25,8 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
            "Clef which is closest to the instrument's pitch range."
          } },
        { "instrumentType",
-         { "Instrument type",
-           "General family of instrument."
+         { "Signal type",
+           "General family of the signal / instrument."
          } },
        { "noteDurations",
          { "Note durations",
@@ -50,34 +50,44 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
          }
         },
        { "instrumentType",
-         { { "Strings",
+         { { "Instrumental",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 24.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 6.f }
+               { "onsetSensitivityRawPowerThreshold", 6.f },
+               { "vibratoRateMinimum", 4.2f },
+               { "vibratoRateMaximum", 9.2f },
+               { "rateBoundaryModerate", 6.2f },
+               { "rateBoundaryFast", 7.2f },
+               { "vibratoRangeMinimum", 20.f },
+               { "vibratoRangeMaximum", 200.f },
+               { "rangeBoundaryMedium", 40.f },
+               { "rangeBoundaryWide", 60.f },
+               { "sectionThreshold", 200.f },
+               { "developmentThreshold", 10.f },
+               { "correlationThreshold", 0.2f },
+               { "segmentationType", 2.f }
              } },
-           { "Voice",
+           { "Vocal",
              { { "onsetSensitivityPitch", 100.f },
                { "onsetSensitivityNoise", 50.f },
                { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 10.f }
-             } },
-           { "Keys",
-             { { "onsetSensitivityPitch", 90.f },
-               { "onsetSensitivityNoise", 18.f },
-               { "onsetSensitivityLevel", 8.f },
-               { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
-             } },
-           { "Wind",
-             { { "onsetSensitivityPitch", 10.f },
-               { "onsetSensitivityNoise", 30.f },
-               { "onsetSensitivityLevel", 8.f },
-               { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 12.f }
-             } }                  
+               { "onsetSensitivityRawPowerThreshold", 10.f },
+               { "vibratoRateMinimum", 4.f },
+               { "vibratoRateMaximum", 9.f },
+               { "rateBoundaryModerate", 6.f },
+               { "rateBoundaryFast", 7.f },
+               { "vibratoRangeMinimum", 30.f },
+               { "vibratoRangeMaximum", 500.f },
+               { "rangeBoundaryMedium", 150.f },
+               { "rangeBoundaryWide", 250.f },
+               { "sectionThreshold", 300.f },
+               { "developmentThreshold", 40.f },
+               { "correlationThreshold", 0.1f },
+               { "segmentationType", 1.f }
+             } }                
          }
        },
        { "noteDurations",
