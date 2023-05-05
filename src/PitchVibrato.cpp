@@ -1055,6 +1055,11 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
             smoothedPitch_semis.push_back(p);
         }
     }
+
+    // Should happen only if no onsets at all were found
+    while (smoothedPitch_semis.size() < pyinPitch_Hz.size()) {
+        smoothedPitch_semis.push_back(0.0);
+    }
     
     return elements;
 }
