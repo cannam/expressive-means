@@ -2,10 +2,10 @@
 
 set -eu
 
-case $(git status --porcelain --untracked-files=no) in
-    "") ;;
-    *) echo "ERROR: Current working copy has been modified - not proceeding"; exit 2;;
-esac
+#case $(git status --porcelain --untracked-files=no) in
+#    "") ;;
+#    *) echo "ERROR: Current working copy has been modified - not proceeding"; e#xit 2;;
+#esac
 
 mydir=$(dirname "$0")
 
@@ -14,14 +14,13 @@ mydir=$(dirname "$0")
 lib="expressive-means.dylib"
 gatekeeper_key="Developer ID Application: Particular Programs Ltd (73F996B92S)"
 
-mkdir -p packages
-echo
+./repoint install
 
 tag="$(date +%s)"
 
 for arch in arm64 x86_64 ; do
     builddir="build-${tag}-${arch}"
-    meson setup "$builddir" -Dbuildtype=release --cross-file deploy/macos/cross_"$arch".txt
+    BOOST_ROOT=/opt/boost arch -"$arch" meson setup "$builddir" -Dbuildtype=release -Dtests=disabled --cross-file deploy/macos/cross_"$arch".txt
     ninja -C "$builddir"
 done
 

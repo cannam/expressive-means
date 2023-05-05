@@ -462,7 +462,7 @@ CoreFeatures::actualFinish()
     
     for (int i = 0; i + halfLength < n; ++i) {
         m_pitchOnsetDf.push_back
-            (fabsf(m_pitch[i] - m_filteredPitch[i + halfLength]));
+            (fabs(m_pitch[i] - m_filteredPitch[i + halfLength]));
     }
 
     // We need to reject cases in which the pitch onset df is small

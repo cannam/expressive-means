@@ -1,3 +1,6 @@
 .repoint*
 ext
 *~
+ExpressiveMeans-macos-*
+.notarization-*
+.DS_Store

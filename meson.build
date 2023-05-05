@@ -21,7 +21,9 @@ system = host_machine.system()
 architecture = host_machine.cpu_family()
 cpp = meson.get_compiler('cpp')
 
-boost_unit_test_dep = dependency('boost', modules: ['unit_test_framework'], version: '>= 1.73', required: false, static: true)
+boost_dep = dependency('boost', modules: [], version: '>= 1.73', required: true, static: true)
+
+boost_unit_test_dep = dependency('boost', modules: ['unit_test_framework'], version: '>= 1.73', required: get_option('tests'), static: true)
 have_boost_unit_test = boost_unit_test_dep.found()
 
 plugin_sources = [
@@ -94,6 +96,7 @@ expressive_means = shared_library(
   pyin_sources,
   include_directories: [ vamp_dir ],
   link_args: [ vamp_symbol_args ],
+  dependencies: [ boost_dep ],
   name_prefix: '',
   install: true,
   install_dir: get_option('libdir') / 'vamp'
