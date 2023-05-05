@@ -67,7 +67,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "sectionThreshold", 200.f },
                { "developmentThreshold", 10.f },
                { "correlationThreshold", 0.2f },
-               { "segmentationType", 2.f }
+               { "segmentationType", 3.f }
              } },
            { "Vocal",
              { { "onsetSensitivityPitch", 100.f },
