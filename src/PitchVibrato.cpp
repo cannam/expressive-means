@@ -41,7 +41,7 @@ static const float default_correlationThreshold = 0.2f;
 static const float default_scalingFactor = 11.1f;
 static const float default_smoothingWindowLength_ms = 70.f;
 static const PitchVibrato::SegmentationType default_segmentationType =
-    PitchVibrato::SegmentationType::WithoutGlides;
+    PitchVibrato::SegmentationType::WithoutGlidesAndSegmented;
 
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -264,7 +264,7 @@ PitchVibrato::getParameterDescriptors() const
 
     d.identifier = "segmentationType";
     d.name = "[Experimental] Note segmentation";
-    d.description = "Preprocessing to apply before vibrato peak selection. None means the whole pitch track is considered at once. Segmented means individual notes are treated separately. Without Glides means the whole track is considered after glides have been identified and removed.";
+    d.description = "Preprocessing to apply before vibrato peak selection. None means the whole pitch track is considered at once. Segmented means individual notes are treated separately. Without Glides means the whole track is considered after glides have been identified and removed. Without Glides And Segmented means individual notes are considered after glides removed.";
     d.unit = "";
     d.minValue = 0.f;
     d.maxValue = 3.f;
@@ -273,6 +273,7 @@ PitchVibrato::getParameterDescriptors() const
     d.valueNames.push_back("None");
     d.valueNames.push_back("Segmented");
     d.valueNames.push_back("Without Glides");
+    d.valueNames.push_back("Without Glides and Segmented");
     d.defaultValue = int(default_segmentationType);
     list.push_back(d);
         
@@ -358,8 +359,10 @@ PitchVibrato::setParameter(string identifier, float value)
             m_segmentationType = SegmentationType::Unsegmented;
         } else if (value < 1.5f) {
             m_segmentationType = SegmentationType::Segmented;
-        } else {
+        } else if (value < 2.5f) {
             m_segmentationType = SegmentationType::WithoutGlides;
+        } else {
+            m_segmentationType = SegmentationType::WithoutGlidesAndSegmented;
         }
     }
 }
@@ -1073,22 +1076,51 @@ PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
             glideFilteredPitch_Hz[i] = 0.0;
         }
     }
-/*!!!
-    for (auto p : onsetOffsets) {
-#ifdef DEBUG_PITCH_VIBRATO
-        cerr << "-- Introducing tiny discontinuity before onset at "
-             << p.first << endl;
-#endif
-        if (p.first > 0) {
-            glideFilteredPitch_Hz[p.first - 1] = 0.0;
-        }
-    }
-*/
+
 #ifdef DEBUG_PITCH_VIBRATO
     cerr << "** 0. Complete" << endl;
 #endif
 
     return extractElements(glideFilteredPitch_Hz, smoothedPitch_semis, rawPeaks);
+}
+
+vector<PitchVibrato::VibratoElement>
+PitchVibrato::extractElementsWithoutGlidesAndSegmented(const vector<double> &pyinPitch_Hz,
+                                                       const CoreFeatures::OnsetOffsetMap &onsetOffsets,
+                                                       vector<double> &smoothedPitch_semis,
+                                                       vector<int> &rawPeaks) const
+{
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 0. Identify glides" << endl;
+#endif
+    
+    Glide::Parameters glideParams;
+    //!!! params?
+    Glide glide(glideParams);
+    Glide::Extents glides = glide.extract_Hz(pyinPitch_Hz, onsetOffsets);
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "-- Identified " << glides.size() << " glides and "
+         << onsetOffsets.size() << " onsets" << endl;
+#endif
+
+    vector<double> glideFilteredPitch_Hz = pyinPitch_Hz;
+    for (auto g : glides) {
+#ifdef DEBUG_PITCH_VIBRATO
+        cerr << "-- Removing glide from " << g.second.start << " to "
+             << g.second.end << endl;
+#endif
+        for (auto i = g.second.start; i < g.second.end; ++i) {
+            glideFilteredPitch_Hz[i] = 0.0;
+        }
+    }
+
+#ifdef DEBUG_PITCH_VIBRATO
+    cerr << "** 0. Complete" << endl;
+#endif
+
+    return extractElementsSegmented(glideFilteredPitch_Hz, onsetOffsets,
+                                    smoothedPitch_semis, rawPeaks);
 }
 
 PitchVibrato::VibratoChains
@@ -1451,6 +1483,11 @@ PitchVibrato::getRemainingFeatures()
 
     case SegmentationType::WithoutGlides:
         elements = extractElementsWithoutGlides 
+           (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
+        break;
+
+    case SegmentationType::WithoutGlidesAndSegmented:
+        elements = extractElementsWithoutGlidesAndSegmented
            (pyinPitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
         break;
     }
