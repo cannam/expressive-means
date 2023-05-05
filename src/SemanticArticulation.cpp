@@ -27,8 +27,8 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
            "Clef which is closest to the instrument's pitch range."
          } },
        { "instrumentType",
-         { "Instrument type",
-           "General family of instrument."
+         { "Signal type",
+           "General family of the signal / instrument."
          } },
        { "noteDurations",
          { "Note durations",
