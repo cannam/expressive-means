@@ -890,12 +890,15 @@ Articulation::getRemainingFeatures()
     }
     
     auto pitchOnsetDf = m_coreFeatures.getPitchOnsetDF();
+    auto pitchOnsetDfValidity = m_coreFeatures.getPitchOnsetDFValidity();
     for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitchOnsetDf[i]);
-        fs[m_pitchOnsetDfOutput].push_back(f);
+        if (pitchOnsetDfValidity[i]) {
+            Feature f;
+            f.hasTimestamp = true;
+            f.timestamp = m_coreFeatures.timeForStep(i);
+            f.values.push_back(pitchOnsetDf[i]);
+            fs[m_pitchOnsetDfOutput].push_back(f);
+        }
     }
     
     for (size_t i = 0; i < rawPower.size(); ++i) {

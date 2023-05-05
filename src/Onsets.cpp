@@ -304,12 +304,15 @@ Onsets::getRemainingFeatures()
     m_coreFeatures.finish();
 
     auto pitchOnsetDf = m_coreFeatures.getPitchOnsetDF();
+    auto pitchOnsetDfValidity = m_coreFeatures.getPitchOnsetDFValidity();
     for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(pitchOnsetDf[i] * 100.0);
-        fs[m_pitchOnsetDfOutput].push_back(f);
+        if (pitchOnsetDfValidity[i]) {
+            Feature f;
+            f.hasTimestamp = true;
+            f.timestamp = m_coreFeatures.timeForStep(i);
+            f.values.push_back(pitchOnsetDf[i] * 100.0);
+            fs[m_pitchOnsetDfOutput].push_back(f);
+        }
     }
     
     auto riseFractions = m_coreFeatures.getOnsetLevelRiseFractions();

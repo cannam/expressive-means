@@ -314,6 +314,7 @@ CoreFeatures::reset()
     m_pitch.clear();
     m_filteredPitch.clear();
     m_pitchOnsetDf.clear();
+    m_pitchOnsetDfValidity.clear();
     m_rawPower.clear();
     m_smoothedPower.clear();
     m_pitchOnsets.clear();
@@ -464,6 +465,19 @@ CoreFeatures::actualFinish()
             (fabsf(m_pitch[i] - m_filteredPitch[i + halfLength]));
     }
 
+    // We need to reject cases in which the pitch onset df is small
+    // because many pitches in the filter region are absent 
+   int lastAbsence = -halfLength;
+    for (int i = 0; i + halfLength < n; ++i) {
+        bool valid = false;
+        if (m_pyinPitchHz[i + halfLength] <= 0.0) {
+            lastAbsence = i;
+        } else {
+            valid = (i - lastAbsence > halfLength);
+        }
+        m_pitchOnsetDfValidity.push_back(valid);
+    }
+
     int minimumOnsetSteps = msToSteps(m_parameters.minimumOnsetInterval_ms,
                                       m_parameters.stepSize, false);
 
@@ -488,7 +502,7 @@ CoreFeatures::actualFinish()
     
     for (int i = 0; i + halfLength < n; ++i) {
         // "absolute difference... falls below o_2":
-        if (m_pitchOnsetDf[i] < threshold) {
+        if (m_pitchOnsetDf[i] < threshold && m_pitchOnsetDfValidity[i]) {
             if (i > lastBelowThreshold + vibratoSuppressionThresholdSteps) {
                 m_pitchOnsets.insert(i - pitchOnsetAdvance);
             }

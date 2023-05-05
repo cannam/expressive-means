@@ -131,6 +131,12 @@ public:
         return m_pitchOnsetDf;
     }
 
+    std::vector<bool>
+    getPitchOnsetDFValidity() const {
+        assertFinished();
+        return m_pitchOnsetDfValidity;
+    }
+
     std::vector<double>
     getRawPower_dB() const {
         assertFinished();
@@ -252,6 +258,7 @@ private:
     std::vector<double> m_pitch;
     std::vector<double> m_filteredPitch;
     std::vector<double> m_pitchOnsetDf;
+    std::vector<bool> m_pitchOnsetDfValidity;
     std::vector<double> m_rawPower;
     std::vector<double> m_smoothedPower;
     std::vector<double> m_offsetDropDf;
