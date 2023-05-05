@@ -1024,6 +1024,7 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
         
         for (auto e : noteElements) {
             e.hop += onset;
+            e.followingHop += onset;
             e.peakIndex += peakCount;
             e.position_sec += onsetPosition_sec;
             elements.push_back(e);
