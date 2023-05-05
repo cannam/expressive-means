@@ -17,7 +17,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
      // Output selection (to be passed through)
      { "onsets", "durations" },
      // Parameter selection (passed through, or new)
-     { "clef", "instrumentType", "normaliseAudio"
+     { "clef", "instrumentType", "noteDurations", "normaliseAudio"
      },
      // Parameter metadata (map)
      { { "clef",
@@ -112,6 +112,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
      // the first label, i.e. 0.f, numbered ones default to 1.f, and
      // toggles default to off.
      {
+         { "noteDurations", 1.f }
      })
     {}
     
