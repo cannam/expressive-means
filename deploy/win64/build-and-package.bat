@@ -21,24 +21,23 @@ if not exist "C:\Program Files (x86)\SMLNJ\bin" (
 @   exit /b 2
 )
 
-set VERSION=%1
-shift
-if "%VERSION%" == "" (
-@echo "Usage: win.bat <version>"
-exit /b 1
-)
-
-@echo Building version %VERSION%
+@echo Setting up environment
 
 call %vcvarsall% amd64
 if errorlevel 1 exit /b %errorlevel%
 
 cd %STARTPWD%
 
+@echo Pulling dependencies
+
 call .\repoint install
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 del /q /s build
+
+@echo Configuring
+
+set BOOST_ROOT=c:/Users/Chris/Documents/boost_1_69_0/
 
 meson build --buildtype release -Dtests=disabled "-Db_vscrt=mt"
 if errorlevel 1 exit /b %errorlevel%
@@ -46,13 +45,17 @@ if errorlevel 1 exit /b %errorlevel%
 ninja -C build
 if errorlevel 1 exit /b %errorlevel%
 
+@set /p VERSION=<build\version.h
+@set VERSION=%VERSION:#define EXPRESSIVE_MEANS_VERSION "=%
+set VERSION=%VERSION:"=%
+
 cd build
 set NAME=Christopher Cannam
 signtool sign /v /n "%NAME%" /t http://time.certum.pl /fd sha1 /a expressive-means.dll
 if errorlevel 1 exit /b %errorlevel%
 
 cd ..
-set DIR=ExpressiveMeans-win64-%VERSION%.zip
+set DIR=ExpressiveMeans-win64-%VERSION%
 del /q /s %DIR%
 mkdir %DIR%
 copy build\expressive-means.dll %DIR%

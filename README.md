@@ -5,7 +5,27 @@
 * Code by Chris Cannam, Particular Programs Ltd (London, UK)
 * Makes use of "pYIN" by Matthias Mauch and of Tilo Haehnel's "vibratoanalyse.R" method
 
-## To build:
+## To install from a pre-built package
+
+Installation is the same as for other individual Vamp plugin libraries:
+
+ * On Windows, copy `expressive-means.dll` and `expressive-means.cat`
+   to the folder `C:\Program Files\Vamp Plugins\`. (Note that only
+   64-bit versions of Windows and 64-bit plugin hosts are supported)
+
+ * On a Mac, copy `expressive-means.dylib` and `expressive-means.cat`
+   to the folder `/Library/Audio/Plug-Ins/Vamp` or
+   `$HOME/Library/Audio/Plug-Ins/Vamp`
+
+ * On Linux, copy `expressive-means.so` and `expressive-means.cat` to
+   the folder `/usr/local/lib/vamp` or `$HOME/vamp`
+
+In each case, if the destination folder doesn't already exist, create
+it as a new folder first.
+
+See the general Vamp [How to Install](https://vamp-plugins.org/download.html#install) guide for more information.
+
+## To build from source code
 
 ### Prerequisites
 

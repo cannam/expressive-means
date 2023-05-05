@@ -21,7 +21,7 @@ system = host_machine.system()
 architecture = host_machine.cpu_family()
 cpp = meson.get_compiler('cpp')
 
-boost_dep = dependency('boost', modules: [], version: '>= 1.71', required: true, static: true)
+boost_dep = dependency('boost', modules: [], version: '>= 1.69', required: true, static: true)
 
 boost_unit_test_dep = dependency('boost', modules: ['unit_test_framework'], version: '>= 1.73', required: get_option('tests'), static: true)
 have_boost_unit_test = boost_unit_test_dep.found()
@@ -74,11 +74,14 @@ pyin_sources = [
   pyin_dir / 'MonoPitchHMM.cpp',
 ]
 
+feature_defines = []
+
 if system == 'darwin'
   vamp_symbol_args = [
     '-exported_symbols_list', meson.current_source_dir() / 'vamp-plugin.list'
   ]
 elif system == 'windows'
+  feature_defines += ['-D_WIN32', '-DNOMINMAX', '-D_USE_MATH_DEFINES']
   vamp_symbol_args = [
     '-EXPORT:vampGetPluginDescriptor'
   ]
@@ -95,6 +98,7 @@ expressive_means = shared_library(
   qmdsp_sources,
   pyin_sources,
   include_directories: [ vamp_dir ],
+  cpp_args: [ feature_defines ],
   link_args: [ vamp_symbol_args ],
   dependencies: [ boost_dep ],
   name_prefix: '',
@@ -112,6 +116,7 @@ if have_boost_unit_test
     qmdsp_sources,
     pyin_sources,
     include_directories: [ vamp_dir ],
+      cpp_args: [ feature_defines ],
     dependencies: [ boost_unit_test_dep ],
     install: false,
     build_by_default: true

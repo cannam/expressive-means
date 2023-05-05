@@ -2,5 +2,7 @@
 ext
 *~
 ExpressiveMeans-macos-*
+ExpressiveMeans-win64-*
 .notarization-*
 .DS_Store
+build
