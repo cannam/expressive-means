@@ -17,7 +17,7 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
      // Output selection (to be passed through)
      { "summary", "portamentoType", "portamentoIndex" },
      // Parameter selection (passed through, or new)
-     { "clef", "instrumentType", "noteDurations"
+     { "clef", "instrumentType", "noteDurations", "normaliseAudio"
      },
      // Parameter metadata (map)
      { { "clef",

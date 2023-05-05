@@ -17,7 +17,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
      // Output selection (to be passed through)
      { "summary", "vibratoType", "vibratoIndex" },
      // Parameter selection (passed through, or new)
-     { "clef", "instrumentType", "noteDurations"
+     { "clef", "instrumentType", "noteDurations", "normaliseAudio"
      },
      // Parameter metadata (map)
      { { "clef",

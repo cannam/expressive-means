@@ -60,7 +60,7 @@ public:
         Parameters() :
             stepSize(256),
             blockSize(2048),
-            normalise(false),
+            normalise(true),
             pyinThresholdDistribution(2.f),
             pyinLowAmpSuppressionThreshold(0.1f),
             pitchAverageWindow_ms(150.f),
