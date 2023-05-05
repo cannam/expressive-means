@@ -25,8 +25,8 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
            "Clef which is closest to the instrument's pitch range."
          } },
        { "instrumentType",
-         { "Instrument type",
-           "General family of instrument."
+         { "Signal type",
+           "General family of signal / instrument."
          } }
      },
      // Named options parameters (map)
