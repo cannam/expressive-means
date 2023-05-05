@@ -178,7 +178,10 @@ protected:
     float m_impulseNoiseRatioFricative_percent;
     float m_reverbDurationFactor;
     float m_overlapCompensationFactor;
+
     float m_glideThresholdPitch_cents;
+    float m_glideThresholdHopMinimum_cents;
+    float m_glideThresholdHopMaximum_cents;
     float m_glideThresholdDuration_ms;
     float m_glideThresholdProximity_ms;
     

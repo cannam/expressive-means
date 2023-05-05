@@ -29,7 +29,12 @@ static const float default_impulseNoiseRatioPlosive_percent = 80.f;
 static const float default_impulseNoiseRatioFricative_percent = 30.f;
 static const float default_reverbDurationFactor = 1.5f;
 static const float default_overlapCompensationFactor = 1.6;
-static const float default_glideThresholdPitch_cents = 50.f;
+
+// These are not exposed as plugin parameters, so they're fixed but
+// can be tweaked here
+static const float default_glideThresholdPitch_cents = 60.f;
+static const float default_glideThresholdHopMinimum_cents = 10.f;
+static const float default_glideThresholdHopMaximum_cents = 50.f;
 static const float default_glideThresholdDuration_ms = 70.f;
 static const float default_glideThresholdProximity_ms = 350.f;
 
@@ -45,6 +50,8 @@ Articulation::Articulation(float inputSampleRate) :
     m_reverbDurationFactor(default_reverbDurationFactor),
     m_overlapCompensationFactor(default_overlapCompensationFactor),
     m_glideThresholdPitch_cents(default_glideThresholdPitch_cents),
+    m_glideThresholdHopMinimum_cents(default_glideThresholdHopMinimum_cents),
+    m_glideThresholdHopMaximum_cents(default_glideThresholdHopMaximum_cents),
     m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
     m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
     m_summaryOutput(-1),
@@ -673,8 +680,9 @@ Articulation::getRemainingFeatures()
     glideParams.onsetProximityThreshold_steps =
         m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
                                  m_coreParams.stepSize, false);
-//!!!    glideParams.pitchThreshold_semis =
-//        m_glideThresholdPitch_cents / 100.0;
+    glideParams.minimumPitchThreshold_cents = m_glideThresholdPitch_cents;
+    glideParams.minimumHopDifference_cents = m_glideThresholdHopMinimum_cents;
+    glideParams.maximumHopDifference_cents = m_glideThresholdHopMaximum_cents;
     glideParams.medianFilterLength_steps =
         m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
                                  m_coreParams.stepSize, true);

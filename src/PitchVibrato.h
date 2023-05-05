@@ -275,6 +275,12 @@ protected:
 
     float m_smoothingWindowLength_ms;
 
+    float m_glideThresholdPitch_cents;
+    float m_glideThresholdHopMinimum_cents;
+    float m_glideThresholdHopMaximum_cents;
+    float m_glideThresholdDuration_ms;
+    float m_glideThresholdProximity_ms;
+
     SegmentationType m_segmentationType;
     
     mutable int m_summaryOutput;

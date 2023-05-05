@@ -43,6 +43,14 @@ static const float default_smoothingWindowLength_ms = 70.f;
 static const PitchVibrato::SegmentationType default_segmentationType =
     PitchVibrato::SegmentationType::WithoutGlidesAndSegmented;
 
+// These are not exposed as plugin parameters, so they're fixed but
+// can be tweaked here
+static const float default_glideThresholdPitch_cents = 60.f;
+static const float default_glideThresholdHopMinimum_cents = 10.f;
+static const float default_glideThresholdHopMaximum_cents = 50.f;
+static const float default_glideThresholdDuration_ms = 70.f;
+static const float default_glideThresholdProximity_ms = 350.f;
+
 PitchVibrato::PitchVibrato(float inputSampleRate) :
     Plugin(inputSampleRate),
     m_stepSize(0),
@@ -62,6 +70,11 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_scalingFactor(default_scalingFactor),
     m_smoothingWindowLength_ms(default_smoothingWindowLength_ms),
     m_segmentationType(default_segmentationType),
+    m_glideThresholdPitch_cents(default_glideThresholdPitch_cents),
+    m_glideThresholdHopMinimum_cents(default_glideThresholdHopMinimum_cents),
+    m_glideThresholdHopMaximum_cents(default_glideThresholdHopMaximum_cents),
+    m_glideThresholdDuration_ms(default_glideThresholdDuration_ms),
+    m_glideThresholdProximity_ms(default_glideThresholdProximity_ms),
     m_summaryOutput(-1),
     m_pitchTrackOutput(-1),
     m_vibratoTypeOutput(-1),
@@ -1057,7 +1070,19 @@ PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
 #endif
     
     Glide::Parameters glideParams;
-    //!!! params?
+    glideParams.durationThreshold_steps =
+        m_coreFeatures.msToSteps(m_glideThresholdDuration_ms,
+                                 m_coreParams.stepSize, false);
+    glideParams.onsetProximityThreshold_steps =
+        m_coreFeatures.msToSteps(m_glideThresholdProximity_ms,
+                                 m_coreParams.stepSize, false);
+    glideParams.minimumPitchThreshold_cents = m_glideThresholdPitch_cents;
+    glideParams.minimumHopDifference_cents = m_glideThresholdHopMinimum_cents;
+    glideParams.maximumHopDifference_cents = m_glideThresholdHopMaximum_cents;
+    glideParams.medianFilterLength_steps =
+        m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
+                                 m_coreParams.stepSize, true);
+    glideParams.useSmoothing = false;
     Glide glide(glideParams);
     Glide::Extents glides = glide.extract_Hz(pyinPitch_Hz, onsetOffsets);
 
