@@ -25,8 +25,8 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
            "Clef which is closest to the instrument's pitch range."
          } },
        { "instrumentType",
-         { "Instrument type",
-           "General family of instrument."
+         { "Signal type",
+           "General family of the signal / instrument."
          } },
        { "noteDurations",
          { "Note durations",
@@ -63,7 +63,7 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "glideThresholdProximity", 350.f },
                { "linkThreshold", 70.f }
              } },
-           { "Voice",
+           { "Vocal",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 40.f },
                { "onsetSensitivityLevel", 8.f },
