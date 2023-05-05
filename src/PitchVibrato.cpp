@@ -78,12 +78,12 @@ PitchVibrato::PitchVibrato(float inputSampleRate) :
     m_summaryOutput(-1),
     m_pitchTrackOutput(-1),
     m_vibratoTypeOutput(-1),
-    m_vibratoIndexOutput(-1)
+    m_vibratoIndexOutput(-1),
+    m_vibratoPitchTrackOutput(-1)
 #ifdef WITH_DEBUG_OUTPUTS
     ,
     m_rawPeaksOutput(-1),
-    m_acceptedPeaksOutput(-1),
-    m_vibratoPitchTrackOutput(-1)
+    m_acceptedPeaksOutput(-1)
 #endif
 {
 }
@@ -451,6 +451,20 @@ PitchVibrato::getOutputDescriptors() const
     d.hasDuration = false;
     m_vibratoIndexOutput = int(list.size());
     list.push_back(d);
+    
+    d.identifier = "vibratoPitchTrack";
+    d.name = "Vibrato-Only Pitch Track";
+    d.description = "";
+    d.unit = "Hz";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.isQuantized = false;
+    d.sampleType = OutputDescriptor::FixedSampleRate;
+    d.sampleRate = (m_inputSampleRate / m_stepSize);
+    d.hasDuration = false;
+    m_vibratoPitchTrackOutput = int(list.size());
+    list.push_back(d);
 
 #ifdef WITH_DEBUG_OUTPUTS
     d.identifier = "rawpeaks";
@@ -478,20 +492,6 @@ PitchVibrato::getOutputDescriptors() const
     d.sampleRate = 0.f;
     d.hasDuration = false;
     m_acceptedPeaksOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "vibratoPitchTrack";
-    d.name = "[Debug] Vibrato-Only Pitch Track";
-    d.description = "";
-    d.unit = "Hz";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.isQuantized = false;
-    d.sampleType = OutputDescriptor::FixedSampleRate;
-    d.sampleRate = (m_inputSampleRate / m_stepSize);
-    d.hasDuration = false;
-    m_vibratoPitchTrackOutput = int(list.size());
     list.push_back(d);
 #endif
     
@@ -1618,25 +1618,6 @@ PitchVibrato::getRemainingFeatures()
             fs[m_summaryOutput].push_back(f);
         }
     }        
-        
-    
-#ifdef WITH_DEBUG_OUTPUTS
-    
-    for (int i = 0; i < int(rawPeaks.size()); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(rawPeaks[i]);
-        fs[m_rawPeaksOutput].push_back(f);
-    }
-    
-    for (auto e: elements) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.getStartTime() +
-            Vamp::RealTime::fromSeconds(e.position_sec);
-        f.values.push_back(pyinPitch_Hz[e.hop]);
-        fs[m_acceptedPeaksOutput].push_back(f);
-    }
 
     for (auto e: elements) {
         if (e.correlation < m_correlationThreshold) {
@@ -1657,6 +1638,24 @@ PitchVibrato::getRemainingFeatures()
                 fs[m_vibratoPitchTrackOutput].push_back(f);
             }
         }
+    }
+    
+#ifdef WITH_DEBUG_OUTPUTS
+    
+    for (int i = 0; i < int(rawPeaks.size()); ++i) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.timeForStep(rawPeaks[i]);
+        fs[m_rawPeaksOutput].push_back(f);
+    }
+    
+    for (auto e: elements) {
+        Feature f;
+        f.hasTimestamp = true;
+        f.timestamp = m_coreFeatures.getStartTime() +
+            Vamp::RealTime::fromSeconds(e.position_sec);
+        f.values.push_back(pyinPitch_Hz[e.hop]);
+        fs[m_acceptedPeaksOutput].push_back(f);
     }
     
 #endif // WITH_DEBUG_OUTPUTS

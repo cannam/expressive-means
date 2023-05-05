@@ -21,7 +21,7 @@ system = host_machine.system()
 architecture = host_machine.cpu_family()
 cpp = meson.get_compiler('cpp')
 
-boost_dep = dependency('boost', modules: [], version: '>= 1.73', required: true, static: true)
+boost_dep = dependency('boost', modules: [], version: '>= 1.71', required: true, static: true)
 
 boost_unit_test_dep = dependency('boost', modules: ['unit_test_framework'], version: '>= 1.73', required: get_option('tests'), static: true)
 have_boost_unit_test = boost_unit_test_dep.found()

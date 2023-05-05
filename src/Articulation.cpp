@@ -60,11 +60,6 @@ Articulation::Articulation(float inputSampleRate) :
     m_articulationTypeOutput(-1),
     m_pitchTrackOutput(-1),
     m_articulationIndexOutput(-1)
-#ifdef WITH_DEBUG_OUTPUTS
-    ,
-    m_noiseRatioOutput(-1),
-    m_relativeDurationOutput(-1)
-#endif
 {
 }
 
@@ -342,96 +337,6 @@ Articulation::getOutputDescriptors() const
     d.hasDuration = false;
     m_articulationIndexOutput = int(list.size());
     list.push_back(d);
-
-#ifdef WITH_DEBUG_OUTPUTS
-    d.identifier = "rawpower";
-    d.name = "[Debug] Raw Power";
-    d.description = "Raw power curve.";
-    d.unit = "dB";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_rawPowerOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "smoothedpower";
-    d.name = "[Debug] Smoothed Power";
-    d.description = "Smoothed power curve.";
-    d.unit = "dB";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_smoothedPowerOutput = int(list.size());
-    list.push_back(d);
-    
-    d.identifier = "filteredPitch";
-    d.name = "[Debug] Filtered Pitch";
-    d.description = "Re-filtered pitch track.";
-    d.unit = "MIDI units";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_filteredPitchOutput = int(list.size());
-    list.push_back(d);
-
-    d.identifier = "pitchdf";
-    d.name = "[Debug] Pitch Onset Detection Function";
-    d.description = "Function used to identify onsets by pitch change. Onsets are considered likely when the function is low rather than high, i.e. when it first falls below a threshold.";
-    d.unit = "semitones";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_pitchOnsetDfOutput = int(list.size());
-    list.push_back(d);
-
-    d.identifier = "transientdf";
-    d.name = "[Debug] Transient Onset Detection Function";
-    d.description = "Function used to identify onsets by spectral rise. Onsets are considered likely when the function exceeds a threshold.";
-    d.unit = "%";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_transientOnsetDfOutput = int(list.size());
-    list.push_back(d);
-
-    d.identifier = "noiseratio";
-    d.name = "[Debug] Noise Ratio";
-    d.description = "Noise ratio based on spectral level rise with constant configuration (disregarding onset parameters).";
-    d.unit = "%";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_noiseRatioOutput = int(list.size());
-    list.push_back(d);
-
-    d.identifier = "relativeduration";
-    d.name = "[Debug] Relative Sound Duration";
-    d.description = "Ratio of note duration (onset to offset) to inter-onset interval (onset to following onset) for each note.";
-    d.unit = "%";
-    d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_relativeDurationOutput = int(list.size());
-    list.push_back(d);
-
-    d.identifier = "onsets";
-    d.name = "[Debug] Onsets Labelled by Cause";
-    d.description = "Identified onset locations, labelled as either Pitch Change or Spectral Rise depending on how they were identified.";
-    d.unit = "";
-    d.hasFixedBinCount = true;
-    d.binCount = 0;
-    d.hasKnownExtents = false;
-    d.hasDuration = false;
-    m_onsetOutput = int(list.size());
-    list.push_back(d);
-#endif
     
     return list;
 }
@@ -705,14 +610,18 @@ Articulation::getRemainingFeatures()
         bool lungoAndGlide = false;
         if (prevOnset >= 0) {
             if (onsetToRelativeDuration.at(prevOnset) >= 0.95) {
+#ifdef DEBUG_ARTICULATION
                 cerr << "Onset " << onset << " has lungo at preceding onset "
                      << prevOnset << endl;
+#endif
                 lungoPrecedes = true;
                 if (glides.find(onset) != glides.end() &&
                     glides.at(onset).start < onset) {
+#ifdef DEBUG_ARTICULATION
                     cerr << "... and there is a glide from "
                          << glides.at(onset).start << " to "
                          << glides.at(onset).end << endl;
+#endif
                     lungoAndGlide = true;
                 }
             }
@@ -886,95 +795,6 @@ Articulation::getRemainingFeatures()
         f.values.clear();
         fs[m_summaryOutput].push_back(f);
     }
-    
-#ifdef WITH_DEBUG_OUTPUTS
-    auto filteredPitch = m_coreFeatures.getFilteredPitch_semis();
-    for (int i = 0; i < int(filteredPitch.size()); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(filteredPitch[i]);
-        fs[m_filteredPitchOutput].push_back(f);
-    }
-    
-    auto pitchOnsetDf = m_coreFeatures.getPitchOnsetDF();
-    auto pitchOnsetDfValidity = m_coreFeatures.getPitchOnsetDFValidity();
-    for (int i = 0; i < int(pitchOnsetDf.size()); ++i) {
-        if (pitchOnsetDfValidity[i]) {
-            Feature f;
-            f.hasTimestamp = true;
-            f.timestamp = m_coreFeatures.timeForStep(i);
-            f.values.push_back(pitchOnsetDf[i]);
-            fs[m_pitchOnsetDfOutput].push_back(f);
-        }
-    }
-    
-    for (size_t i = 0; i < rawPower.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(rawPower[i]);
-        fs[m_rawPowerOutput].push_back(f);
-    }
-    
-    for (size_t i = 0; i < smoothedPower.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(smoothedPower[i]);
-        fs[m_smoothedPowerOutput].push_back(f);
-    }
-    
-    auto riseFractions = m_coreFeatures.getOnsetLevelRiseFractions();
-    for (size_t i = 0; i < riseFractions.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(riseFractions[i] * 100.f);
-        fs[m_transientOnsetDfOutput].push_back(f);
-    }
-
-    for (size_t i = 0; i < noiseRatioFractions.size(); ++i) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(i);
-        f.values.push_back(noiseRatioFractions[i] * 100.f);
-        fs[m_noiseRatioOutput].push_back(f);
-    }
-
-    auto onsets = m_coreFeatures.getMergedOnsets();
-    for (auto pq: onsets) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(pq.first);
-        switch (pq.second) {
-        case CoreFeatures::OnsetType::Pitch:
-            f.label = "Pitch Change";
-            break;
-        case CoreFeatures::OnsetType::SpectralLevelRise:
-            f.label = "Spectral Rise";
-            break;
-        case CoreFeatures::OnsetType::PowerRise:
-            f.label = "Power Rise";
-            break;
-        }
-        fs[m_onsetOutput].push_back(f);
-    }
-
-    for (auto pq: onsetToRelativeDuration) {
-        Feature f;
-        f.hasTimestamp = true;
-        f.timestamp = m_coreFeatures.timeForStep(pq.first);
-        f.hasDuration = true;
-        f.duration =
-            m_coreFeatures.timeForStep(onsetOffsets.at(pq.first).first) -
-            f.timestamp;
-        f.values.push_back(pq.second);
-        f.label = "";
-        fs[m_relativeDurationOutput].push_back(f);
-    }
-    
-#endif
     
     return fs;
 }

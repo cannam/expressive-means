@@ -18,7 +18,7 @@
 
 using std::string;
 
-#define WITH_DEBUG_OUTPUTS 1
+//#define WITH_DEBUG_OUTPUTS 1
 
 class PitchVibrato : public Vamp::Plugin
 {
@@ -287,11 +287,11 @@ protected:
     mutable int m_pitchTrackOutput;
     mutable int m_vibratoTypeOutput;
     mutable int m_vibratoIndexOutput;
+    mutable int m_vibratoPitchTrackOutput;
 
 #ifdef WITH_DEBUG_OUTPUTS
     mutable int m_rawPeaksOutput;
     mutable int m_acceptedPeaksOutput;
-    mutable int m_vibratoPitchTrackOutput;
 #endif
 
     typedef std::vector<VibratoElement> VibratoChain;

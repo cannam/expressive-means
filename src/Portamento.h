@@ -242,20 +242,16 @@ protected:
     float m_durationBoundaryLong_ms; // d_1.l
     float m_dynamicsThreshold_dB; // e_1
     float m_scalingFactor; // s
-    float m_smoothingEnabled;
     
     mutable int m_summaryOutput;
     mutable int m_portamentoTypeOutput;
     mutable int m_pitchTrackOutput;
     mutable int m_portamentoIndexOutput;
-
-#ifdef WITH_DEBUG_OUTPUTS
     mutable int m_portamentoPointsOutput;
     mutable int m_glideDirectionOutput;
     mutable int m_glideLinkOutput;
     mutable int m_glideDynamicOutput;
     mutable int m_glidePitchTrackOutput;
-#endif
 };
 
 #endif

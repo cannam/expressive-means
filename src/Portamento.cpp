@@ -40,7 +40,6 @@ static const float default_durationBoundaryMedium_ms = 120.f;
 static const float default_durationBoundaryLong_ms = 210.f;
 static const float default_dynamicsThreshold_dB = 1.f;
 static const float default_scalingFactor = 7.4f;
-static const float default_smoothingEnabled = 0.f;
 
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
@@ -59,18 +58,14 @@ Portamento::Portamento(float inputSampleRate) :
     m_durationBoundaryLong_ms(default_durationBoundaryLong_ms),
     m_dynamicsThreshold_dB(default_dynamicsThreshold_dB),
     m_scalingFactor(default_scalingFactor),
-    m_smoothingEnabled(default_smoothingEnabled),
     m_summaryOutput(-1),
     m_portamentoTypeOutput(-1),
     m_pitchTrackOutput(-1),
-    m_portamentoIndexOutput(-1)
-#ifdef WITH_DEBUG_OUTPUTS
-    ,
+    m_portamentoIndexOutput(-1),
     m_portamentoPointsOutput(-1),
     m_glideDirectionOutput(-1),
     m_glideLinkOutput(-1),
     m_glidePitchTrackOutput(-1)
-#endif
 {
 }
 
@@ -251,16 +246,6 @@ Portamento::getParameterDescriptors() const
     d.maxValue = 30.f;
     d.defaultValue = default_scalingFactor;
     list.push_back(d);
-        
-    d.identifier = "smoothingEnabled";
-    d.name = "[Debug] Pitch smoothing";
-    d.unit = "";
-    d.minValue = 0.f;
-    d.maxValue = 1.f;
-    d.isQuantized = true;
-    d.quantizeStep = 1.f;
-    d.defaultValue = default_smoothingEnabled;
-    list.push_back(d);
 
     return list;
 }
@@ -297,8 +282,6 @@ Portamento::getParameter(string identifier) const
         return m_dynamicsThreshold_dB;
     } else if (identifier == "scalingFactor") {
         return m_scalingFactor;
-    } else if (identifier == "smoothingEnabled") {
-        return m_smoothingEnabled;
     }
     
     return 0.f;
@@ -335,8 +318,6 @@ Portamento::setParameter(string identifier, float value)
         m_dynamicsThreshold_dB = value;
     } else if (identifier == "scalingFactor") {
         m_scalingFactor = value;
-    } else if (identifier == "smoothingEnabled") {
-        m_smoothingEnabled = value;
     }
 }
 
@@ -413,9 +394,8 @@ Portamento::getOutputDescriptors() const
     m_portamentoIndexOutput = int(list.size());
     list.push_back(d);
 
-#ifdef WITH_DEBUG_OUTPUTS
     d.identifier = "portamentoPoints";
-    d.name = "[Debug] Portamento Significant Points";
+    d.name = "Portamento Significant Points";
     d.description = "";
     d.unit = "Hz";
     d.hasFixedBinCount = true;
@@ -424,9 +404,9 @@ Portamento::getOutputDescriptors() const
     d.hasDuration = false;
     m_portamentoPointsOutput = int(list.size());
     list.push_back(d);
-    
+
     d.identifier = "glideDirection";
-    d.name = "[Debug] Glide Direction";
+    d.name = "Glide Direction";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -437,7 +417,7 @@ Portamento::getOutputDescriptors() const
     list.push_back(d);
     
     d.identifier = "glideLink";
-    d.name = "[Debug] Glide Link";
+    d.name = "Glide Link";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -448,7 +428,7 @@ Portamento::getOutputDescriptors() const
     list.push_back(d);
     
     d.identifier = "glideDynamic";
-    d.name = "[Debug] Glide Dynamic";
+    d.name = "Glide Dynamic";
     d.description = "";
     d.unit = "";
     d.hasFixedBinCount = true;
@@ -459,7 +439,7 @@ Portamento::getOutputDescriptors() const
     list.push_back(d);
     
     d.identifier = "glidePitchTrack";
-    d.name = "[Debug] Glide-Only Pitch Track";
+    d.name = "Glide-Only Pitch Track";
     d.description = "";
     d.unit = "Hz";
     d.hasFixedBinCount = true;
@@ -468,7 +448,6 @@ Portamento::getOutputDescriptors() const
     d.hasDuration = false;
     m_glidePitchTrackOutput = int(list.size());
     list.push_back(d);
-#endif
     
     return list;
 }
@@ -758,7 +737,7 @@ Portamento::getRemainingFeatures()
     glideParams.medianFilterLength_steps =
         m_coreFeatures.msToSteps(m_coreParams.pitchAverageWindow_ms,
                                  m_coreParams.stepSize, true);
-    glideParams.useSmoothing = (m_smoothingEnabled > 0.5f);
+    glideParams.useSmoothing = false;
 
     Glide glide(glideParams);
     Glide::Extents glides = glide.extract_Hz(pyinPitch, onsetOffsets);
@@ -888,7 +867,6 @@ Portamento::getRemainingFeatures()
             f.values.clear();
             fs[m_summaryOutput].push_back(f);
         
-#ifdef WITH_DEBUG_OUTPUTS
             {
                 ostringstream os;
                 os << "Glide " << glideNo << ": Start";
@@ -939,7 +917,6 @@ Portamento::getRemainingFeatures()
                     fs[m_glidePitchTrackOutput].push_back(f);
                 }
             }
-#endif
         
             ++glideNo;
         }
