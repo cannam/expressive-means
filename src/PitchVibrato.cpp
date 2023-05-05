@@ -267,7 +267,7 @@ PitchVibrato::getParameterDescriptors() const
     list.push_back(d);
 
     d.identifier = "smoothingWindowLength";
-    d.name = "[Experimental] Smoothing window length";
+    d.name = "Smoothing window length";
     d.description = "Length of mean filter used to smooth the pitch track for peak selection. Other measurements are always performed from the un-smoothed track.";
     d.unit = "ms";
     d.minValue = 0.f;
@@ -276,7 +276,7 @@ PitchVibrato::getParameterDescriptors() const
     list.push_back(d);
 
     d.identifier = "segmentationType";
-    d.name = "[Experimental] Note segmentation";
+    d.name = "Note segmentation";
     d.description = "Preprocessing to apply before vibrato peak selection. None means the whole pitch track is considered at once. Segmented means individual notes are treated separately. Without Glides means the whole track is considered after glides have been identified and removed. Without Glides And Segmented means individual notes are considered after glides removed.";
     d.unit = "";
     d.minValue = 0.f;
