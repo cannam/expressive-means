@@ -82,7 +82,7 @@ Articulation::getName() const
 string
 Articulation::getDescription() const
 {
-    return "";
+    return "identifies types and intensities of articulation in monophonic recordings (specified parameter settings)";
 }
 
 string
