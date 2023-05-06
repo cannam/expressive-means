@@ -132,7 +132,7 @@ SemanticPitchVibrato::getName() const {
 
 string
 SemanticPitchVibrato::getDescription() const {
-    return "identifies types and intensities of vibrato instances in monophonic recordings"; 
+    return "identifies types and intensities of pitch vibrato instances in monophonic recordings"; 
 }
 
 string
