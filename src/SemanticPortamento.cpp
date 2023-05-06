@@ -120,7 +120,7 @@ SemanticPortamento::getName() const {
 
 string
 SemanticPortamento::getDescription() const {
-    return ""; //!!! todo
+    return "identifies types and intensities of portamento in monophonic recordings";
 }
 
 string
