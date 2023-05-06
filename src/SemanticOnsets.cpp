@@ -132,7 +132,7 @@ SemanticOnsets::getName() const {
 
 string
 SemanticOnsets::getDescription() const {
-    return ""; //!!! todo
+    return "finds onsets in monophonic recordings on base of changes in power, pitch, and spectral content";
 }
 
 string
