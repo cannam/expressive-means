@@ -107,7 +107,7 @@ PitchVibrato::getName() const
 string
 PitchVibrato::getDescription() const
 {
-    return "";
+    return "identifies types and intensities of pitch vibrato instances in monophonic recordings (specified parameter settings)";
 }
 
 string
