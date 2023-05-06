@@ -15,7 +15,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
     SemanticAdapter<PitchVibrato>
     (inputSampleRate,
      // Output selection (to be passed through)
-     { "summary", "vibratoType", "vibratoIndex" },
+     { "summary", "vibratoType", "vibratoIndex", "vibratoPitchTrack" },
      // Parameter selection (passed through, or new)
      { "clef", "instrumentType", "noteDurations", "normaliseAudio"
      },
