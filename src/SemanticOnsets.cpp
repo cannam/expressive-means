@@ -56,7 +56,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
-           { "Voice",
+           { "Vocal",
              { { "onsetSensitivityPitch", 100.f },
                { "onsetSensitivityNoise", 50.f },
                { "onsetSensitivityLevel", 7.f },
