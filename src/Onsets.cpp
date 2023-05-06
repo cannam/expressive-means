@@ -51,7 +51,7 @@ Onsets::getName() const
 string
 Onsets::getDescription() const
 {
-    return "";
+    return "finds note onsets and durations in monophonic recordings based on changes in spectral content, power, and pitch (specified parameter settings)";
 }
 
 string
