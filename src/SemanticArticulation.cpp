@@ -201,7 +201,7 @@ SemanticArticulation::getName() const {
 
 string
 SemanticArticulation::getDescription() const {
-    return ""; //!!! todo
+    return "identifies types and intensity of articulation in monophonic recordings"; 
 }
 
 string
