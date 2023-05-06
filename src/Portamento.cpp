@@ -88,7 +88,7 @@ Portamento::getName() const
 string
 Portamento::getDescription() const
 {
-    return "";
+    return "identifies types and intensities of portamento instances in monophonic recordings (specified parameter settings)";
 }
 
 string
