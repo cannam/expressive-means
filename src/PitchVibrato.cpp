@@ -1008,6 +1008,14 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
 
     smoothedPitch_semis.clear();
     rawPeaks.clear();
+
+    // "In Segmented and Without Glides And Segmented modes, the first
+    // 25ms of pitch track after each onset [should] be effectively
+    // discarded and would not contribute to the analysis for any
+    // note"
+
+    int startClip_steps = m_coreFeatures.msToSteps
+        (25.0, m_coreParams.stepSize, false);
     
     for (auto itr = onsetOffsets.begin(); itr != onsetOffsets.end(); ++itr) {
 
@@ -1020,10 +1028,10 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
             followingOnset = jtr->first;
         }
 
-        if (itr == onsetOffsets.begin()) {
-            for (int i = 0; i < onset; ++i) {
-                smoothedPitch_semis.push_back(0.0);
-            }
+        onset += startClip_steps;
+        
+        if (onset >= followingOnset) {
+            continue;
         }
         
         vector<double> notePitches(pyinPitch_Hz.begin() + onset,
@@ -1050,6 +1058,10 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
             rawPeaks.push_back(p + onset);
             ++peakCount;
         }
+
+        while (int(smoothedPitch_semis.size()) < onset) {
+            smoothedPitch_semis.push_back(0.0);
+        }            
 
         for (auto p : noteSmoothedPitch) {
             smoothedPitch_semis.push_back(p);
