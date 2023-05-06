@@ -28,18 +28,18 @@ static void testVibratoClassification(std::string testName,
                                       const CoreFeatures::OnsetOffsetMap &onsetOffsets,
                                       std::string expectedClassification)
 {
+    (void)testName;
+    
     PitchVibrato pv(44100.f);
-//    pv.setParameter("vibratoRangeMinimum", 5.f);
-//    pv.setParameter("correlationThreshold", 0.4f);
     pv.initialise(1, pv.getPreferredStepSize(), pv.getPreferredBlockSize());
 
-    cerr << endl << testName << " test: Running extractElements" << endl;
+//    cerr << endl << testName << " test: Running extractElements" << endl;
     
     vector<int> rawPeaks;
     vector<double> smoothedPitch_semis;
     auto elements = pv.extractElementsWithoutGlides
         (pitch_Hz, onsetOffsets, smoothedPitch_semis, rawPeaks);
-
+/*
     cerr << endl << testName << " test: extractElements finished" << endl;
     
     cerr << testName << ": extractElements returned the following raw peak indices:" << endl;
@@ -58,9 +58,9 @@ static void testVibratoClassification(std::string testName,
     }
 
     cerr << endl << testName << " test: Running classify" << endl;
-
+*/
     auto classification = pv.classify(elements, onsetOffsets);
-
+/*
     cerr << endl << testName << " test: classify finished" << endl;
     
     cerr << testName << ": classify returned the following classifications:" << endl;
@@ -72,7 +72,7 @@ static void testVibratoClassification(std::string testName,
         ++i;
     }
     cerr << endl;
-
+*/
     if (expectedClassification == "") {
         BOOST_TEST(classification.size() == 0);
     } else {

@@ -25,7 +25,7 @@ using std::set;
 using std::map;
 using std::ostringstream;
 
-#define DEBUG_PITCH_VIBRATO 1
+//#define DEBUG_PITCH_VIBRATO 1
 
 static const float default_vibratoRateMinimum_Hz = 4.f;
 static const float default_vibratoRateMaximum_Hz = 10.f;
