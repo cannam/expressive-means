@@ -27,6 +27,10 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
        { "instrumentType",
          { "Signal type",
            "General family of signal / instrument."
+         } },
+       { "noteDurations",
+         { "Note durations",
+           "Indication of the shortest durations found in the recording."
          } }
      },
      // Named options parameters (map)
