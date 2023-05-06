@@ -15,7 +15,7 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
     SemanticAdapter<Portamento>
     (inputSampleRate,
      // Output selection (to be passed through)
-     { "summary", "portamentoType", "portamentoIndex" },
+     { "summary", "portamentoType", "portamentoIndex", "Portamento Significant Points" },
      // Parameter selection (passed through, or new)
      { "clef", "instrumentType", "noteDurations", "normaliseAudio"
      },
