@@ -33,9 +33,17 @@ See the general Vamp [How to Install](https://vamp-plugins.org/download.html#ins
 
 ### Prerequisites
 
-There are several dependencies needed to build the plugins:
+These dependencies are needed to build the plugins from a source
+release:
 
  * C++ compiler and typical build tools
+
+ * The [Meson](https://mesonbuild.com/) build system
+ 
+ * The [Boost](https://www.boost.org/) Math library (used by pYIN)
+
+These further dependencies are needed to build the plugins from a
+clone of the source repository:
 
  * Both Git and [Mercurial](https://www.mercurial-scm.org/) (the latter
    for pYIN code)
@@ -44,10 +52,6 @@ There are several dependencies needed to build the plugins:
    [Repoint](https://github.com/cannam/repoint)
    ([Poly/ML](http://polyml.org), [SML/NJ](http://smlnj.org), or, on
    non-Windows platforms only, [MLton](http://mlton.org))
-
- * The [Meson](https://mesonbuild.com/) build system
- 
- * The [Boost](https://www.boost.org/) Math library (used by pYIN)
 
 None of these are required in order to use a plugin once it has been
 built.
@@ -61,10 +65,15 @@ manager, e.g. for Ubuntu try
 $ sudo apt-get install -y build-essential git mercurial mlton meson ninja-build libboost-math-dev
 ```
 
-then
+Then if you are in a clone of the repository, first run
 
 ```
 $ ./repoint install
+```
+
+Then in all cases run
+
+```
 $ meson setup build
 $ ninja -C build
 ```
@@ -82,7 +91,17 @@ command-line tools.
 
 ```
 $ brew install mercurial polyml meson ninja boost
+```
+
+Then if you are in a clone of the repository, first run
+
+```
 $ ./repoint install
+```
+
+Then in all cases run
+
+```
 $ meson setup build
 $ ninja -C build
 ```
