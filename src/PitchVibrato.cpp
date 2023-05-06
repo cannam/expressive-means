@@ -1076,11 +1076,10 @@ PitchVibrato::extractElementsSegmented(const vector<double> &pyinPitch_Hz,
     return elements;
 }
 
-vector<PitchVibrato::VibratoElement>
-PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
-                                           const CoreFeatures::OnsetOffsetMap &onsetOffsets,
-                                           vector<double> &smoothedPitch_semis,
-                                           vector<int> &rawPeaks) const
+std::vector<double>
+PitchVibrato::filterGlides(const std::vector<double> &pyinPitch_Hz,
+                           const CoreFeatures::OnsetOffsetMap &onsetOffsets)
+    const
 {
 #ifdef DEBUG_PITCH_VIBRATO
     cerr << "** 0. Identify glides" << endl;
@@ -1123,7 +1122,18 @@ PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
     cerr << "** 0. Complete" << endl;
 #endif
 
-    return extractElements(glideFilteredPitch_Hz, smoothedPitch_semis, rawPeaks);
+    return glideFilteredPitch_Hz;
+}
+
+vector<PitchVibrato::VibratoElement>
+PitchVibrato::extractElementsWithoutGlides(const vector<double> &pyinPitch_Hz,
+                                           const CoreFeatures::OnsetOffsetMap &onsetOffsets,
+                                           vector<double> &smoothedPitch_semis,
+                                           vector<int> &rawPeaks) const
+{
+    auto glideFilteredPitch_Hz = filterGlides(pyinPitch_Hz, onsetOffsets);
+    return extractElements(glideFilteredPitch_Hz,
+                           smoothedPitch_semis, rawPeaks);
 }
 
 vector<PitchVibrato::VibratoElement>
@@ -1132,35 +1142,7 @@ PitchVibrato::extractElementsWithoutGlidesAndSegmented(const vector<double> &pyi
                                                        vector<double> &smoothedPitch_semis,
                                                        vector<int> &rawPeaks) const
 {
-#ifdef DEBUG_PITCH_VIBRATO
-    cerr << "** 0. Identify glides" << endl;
-#endif
-    
-    Glide::Parameters glideParams;
-    //!!! params?
-    Glide glide(glideParams);
-    Glide::Extents glides = glide.extract_Hz(pyinPitch_Hz, onsetOffsets);
-
-#ifdef DEBUG_PITCH_VIBRATO
-    cerr << "-- Identified " << glides.size() << " glides and "
-         << onsetOffsets.size() << " onsets" << endl;
-#endif
-
-    vector<double> glideFilteredPitch_Hz = pyinPitch_Hz;
-    for (auto g : glides) {
-#ifdef DEBUG_PITCH_VIBRATO
-        cerr << "-- Removing glide from " << g.second.start << " to "
-             << g.second.end << endl;
-#endif
-        for (auto i = g.second.start; i < g.second.end; ++i) {
-            glideFilteredPitch_Hz[i] = 0.0;
-        }
-    }
-
-#ifdef DEBUG_PITCH_VIBRATO
-    cerr << "** 0. Complete" << endl;
-#endif
-
+    auto glideFilteredPitch_Hz = filterGlides(pyinPitch_Hz, onsetOffsets);
     return extractElementsSegmented(glideFilteredPitch_Hz, onsetOffsets,
                                     smoothedPitch_semis, rawPeaks);
 }

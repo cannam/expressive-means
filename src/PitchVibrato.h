@@ -293,7 +293,10 @@ protected:
     mutable int m_rawPeaksOutput;
     mutable int m_acceptedPeaksOutput;
 #endif
-
+    
+    std::vector<double> filterGlides(const std::vector<double> &,
+                                     const CoreFeatures::OnsetOffsetMap &) const;
+    
     typedef std::vector<VibratoElement> VibratoChain;
     typedef std::vector<VibratoChain> VibratoChains;
 
