@@ -1,7 +1,7 @@
 project(
     'Expressive Means',
     'c', 'cpp',
-    version: '0.1',
+    version: '0.1.1',
     license: 'GPL-2.0-or-later',
     default_options: [
         'cpp_std=c++17',
