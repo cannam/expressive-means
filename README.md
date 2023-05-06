@@ -1,6 +1,10 @@
 
 # Expressive Means Vamp Plugins
 
+[Vamp plugins](https://vamp-plugins.org) for analysis of articulation,
+vibrato, and portamento in audio recordings of musical performances,
+with a primary focus on bowed stringed instruments.
+ 
 * Method by Frithjof Vollmer, Stuttgart University of Music and the Performing Arts (Germany)
 * Code by Chris Cannam, Particular Programs Ltd (London, UK)
 * Makes use of "pYIN" by Matthias Mauch and of Tilo Haehnel's "vibratoanalyse.R" method
