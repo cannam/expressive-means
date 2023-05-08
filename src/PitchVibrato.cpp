@@ -27,8 +27,8 @@ using std::ostringstream;
 
 //#define DEBUG_PITCH_VIBRATO 1
 
-static const float default_vibratoRateMinimum_Hz = 4.f;
-static const float default_vibratoRateMaximum_Hz = 10.f;
+static const float default_vibratoRateMinimum_Hz = 4.2f;
+static const float default_vibratoRateMaximum_Hz = 9.2f;
 static const float default_vibratoRangeMinimum_cents = 20.f;
 static const float default_vibratoRangeMaximum_cents = 200.f;
 static const float default_rateBoundaryModerate_Hz = 6.2f;
