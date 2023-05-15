@@ -24,7 +24,7 @@ using std::map;
 using std::ostringstream;
 
 static const float default_volumeDevelopmentThreshold_dB = 2.f;
-static const float default_scalingFactor = 10.7f;
+static const float default_scalingFactor = 16.5f;
 static const float default_impulseNoiseRatioPlosive_percent = 80.f;
 static const float default_impulseNoiseRatioFricative_percent = 30.f;
 static const float default_reverbDurationFactor = 1.5f;
