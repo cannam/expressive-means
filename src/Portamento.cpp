@@ -39,7 +39,7 @@ static const float default_rangeBoundaryLarge_cents = 550.f;
 static const float default_durationBoundaryMedium_ms = 120.f;
 static const float default_durationBoundaryLong_ms = 210.f;
 static const float default_dynamicsThreshold_dB = 1.f;
-static const float default_scalingFactor = 7.4f;
+static const float default_scalingFactor = 0.0008f;
 
 Portamento::Portamento(float inputSampleRate) :
     Plugin(inputSampleRate),
