@@ -1473,8 +1473,8 @@ PitchVibrato::classificationToIndex(const PitchVibrato::VibratoClassification &
 {
     double index = 1.0;
     index *= vibratoDurationToFactor(classification.duration);
-    index *= vibratoRateToFactor(classification.rate);
-    index *= vibratoRangeToFactor(classification.range);
+    index *= classification.meanRate_Hz;
+    index *= classification.maxRange_cents;
     index *= developmentToFactor(classification.development);
     index *= m_scalingFactor;
     return index;

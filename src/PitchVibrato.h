@@ -127,15 +127,6 @@ public:
         }
     }
     
-    static double vibratoRateToFactor(VibratoRate d) {
-        switch (d) {
-        case VibratoRate::Slow: return 1.0;
-        case VibratoRate::Moderate: return 2.0;
-        case VibratoRate::Fast: return 3.0;
-        default: throw std::logic_error("unknown VibratoRate");
-        }
-    }
-
     enum class VibratoRange {
         Narrow, Medium, Wide
     };
@@ -158,15 +149,6 @@ public:
         }
     }
     
-    static double vibratoRangeToFactor(VibratoRange d) {
-        switch (d) {
-        case VibratoRange::Narrow: return 1.0;
-        case VibratoRange::Medium: return 2.0;
-        case VibratoRange::Wide: return 3.0;
-        default: throw std::logic_error("unknown VibratoRange");
-        }
-    }
-
     enum class VibratoDevelopment {
         Decreasing, DeAndIncreasing, Stable, InAndDecreasing, Increasing
     };
