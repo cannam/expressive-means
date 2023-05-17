@@ -242,8 +242,8 @@ Portamento::getParameterDescriptors() const
     d.identifier = "scalingFactor";
     d.name = "Index scaling factor";
     d.unit = "";
-    d.minValue = 1.f;
-    d.maxValue = 30.f;
+    d.minValue = 0.f;
+    d.maxValue = 1.f;
     d.defaultValue = default_scalingFactor;
     list.push_back(d);
 
