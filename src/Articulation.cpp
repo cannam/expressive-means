@@ -337,6 +337,43 @@ Articulation::getOutputDescriptors() const
     d.hasDuration = false;
     m_articulationIndexOutput = int(list.size());
     list.push_back(d);
+
+    d.identifier = "meanNoiseRatio";
+    d.name = "Mean Noise Ratio";
+    d.description = "Returns a single label containing the mean noise ratio value across all onsets";
+    d.unit = "%";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = true;
+    d.minValue = 0.0;
+    d.maxValue = 100.0;
+    d.hasDuration = true;
+    m_meanNoiseRatioOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "meanDynamics";
+    d.name = "Mean Dynamics";
+    d.description = "Returns two labels containing the mean maximum and minimum dB developments of all sustain phases";
+    d.unit = "dB";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = true;
+    m_meanDynamicsOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "meanToneRatio";
+    d.name = "Mean Tone Ratio";
+    d.description = "Returns a single label containing the mean noise ratio value across all onsets";
+    d.unit = "%";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = true;
+    d.minValue = 0.0;
+    d.maxValue = 100.0;
+    d.hasDuration = true;
+    m_meanToneRatioOutput = int(list.size());
+    list.push_back(d);
     
     return list;
 }
@@ -570,12 +607,18 @@ Articulation::getRemainingFeatures()
     }
             
     map<int, double> onsetToRelativeDuration;
+    double meanRelativeDuration = 0.0;
     for (auto pq : onsetToFollowingOnset) {
         int onset = pq.first;
         int following = pq.second;
         int offset = onsetOffsets.at(pq.first).first;
-        onsetToRelativeDuration[onset] = 
+        double relativeDuration =
             double(offset - onset) / double(following - onset);
+        onsetToRelativeDuration[onset] = relativeDuration;
+        meanRelativeDuration += relativeDuration;
+    }
+    if (!onsetToFollowingOnset.empty()) {
+        meanRelativeDuration /= onsetToFollowingOnset.size();
     }
 
     Glide::Parameters glideParams;
@@ -597,6 +640,7 @@ Articulation::getRemainingFeatures()
     Glide::Extents glides = glide.extract_Hz(pyinPitch, onsetOffsets);
     
     int prevOnset = -1;
+    double meanNoiseRatio = 0.0;
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
         vector<vector<int>> binsAboveFloor;
@@ -634,7 +678,11 @@ Articulation::getRemainingFeatures()
             (binsAboveFloor, m_coreFeatures.getOnsetBinCount(),
              plosiveRatio, effectiveFricativeRatio, lungoAndGlide);
         onsetToNoise[onset] = rec;
+        meanNoiseRatio += rec.total;
         prevOnset = onset;
+    }
+    if (!onsetOffsets.empty()) {
+        meanNoiseRatio /= onsetOffsets.size();
     }
     
     int sustainBeginSteps = m_coreFeatures.msToSteps
@@ -651,7 +699,8 @@ Articulation::getRemainingFeatures()
     };
     
     map<int, LDRec> onsetToLD;
-
+    double meanMaxDiff = 0.0;
+    double meanMinDiff = 0.0;
     for (auto pq: onsetOffsets) {
         int onset = pq.first;
         int sustainBegin = onset + sustainBeginSteps;
@@ -707,6 +756,13 @@ Articulation::getRemainingFeatures()
         }
         
         onsetToLD[onset] = rec;
+
+        meanMaxDiff += rec.maxDiff;
+        meanMinDiff += rec.minDiff;
+    }
+    if (!onsetOffsets.empty()) {
+        meanMaxDiff /= onsetOffsets.size();
+        meanMinDiff /= onsetOffsets.size();
     }
 
     for (auto pq : onsetToNoise) {
@@ -795,6 +851,31 @@ Articulation::getRemainingFeatures()
         f.values.clear();
         fs[m_summaryOutput].push_back(f);
     }
+
+    Feature f;
+    f.hasTimestamp = true;
+    f.timestamp = m_coreFeatures.getStartTime();
+    f.hasDuration = true;
+    f.duration = m_coreFeatures.timeForStep(n) - f.timestamp;
+    f.values.clear();
+    f.values.push_back(meanNoiseRatio * 100.0);
+    f.label = "";
+    fs[m_meanNoiseRatioOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanMinDiff);
+    f.label = "Minimum";
+    fs[m_meanDynamicsOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanMaxDiff);
+    f.label = "Maximum";
+    fs[m_meanDynamicsOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanRelativeDuration);
+    f.label = "";
+    fs[m_meanToneRatioOutput].push_back(f);
     
     return fs;
 }

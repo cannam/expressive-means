@@ -16,8 +16,6 @@
 
 #include "CoreFeatures.h"
 
-#define WITH_DEBUG_OUTPUTS 1
-
 using std::string;
 
 class Articulation : public Vamp::Plugin
@@ -191,17 +189,10 @@ protected:
     mutable int m_articulationTypeOutput;
     mutable int m_pitchTrackOutput;
     mutable int m_articulationIndexOutput;
-    
-#ifdef WITH_DEBUG_OUTPUTS
-    mutable int m_rawPowerOutput;
-    mutable int m_smoothedPowerOutput;
-    mutable int m_filteredPitchOutput;
-    mutable int m_pitchOnsetDfOutput;
-    mutable int m_transientOnsetDfOutput;
-    mutable int m_noiseRatioOutput;
-    mutable int m_relativeDurationOutput;
-    mutable int m_onsetOutput;
-#endif
+
+    mutable int m_meanNoiseRatioOutput;
+    mutable int m_meanDynamicsOutput;
+    mutable int m_meanToneRatioOutput;
 };
 
 #endif
