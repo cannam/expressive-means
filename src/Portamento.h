@@ -136,15 +136,6 @@ public:
         }
     }
     
-    static double glideRangeToFactor(GlideRange d) {
-        switch (d) {
-        case GlideRange::Small: return 1.0;
-        case GlideRange::Medium: return 2.0;
-        case GlideRange::Large: return 3.0;
-        default: throw std::logic_error("unknown GlideRange");
-        }
-    }
-
     enum class GlideDuration {
         Short, Medium, Long
     };
@@ -167,15 +158,6 @@ public:
         }
     }
     
-    static double glideDurationToFactor(GlideDuration d) {
-        switch (d) {
-        case GlideDuration::Short: return 1.0;
-        case GlideDuration::Medium: return 2.0;
-        case GlideDuration::Long: return 3.0;
-        default: throw std::logic_error("unknown GlideDuration");
-        }
-    }
-
     enum class GlideDynamic {
         Loud, Stable, Quiet
     };
@@ -212,6 +194,7 @@ public:
         GlideRange range;
         double range_cents;
         GlideDuration duration;
+        double duration_ms;
         GlideLink link;
         GlideDynamic dynamic;
         double dynamicMax;

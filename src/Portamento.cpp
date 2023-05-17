@@ -550,17 +550,19 @@ Portamento::classifyGlide(const std::pair<int, Glide::Extent> &extentPair,
 
     // Duration
     
-    double duration =
+    double duration_ms =
         m_coreFeatures.stepsToMs(extent.end - extent.start + 1,
                                  m_coreParams.stepSize);
 
-    if (duration > m_durationBoundaryLong_ms) {
+    if (duration_ms > m_durationBoundaryLong_ms) {
         classification.duration = GlideDuration::Long;
-    } else if (duration > m_durationBoundaryMedium_ms) {
+    } else if (duration_ms > m_durationBoundaryMedium_ms) {
         classification.duration = GlideDuration::Medium;
     } else {
         classification.duration = GlideDuration::Short;
     }
+
+    classification.duration_ms = duration_ms;
 
     // Link
 
@@ -822,11 +824,11 @@ Portamento::getRemainingFeatures()
 
             GlideRange range = classifications[onset].range;
             code += glideRangeToCode(range);
-            index *= glideRangeToFactor(range);
+            index *= classifications[onset].range_cents;
 
             GlideDuration duration = classifications[onset].duration;
             code += glideDurationToCode(duration);
-            index *= glideDurationToFactor(duration);
+            index *= classifications[onset].duration_ms;
 
             GlideDynamic dynamic = classifications[onset].dynamic;
             code += glideDynamicToCode(dynamic);
