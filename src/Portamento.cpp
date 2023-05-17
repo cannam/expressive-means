@@ -449,6 +449,39 @@ Portamento::getOutputDescriptors() const
     m_glidePitchTrackOutput = int(list.size());
     list.push_back(d);
     
+    d.identifier = "meanRange";
+    d.name = "Mean Range";
+    d.description = "Returns a single label containing the mean range of all detected portamentos";
+    d.unit = "cents";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = true;
+    m_meanRangeOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "meanDuration";
+    d.name = "Mean Duration";
+    d.description = "Returns a single label containing the mean duration of all detected portamentos";
+    d.unit = "ms";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = true;
+    m_meanDurationOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "meanDynamics";
+    d.name = "Mean Dynamics";
+    d.description = "Returns two labels containing the mean maximum and minimum dB of all detected portamentos";
+    d.unit = "dB";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = true;
+    m_meanDynamicsOutput = int(list.size());
+    list.push_back(d);
+
     return list;
 }
 
@@ -538,7 +571,7 @@ Portamento::classifyGlide(const std::pair<int, Glide::Extent> &extentPair,
         m_coreFeatures.hzToPitch(pyinPitch[extent.end]) -
         m_coreFeatures.hzToPitch(pyinPitch[extent.start]);
 
-    classification.range_cents = range;
+    classification.range_cents = range * 100.0;
     
     if (fabs(range) > m_rangeBoundaryLarge_cents / 100.0) {
         classification.range = GlideRange::Large;
@@ -754,6 +787,12 @@ Portamento::getRemainingFeatures()
     
     int glideNo = 1;
 
+    double meanRange = 0.0;
+    double meanDuration = 0.0;
+    double meanMinDynamic = 0.0;
+    double meanMaxDynamic = 0.0;
+    int meanDivisor = 0;
+    
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
         int onset = pitr->first;
@@ -845,7 +884,13 @@ Portamento::getRemainingFeatures()
             f.values.clear();
             f.values.push_back(round(index));
             fs[m_portamentoIndexOutput].push_back(f);
-        
+
+            meanRange += fabs(classifications[onset].range_cents);
+            meanDuration += classifications[onset].duration_ms;
+            meanMinDynamic += classifications[onset].dynamicMin;
+            meanMaxDynamic += classifications[onset].dynamicMax;
+            meanDivisor ++;
+            
             double sp2dp = round(pyinPitch.at(glideStart) * 100.0) / 100.0;
             double ep2dp = round(pyinPitch.at(glideEnd) * 100.0) / 100.0;
             double range2dp = round(classifications[onset].range_cents * 100.0) / 100.0;
@@ -924,5 +969,53 @@ Portamento::getRemainingFeatures()
         }
     }
     
+    if (meanDivisor > 0) {
+        meanRange /= meanDivisor;
+        meanDuration /= meanDivisor;
+        meanMinDynamic /= meanDivisor;
+        meanMaxDynamic /= meanDivisor;
+    }
+    
+    Feature f;
+    f.hasTimestamp = true;
+    f.timestamp = m_coreFeatures.getStartTime();
+    f.hasDuration = true;
+    f.duration = m_coreFeatures.timeForStep(pyinPitch.size()) - f.timestamp;
+    f.values.clear();
+    f.values.push_back(meanRange);
+    {
+        ostringstream os;
+        os << meanRange << "c";
+        f.label = os.str();
+    }
+    fs[m_meanRangeOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanDuration);
+    {
+        ostringstream os;
+        os << meanDuration << "ms";
+        f.label = os.str();
+    }
+    fs[m_meanDurationOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanMinDynamic);
+    {
+        ostringstream os;
+        os << meanMinDynamic << "dB minimum";
+        f.label = os.str();
+    }
+    fs[m_meanDynamicsOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanMaxDynamic);
+    {
+        ostringstream os;
+        os << meanMaxDynamic << "dB maximum";
+        f.label = os.str();
+    }
+    fs[m_meanDynamicsOutput].push_back(f);
+
     return fs;
 }

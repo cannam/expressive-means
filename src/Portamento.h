@@ -235,6 +235,10 @@ protected:
     mutable int m_glideLinkOutput;
     mutable int m_glideDynamicOutput;
     mutable int m_glidePitchTrackOutput;
+
+    mutable int m_meanRangeOutput;
+    mutable int m_meanDurationOutput;
+    mutable int m_meanDynamicsOutput;
 };
 
 #endif
