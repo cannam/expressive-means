@@ -158,14 +158,14 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
              { { "impulseNoiseRatioPlosive", 32.f },
                { "impulseNoiseRatioFricative", 16.f }
              },
-             { { "impulseNoiseRatioPlosive", 34.f },
-               { "impulseNoiseRatioFricative", 20.f }
-             },
              { { "impulseNoiseRatioPlosive", 36.f },
                { "impulseNoiseRatioFricative", 27.f }
              },
              { { "impulseNoiseRatioPlosive", 53.f },
                { "impulseNoiseRatioFricative", 47.f }
+             },
+             { { "impulseNoiseRatioPlosive", 80.f },
+               { "impulseNoiseRatioFricative", 80.f }
              }
          } }
      },
@@ -184,8 +184,7 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
      {
          { "noteDurations", 1.f },
          { "reverb", 1.f },
-         { "soundQuality", 2.f },
-         { "overlap", 1.f }
+         { "soundQuality", 2.f }
      })
     {}
     
