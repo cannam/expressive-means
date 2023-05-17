@@ -1335,7 +1335,7 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
         classification.relativeDuration =
             (vibratoEnd_ms - vibratoStart_ms) / (noteEnd_ms - noteStart_ms);
 
-        classification.soundDuration = (noteEnd_ms - noteStart_ms) / 1000.0;
+        classification.soundDuration_sec = (noteEnd_ms - noteStart_ms) / 1000.0;
         
 #ifdef DEBUG_PITCH_VIBRATO
         cerr << "-- Onset at " << onset << ": note start (ms) " << noteStart_ms
@@ -1352,7 +1352,7 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
         }
         meanRate_Hz /= nelts;
 
-        classification.meanRate = meanRate_Hz;
+        classification.meanRate_Hz = meanRate_Hz;
         
         if (meanRate_Hz > m_rateBoundaryFast_Hz) {
             classification.rate = VibratoRate::Fast;
@@ -1386,7 +1386,7 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
         }
         meanRange_cents /= nelts;
 
-        classification.maxRange = maxRange_cents;
+        classification.maxRange_cents = maxRange_cents;
         
         if (maxRange_cents > m_rangeBoundaryWide_cents) {
             classification.range = VibratoRange::Wide;
@@ -1404,8 +1404,8 @@ PitchVibrato::classify(const vector<VibratoElement> &elements,
              << endl;
 #endif
 
-        classification.maxRangeTime = chain[maxRangeIndex].position_sec;
-        double maxRangeTime_ms = classification.maxRangeTime * 1000.0;
+        classification.maxRangeTime_sec = chain[maxRangeIndex].position_sec;
+        double maxRangeTime_ms = classification.maxRangeTime_sec * 1000.0;
         
         if (maxRange_cents - meanRange_cents < m_developmentThreshold_cents) {
             classification.development = VibratoDevelopment::Stable;
@@ -1607,10 +1607,10 @@ PitchVibrato::getRemainingFeatures()
                    m_coreFeatures.timeForStep(onset)).toText() << "\n"
                << code << "\n"
                << int(round(clampedRelativeDuration * 100.0)) << "%\n"
-               << classification.meanRate << "Hz\n"
-               << classification.maxRange << "c\n"
-               << classification.maxRangeTime << " ("
-               << classification.soundDuration << ")\n"
+               << classification.meanRate_Hz << "Hz\n"
+               << classification.maxRange_cents << "c\n"
+               << classification.maxRangeTime_sec << " ("
+               << classification.soundDuration_sec << ")\n"
                << "IVibr = " << round(index);
             f.label = os.str();
             f.values.clear();
