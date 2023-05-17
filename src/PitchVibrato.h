@@ -275,6 +275,10 @@ protected:
     mutable int m_rawPeaksOutput;
     mutable int m_acceptedPeaksOutput;
 #endif
+
+    mutable int m_meanDurationOutput;
+    mutable int m_meanRateOutput;
+    mutable int m_meanMaxRangeOutput;
     
     std::vector<double> filterGlides(const std::vector<double> &,
                                      const CoreFeatures::OnsetOffsetMap &) const;

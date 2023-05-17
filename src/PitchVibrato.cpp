@@ -495,6 +495,41 @@ PitchVibrato::getOutputDescriptors() const
     list.push_back(d);
 #endif
     
+    d.identifier = "meanDuration";
+    d.name = "Mean Duration";
+    d.description = "Returns a single label containing the mean vibrato duration across all onsets";
+    d.unit = "%";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = true;
+    d.minValue = 0.0;
+    d.maxValue = 100.0;
+    d.hasDuration = true;
+    m_meanDurationOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "meanRate";
+    d.name = "Mean Rate";
+    d.description = "Returns a single label containing the mean vibrato rate across all onsets";
+    d.unit = "Hz";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = true;
+    m_meanRateOutput = int(list.size());
+    list.push_back(d);
+
+    d.identifier = "meanMaxRange";
+    d.name = "Mean Maximum Range";
+    d.description = "Returns a single label containing the mean maximum vibrato range across all onsets";
+    d.unit = "cents";
+    d.hasFixedBinCount = true;
+    d.binCount = 1;
+    d.hasKnownExtents = false;
+    d.hasDuration = true;
+    m_meanMaxRangeOutput = int(list.size());
+    list.push_back(d);
+
     return list;
 }
 
@@ -1529,7 +1564,12 @@ PitchVibrato::getRemainingFeatures()
 
     map<int, VibratoClassification> classifications =
         classify(elements, onsetOffsets);
-    
+
+    double meanOverallRate = 0.0;
+    double meanClampedDuration = 0.0;
+    double meanMaxRange = 0.0;
+    int meanDivisor = 0;
+
     for (auto pitr = onsetOffsets.begin(); pitr != onsetOffsets.end(); ++pitr) {
 
         int onset = pitr->first;
@@ -1600,6 +1640,11 @@ PitchVibrato::getRemainingFeatures()
                 (classification.relativeDuration > 1.0 ?
                  1.0 :
                  classification.relativeDuration);
+
+            meanClampedDuration += clampedRelativeDuration;
+            meanOverallRate += classification.meanRate_Hz;
+            meanMaxRange += classification.maxRange_cents;
+            meanDivisor ++;
             
             ostringstream os;
             os << m_coreFeatures.timeForStep(onset).toText() << " / "
@@ -1618,6 +1663,12 @@ PitchVibrato::getRemainingFeatures()
         }
     }        
 
+    if (meanDivisor > 0) {
+        meanClampedDuration /= meanDivisor;
+        meanOverallRate /= meanDivisor;
+        meanMaxRange /= meanDivisor;
+    }
+    
     for (auto e: elements) {
         if (e.correlation < m_correlationThreshold) {
 #ifdef DEBUG_PITCH_VIBRATO
@@ -1658,6 +1709,38 @@ PitchVibrato::getRemainingFeatures()
     }
     
 #endif // WITH_DEBUG_OUTPUTS
+
+    Feature f;
+    f.hasTimestamp = true;
+    f.timestamp = m_coreFeatures.getStartTime();
+    f.hasDuration = true;
+    f.duration = m_coreFeatures.timeForStep(n) - f.timestamp;
+    f.values.clear();
+    f.values.push_back(meanClampedDuration * 100.0);
+    {
+        ostringstream os;
+        os << (meanClampedDuration * 100.0) << "%";
+        f.label = os.str();
+    }
+    fs[m_meanDurationOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanOverallRate);
+    {
+        ostringstream os;
+        os << meanOverallRate << "Hz";
+        f.label = os.str();
+    }
+    fs[m_meanRateOutput].push_back(f);
+
+    f.values.clear();
+    f.values.push_back(meanMaxRange);
+    {
+        ostringstream os;
+        os << meanMaxRange << "c";
+        f.label = os.str();
+    }
+    fs[m_meanMaxRangeOutput].push_back(f);
     
     return fs;
 }

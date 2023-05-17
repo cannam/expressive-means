@@ -853,28 +853,45 @@ Articulation::getRemainingFeatures()
     }
 
     Feature f;
+    
     f.hasTimestamp = true;
     f.timestamp = m_coreFeatures.getStartTime();
     f.hasDuration = true;
     f.duration = m_coreFeatures.timeForStep(n) - f.timestamp;
     f.values.clear();
     f.values.push_back(meanNoiseRatio * 100.0);
-    f.label = "";
+    {
+        ostringstream os;
+        os << (meanNoiseRatio * 100.0) << "%";
+        f.label = os.str();
+    }
     fs[m_meanNoiseRatioOutput].push_back(f);
 
     f.values.clear();
     f.values.push_back(meanMinDiff);
-    f.label = "Minimum";
+    {
+        ostringstream os;
+        os << meanMinDiff << "dB minimum";
+        f.label = os.str();
+    }
     fs[m_meanDynamicsOutput].push_back(f);
 
     f.values.clear();
     f.values.push_back(meanMaxDiff);
-    f.label = "Maximum";
+    {
+        ostringstream os;
+        os << meanMaxDiff << "dB maximum";
+        f.label = os.str();
+    }
     fs[m_meanDynamicsOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanRelativeDuration);
-    f.label = "";
+    f.values.push_back(meanRelativeDuration * 100.0);
+    {
+        ostringstream os;
+        os << (meanRelativeDuration * 100.0) << "%";
+        f.label = os.str();
+    }
     fs[m_meanToneRatioOutput].push_back(f);
     
     return fs;
