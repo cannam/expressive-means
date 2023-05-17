@@ -754,15 +754,15 @@ Articulation::getRemainingFeatures()
         double relativeDuration = onsetToRelativeDuration[onset];
         if (relativeDuration < 0.7) {
             code += "S";
-            index *= 1.5;
         } else if (relativeDuration < 0.95) {
             code += "E";
-            index *= 1.25;
         } else {
             code += "L";
-            index *= 1.0;
         }
-
+        if (relativeDuration > 0.0) {
+            index /= relativeDuration;
+        }
+        
         index *= m_scalingFactor;
         
         Feature f;
