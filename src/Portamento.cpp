@@ -452,9 +452,9 @@ Portamento::getOutputDescriptors() const
     d.identifier = "meanRange";
     d.name = "Mean Range";
     d.description = "Returns a single label containing the mean range of all detected portamentos";
-    d.unit = "cents";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanRangeOutput = int(list.size());
@@ -463,9 +463,9 @@ Portamento::getOutputDescriptors() const
     d.identifier = "meanDuration";
     d.name = "Mean Duration";
     d.description = "Returns a single label containing the mean duration of all detected portamentos";
-    d.unit = "ms";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanDurationOutput = int(list.size());
@@ -474,9 +474,9 @@ Portamento::getOutputDescriptors() const
     d.identifier = "meanDynamics";
     d.name = "Mean Dynamics";
     d.description = "Returns two labels containing the mean maximum and minimum dB of all detected portamentos";
-    d.unit = "dB";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanDynamicsOutput = int(list.size());
@@ -982,7 +982,6 @@ Portamento::getRemainingFeatures()
     f.hasDuration = true;
     f.duration = m_coreFeatures.timeForStep(pyinPitch.size()) - f.timestamp;
     f.values.clear();
-    f.values.push_back(meanRange);
     {
         ostringstream os;
         os << meanRange << "c";
@@ -991,7 +990,6 @@ Portamento::getRemainingFeatures()
     fs[m_meanRangeOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanDuration);
     {
         ostringstream os;
         os << meanDuration << "ms";
@@ -1000,7 +998,6 @@ Portamento::getRemainingFeatures()
     fs[m_meanDurationOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanMinDynamic);
     {
         ostringstream os;
         os << meanMinDynamic << "dB minimum";
@@ -1009,7 +1006,6 @@ Portamento::getRemainingFeatures()
     fs[m_meanDynamicsOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanMaxDynamic);
     {
         ostringstream os;
         os << meanMaxDynamic << "dB maximum";

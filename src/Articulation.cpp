@@ -341,12 +341,10 @@ Articulation::getOutputDescriptors() const
     d.identifier = "meanNoiseRatio";
     d.name = "Mean Noise Ratio";
     d.description = "Returns a single label containing the mean noise ratio value across all onsets";
-    d.unit = "%";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = true;
-    d.minValue = 0.0;
-    d.maxValue = 100.0;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanNoiseRatioOutput = int(list.size());
     list.push_back(d);
@@ -354,9 +352,9 @@ Articulation::getOutputDescriptors() const
     d.identifier = "meanDynamics";
     d.name = "Mean Dynamics";
     d.description = "Returns two labels containing the mean maximum and minimum dB developments of all sustain phases";
-    d.unit = "dB";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanDynamicsOutput = int(list.size());
@@ -365,12 +363,10 @@ Articulation::getOutputDescriptors() const
     d.identifier = "meanToneRatio";
     d.name = "Mean Tone Ratio";
     d.description = "Returns a single label containing the mean noise ratio value across all onsets";
-    d.unit = "%";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = true;
-    d.minValue = 0.0;
-    d.maxValue = 100.0;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanToneRatioOutput = int(list.size());
     list.push_back(d);
@@ -859,7 +855,6 @@ Articulation::getRemainingFeatures()
     f.hasDuration = true;
     f.duration = m_coreFeatures.timeForStep(n) - f.timestamp;
     f.values.clear();
-    f.values.push_back(meanNoiseRatio * 100.0);
     {
         ostringstream os;
         os << (meanNoiseRatio * 100.0) << "%";
@@ -868,7 +863,6 @@ Articulation::getRemainingFeatures()
     fs[m_meanNoiseRatioOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanMinDiff);
     {
         ostringstream os;
         os << meanMinDiff << "dB minimum";
@@ -877,7 +871,6 @@ Articulation::getRemainingFeatures()
     fs[m_meanDynamicsOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanMaxDiff);
     {
         ostringstream os;
         os << meanMaxDiff << "dB maximum";
@@ -886,7 +879,6 @@ Articulation::getRemainingFeatures()
     fs[m_meanDynamicsOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanRelativeDuration * 100.0);
     {
         ostringstream os;
         os << (meanRelativeDuration * 100.0) << "%";

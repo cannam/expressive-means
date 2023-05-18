@@ -498,12 +498,10 @@ PitchVibrato::getOutputDescriptors() const
     d.identifier = "meanDuration";
     d.name = "Mean Duration";
     d.description = "Returns a single label containing the mean vibrato duration across all onsets";
-    d.unit = "%";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
-    d.hasKnownExtents = true;
-    d.minValue = 0.0;
-    d.maxValue = 100.0;
+    d.binCount = 0;
+    d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanDurationOutput = int(list.size());
     list.push_back(d);
@@ -511,9 +509,9 @@ PitchVibrato::getOutputDescriptors() const
     d.identifier = "meanRate";
     d.name = "Mean Rate";
     d.description = "Returns a single label containing the mean vibrato rate across all onsets";
-    d.unit = "Hz";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanRateOutput = int(list.size());
@@ -522,9 +520,9 @@ PitchVibrato::getOutputDescriptors() const
     d.identifier = "meanMaxRange";
     d.name = "Mean Maximum Range";
     d.description = "Returns a single label containing the mean maximum vibrato range across all onsets";
-    d.unit = "cents";
+    d.unit = "";
     d.hasFixedBinCount = true;
-    d.binCount = 1;
+    d.binCount = 0;
     d.hasKnownExtents = false;
     d.hasDuration = true;
     m_meanMaxRangeOutput = int(list.size());
@@ -1716,7 +1714,6 @@ PitchVibrato::getRemainingFeatures()
     f.hasDuration = true;
     f.duration = m_coreFeatures.timeForStep(n) - f.timestamp;
     f.values.clear();
-    f.values.push_back(meanClampedDuration * 100.0);
     {
         ostringstream os;
         os << (meanClampedDuration * 100.0) << "%";
@@ -1725,7 +1722,6 @@ PitchVibrato::getRemainingFeatures()
     fs[m_meanDurationOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanOverallRate);
     {
         ostringstream os;
         os << meanOverallRate << "Hz";
@@ -1734,7 +1730,6 @@ PitchVibrato::getRemainingFeatures()
     fs[m_meanRateOutput].push_back(f);
 
     f.values.clear();
-    f.values.push_back(meanMaxRange);
     {
         ostringstream os;
         os << meanMaxRange << "c";
