@@ -1,7 +1,7 @@
 project(
     'Expressive Means',
     'c', 'cpp',
-    version: '0.1.1',
+    version: '0.2',
     license: 'GPL-2.0-or-later',
     default_options: [
         'cpp_std=c++17',
@@ -13,8 +13,12 @@ project(
     meson_version: '>= 0.53.0'
 )
 
+# Increment for each bump of the project version
+plugin_version = '2'
+
 conf = configuration_data()
 conf.set('version', meson.project_version())
+conf.set('plugversion', plugin_version)
 configure_file(input: 'version.h.in', output: 'version.h', configuration: conf)
 
 system = host_machine.system()
@@ -77,6 +81,7 @@ pyin_sources = [
 feature_defines = []
 
 if system == 'darwin'
+  feature_defines += ['-Wno-deprecated-declarations']
   vamp_symbol_args = [
     '-exported_symbols_list', meson.current_source_dir() / 'vamp-plugin.list'
   ]
@@ -116,7 +121,7 @@ if have_boost_unit_test
     qmdsp_sources,
     pyin_sources,
     include_directories: [ vamp_dir ],
-      cpp_args: [ feature_defines ],
+    cpp_args: [ feature_defines ],
     dependencies: [ boost_unit_test_dep ],
     install: false,
     build_by_default: true

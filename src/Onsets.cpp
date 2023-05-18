@@ -11,6 +11,8 @@
 
 #include "Onsets.h"
 
+#include "version.h"
+
 #include <vector>
 #include <set>
 
@@ -63,7 +65,7 @@ Onsets::getMaker() const
 int
 Onsets::getPluginVersion() const
 {
-    return 1;
+    return EXPRESSIVE_MEANS_PLUGIN_VERSION;
 }
 
 string

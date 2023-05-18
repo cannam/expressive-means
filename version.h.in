@@ -1,1 +1,2 @@
 #define EXPRESSIVE_MEANS_VERSION "@version@"
+#define EXPRESSIVE_MEANS_PLUGIN_VERSION @plugversion@

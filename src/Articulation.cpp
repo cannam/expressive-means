@@ -12,6 +12,8 @@
 #include "Articulation.h"
 #include "Glide.h"
 
+#include "version.h"
+
 #include <vector>
 #include <set>
 #include <sstream>
@@ -94,7 +96,7 @@ Articulation::getMaker() const
 int
 Articulation::getPluginVersion() const
 {
-    return 1;
+    return EXPRESSIVE_MEANS_PLUGIN_VERSION;
 }
 
 string
