@@ -12,6 +12,8 @@
 #include "PitchVibrato.h"
 #include "Glide.h"
 
+#include "version.h"
+
 #include "../ext/qm-dsp/maths/MathUtilities.h"
 
 #include <vector>
@@ -119,7 +121,7 @@ PitchVibrato::getMaker() const
 int
 PitchVibrato::getPluginVersion() const
 {
-    return 1;
+    return EXPRESSIVE_MEANS_PLUGIN_VERSION;
 }
 
 string

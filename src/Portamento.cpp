@@ -12,6 +12,8 @@
 #include "Portamento.h"
 #include "Glide.h"
 
+#include "version.h"
+
 #include "../ext/qm-dsp/maths/MathUtilities.h"
 
 #include <vector>
@@ -100,7 +102,7 @@ Portamento::getMaker() const
 int
 Portamento::getPluginVersion() const
 {
-    return 1;
+    return EXPRESSIVE_MEANS_PLUGIN_VERSION;
 }
 
 string
