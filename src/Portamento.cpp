@@ -863,7 +863,7 @@ Portamento::getRemainingFeatures()
 
             GlideRange range = classifications[onset].range;
             code += glideRangeToCode(range);
-            index *= classifications[onset].range_cents;
+            index *= fabs(classifications[onset].range_cents);
 
             GlideDuration duration = classifications[onset].duration;
             code += glideDurationToCode(duration);
