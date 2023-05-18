@@ -27,7 +27,7 @@ mkdir -p packages
 
 git checkout "$tag"
 
-./repoint archive "$(pwd)"/packages/ExpressiveMeans-source-"$v".tar.gz --exclude ext/pyin/testdata ext/pyin/test/regression ext/pyin/evaluation ext/vamp-plugin-sdk/test/expected .gitignore .github deploy
+./repoint archive "$(pwd)"/packages/ExpressiveMeans-source-"$v".tar.gz --exclude ext/pyin/testdata ext/pyin/test/regression ext/pyin/evaluation ext/vamp-plugin-sdk/test/expected .gitignore .github deploy scripts
 
 git checkout "$current"
 
