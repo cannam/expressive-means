@@ -21,7 +21,10 @@ esac
 echo
 echo -n "Packaging up version $v from tag $tag... "
 
-current=$(git rev-parse --short HEAD)
+current=$(git branch --show-current)
+if [ -z "$current" ]; then
+    current=$(git rev-parse --short HEAD)
+fi
 
 mkdir -p packages
 
