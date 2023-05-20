@@ -26,7 +26,7 @@ using std::map;
 using std::ostringstream;
 
 static const float default_volumeDevelopmentThreshold_dB = 2.f;
-static const float default_scalingFactor = 16.5f;
+static const float default_scalingFactor = 15.5f;
 static const float default_impulseNoiseRatioPlosive_percent =  26.f;
 static const float default_impulseNoiseRatioFricative_percent = 13.f;
 static const float default_reverbDurationFactor = 1.5f;
@@ -806,7 +806,7 @@ Articulation::getRemainingFeatures()
         index *= developmentToFactor(development);
 
         double relativeDuration = onsetToRelativeDuration[onset];
-        if (relativeDuration < 0.7) {
+        if (relativeDuration < 0.6) {
             code += "S";
         } else if (relativeDuration < 0.95) {
             code += "E";
