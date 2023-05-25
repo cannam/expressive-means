@@ -184,7 +184,8 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
      {
          { "noteDurations", 1.f },
          { "reverb", 1.f },
-         { "soundQuality", 2.f }
+         { "soundQuality", 2.f },
+         { "overlapCompensationFactor", 1.6f }
      })
     {}
     
