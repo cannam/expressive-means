@@ -30,7 +30,7 @@ static const float default_scalingFactor = 15.5f;
 static const float default_impulseNoiseRatioPlosive_percent =  26.f;
 static const float default_impulseNoiseRatioFricative_percent = 13.f;
 static const float default_reverbDurationFactor = 1.5f;
-static const float default_overlapCompensationFactor = 1.f;
+static const float default_overlapCompensationFactor = 1.6f;
 
 // These are not exposed as plugin parameters, so they're fixed but
 // can be tweaked here
