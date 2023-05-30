@@ -60,6 +60,7 @@ del /q /s %DIR%
 mkdir %DIR%
 copy build\expressive-means.dll %DIR%
 copy expressive-means.cat %DIR%
+copy expressive-means.n3 %DIR%
 copy COPYING %DIR%\COPYING.txt
 copy README.md %DIR%\README.txt
 

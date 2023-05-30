@@ -30,7 +30,7 @@ mkdir -p "$packdir"
 
 lipo "build-${tag}-arm64/$lib" "build-${tag}-x86_64/$lib" -create -output "$packdir"/"$lib"
 
-cp expressive-means.cat README.md COPYING "$packdir/"
+cp expressive-means.cat expressive-means.n3 README.md COPYING "$packdir/"
 
 codesign -s "$gatekeeper_key" -fv --options runtime "$packdir/$lib"
 

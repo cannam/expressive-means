@@ -13,16 +13,18 @@ with a primary focus on bowed stringed instruments.
 
 Installation is the same as for other individual Vamp plugin libraries:
 
- * On Windows, copy `expressive-means.dll` and `expressive-means.cat`
-   to the folder `C:\Program Files\Vamp Plugins\`. (Note that only
-   64-bit versions of Windows and 64-bit plugin hosts are supported)
+ * On Windows, copy `expressive-means.dll`, `expressive-means.cat`,
+   and `expressive-means.n3` to the folder `C:\Program Files\Vamp Plugins\`.
+   (Note that only 64-bit versions of Windows and 64-bit plugin hosts
+   are supported)
 
- * On a Mac, copy `expressive-means.dylib` and `expressive-means.cat`
-   to the folder `/Library/Audio/Plug-Ins/Vamp` or
-   `$HOME/Library/Audio/Plug-Ins/Vamp`
+ * On a Mac, copy `expressive-means.dylib`, `expressive-means.cat`,
+   and `expressive-means.n3` to the folder `/Library/Audio/Plug-Ins/Vamp`
+   or `$HOME/Library/Audio/Plug-Ins/Vamp`
 
- * On Linux, copy `expressive-means.so` and `expressive-means.cat` to
-   the folder `/usr/local/lib/vamp` or `$HOME/vamp`
+ * On Linux, copy `expressive-means.so`, `expressive-means.cat`,
+   and `expressive-means.n3` the folder `/usr/local/lib/vamp`
+   or `$HOME/vamp`
 
 In each case, if the destination folder doesn't already exist, create
 it as a new folder first.

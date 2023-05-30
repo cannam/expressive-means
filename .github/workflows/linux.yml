@@ -28,4 +28,5 @@ jobs:
         path: |
           expressive-means.so
           expressive-means.cat
+          expressive-means.n3
 

@@ -27,6 +27,7 @@ jobs:
         path: |
           expressive-means.dylib
           expressive-means.cat
+          expressive-means.n3
     - name: archive-tests
       uses: actions/upload-artifact@v3
       with:
