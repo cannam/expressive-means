@@ -64,7 +64,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "vibratoRangeMaximum", 200.f },
                { "rangeBoundaryMedium", 40.f },
                { "rangeBoundaryWide", 60.f },
-               { "sectionThreshold", 200.f },
+               { "sectionThreshold", 150.f },
                { "developmentThreshold", 10.f },
                { "correlationThreshold", 0.2f },
                { "segmentationType", 3.f }
@@ -83,9 +83,9 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "vibratoRangeMaximum", 500.f },
                { "rangeBoundaryMedium", 120.f },
                { "rangeBoundaryWide", 220.f },
-               { "sectionThreshold", 300.f },
+               { "sectionThreshold", 150.f },
                { "developmentThreshold", 40.f },
-               { "correlationThreshold", 0.1f },
+               { "correlationThreshold", 0.65f },
                { "segmentationType", 1.f }
              } }                
          }
