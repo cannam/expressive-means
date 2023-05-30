@@ -182,9 +182,9 @@ public:
 
     static double glideDynamicToFactor(GlideDynamic d) {
         switch (d) {
-        case GlideDynamic::Loud: return 1.5;
+        case GlideDynamic::Loud: return 1.25;
         case GlideDynamic::Stable: return 1.0;
-        case GlideDynamic::Quiet: return 0.5;
+        case GlideDynamic::Quiet: return 0.8;
         default: throw std::logic_error("unknown GlideDynamic");
         }
     }
