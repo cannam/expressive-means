@@ -60,7 +60,7 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "glideThresholdHopMinimum", 10.f },
                { "glideThresholdHopMaximum", 50.f },
                { "glideThresholdDuration", 50.f },
-               { "glideThresholdProximity", 500.f },
+               { "glideThresholdProximity", 1000.f },
                { "linkThreshold", 70.f }
              } },
            { "Vocal",
@@ -73,7 +73,7 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "glideThresholdHopMinimum", 10.f },
                { "glideThresholdHopMaximum", 70.f },
                { "glideThresholdDuration", 50.f },
-               { "glideThresholdProximity", 1000.f },
+               { "glideThresholdProximity", 1500.f },
                { "linkThreshold", 100.f }
              } }               
          }
