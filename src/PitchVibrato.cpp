@@ -40,7 +40,7 @@ static const float default_rangeBoundaryWide_cents = 60.f;
 static const float default_sectionThreshold_ms = 200.f;
 static const float default_developmentThreshold_cents = 10.f;
 static const float default_correlationThreshold = 0.2f;
-static const float default_scalingFactor = 0.2043f;
+static const float default_scalingFactor = 0.1471f;
 static const float default_smoothingWindowLength_ms = 70.f;
 static const PitchVibrato::SegmentationType default_segmentationType =
     PitchVibrato::SegmentationType::WithoutGlidesAndSegmented;
