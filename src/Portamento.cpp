@@ -33,7 +33,7 @@ static const float default_glideThresholdPitch_cents = 60.f;
 static const float default_glideThresholdHopMinimum_cents = 10.f;
 static const float default_glideThresholdHopMaximum_cents = 50.f;
 static const float default_glideThresholdDuration_ms = 70.f;
-static const float default_glideThresholdProximity_ms = 350.f;
+static const float default_glideThresholdProximity_ms = 1000.f;
 
 static const float default_linkThreshold_cents = 70.f;
 static const float default_rangeBoundaryMedium_cents = 250.f;
