@@ -23,7 +23,7 @@ Installation is the same as for other individual Vamp plugin libraries:
    or `$HOME/Library/Audio/Plug-Ins/Vamp`
 
  * On Linux, copy `expressive-means.so`, `expressive-means.cat`,
-   and `expressive-means.n3` the folder `/usr/local/lib/vamp`
+   and `expressive-means.n3` to the folder `/usr/local/lib/vamp`
    or `$HOME/vamp`
 
 In each case, if the destination folder doesn't already exist, create

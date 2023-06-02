@@ -1,7 +1,7 @@
 project(
     'Expressive Means',
     'c', 'cpp',
-    version: '0.3',
+    version: '0.3.1',
     license: 'GPL-2.0-or-later',
     default_options: [
         'cpp_std=c++17',
@@ -13,8 +13,8 @@ project(
     meson_version: '>= 0.53.0'
 )
 
-# Increment for each bump of the project version
-plugin_version = '3'
+# Increment for each bump of the project version (major or minor, doesn't matter)
+plugin_version = '4'
 
 conf = configuration_data()
 conf.set('version', meson.project_version())
