@@ -60,16 +60,23 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
-           { "Vocal",
+           { "Vocal (Classical)",
              { { "onsetSensitivityPitch", 100.f },
                { "onsetSensitivityNoise", 50.f },
                { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 10.f }
+               { "onsetSensitivityRawPowerThreshold", 80.f }
+             } },
+           { "Vocal (Jazz & Pop)",
+             { { "onsetSensitivityPitch", 60.f },
+               { "onsetSensitivityNoise", 50.f },
+               { "onsetSensitivityLevel", 7.f },
+               { "onsetSensitivityNoiseTimeWindow", 100.f },
+               { "onsetSensitivityRawPowerThreshold", 80.f }
              } },
            { "Keys / Mallets",
-             { { "onsetSensitivityPitch", 90.f },
-               { "onsetSensitivityNoise", 18.f },
+             { { "onsetSensitivityPitch", 60.f },
+               { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 15.f }
@@ -82,11 +89,11 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 12.f }
              } },
            { "Percussion",
-             { { "onsetSensitivityPitch", 100.f },
+             { { "onsetSensitivityPitch", 250.f },
                { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 50.f },
-               { "onsetSensitivityRawPowerThreshold", 50.f }
+               { "onsetSensitivityRawPowerThreshold", 80.f }
              } }                  
          }
         },
