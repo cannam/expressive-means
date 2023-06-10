@@ -100,9 +100,9 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
              } },
            { "Keys / Mallets (historical)",
              { { "onsetSensitivityPitch", 99999.f },
-               { "onsetSensitivityNoise", 8.f },
-               { "onsetSensitivityLevel", 8.f },
-               { "onsetSensitivityNoiseTimeWindow", 100.f },
+               { "onsetSensitivityNoise", 9.f },
+               { "onsetSensitivityLevel", 10.f },
+               { "onsetSensitivityNoiseTimeWindow", 60.f },
                { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
            { "Wind",
