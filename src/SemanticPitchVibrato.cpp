@@ -94,7 +94,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 80.f },
-               { "vibratoRateMinimum", 3.f },
+               { "vibratoRateMinimum", 4.f },
                { "vibratoRateMaximum", 10.f },
                { "rateBoundaryModerate", 5.f },
                { "rateBoundaryFast", 6.f },
@@ -104,7 +104,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "rangeBoundaryWide", 160.f },
                { "sectionThreshold", 150.f },
                { "developmentThreshold", 40.f },
-               { "correlationThreshold", 0.3f },
+               { "correlationThreshold", 0.5f },
                { "segmentationType", 3.f }
              } }   
          }
