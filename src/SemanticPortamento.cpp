@@ -57,25 +57,38 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f },
                { "glideThresholdPitch", 60.f },
-               { "glideThresholdHopMinimum", 10.f },
+               { "glideThresholdHopMinimum", 3.f },
                { "glideThresholdHopMaximum", 50.f },
                { "glideThresholdDuration", 50.f },
                { "glideThresholdProximity", 1000.f },
                { "linkThreshold", 70.f }
              } },
-           { "Vocal",
+           { "Vocal (Classical)",
              { { "onsetSensitivityPitch", 100.f },
                { "onsetSensitivityNoise", 50.f },
                { "onsetSensitivityLevel", 7.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 10.f },
                { "glideThresholdPitch", 60.f },
-               { "glideThresholdHopMinimum", 10.f },
+               { "glideThresholdHopMinimum", 3.f },
                { "glideThresholdHopMaximum", 70.f },
                { "glideThresholdDuration", 50.f },
                { "glideThresholdProximity", 1500.f },
                { "linkThreshold", 100.f }
-             } }               
+             } }  
+          { "Vocal (Jazz & Pop)",
+             { { "onsetSensitivityPitch", 60.f },
+               { "onsetSensitivityNoise", 50.f },
+               { "onsetSensitivityLevel", 7.f },
+               { "onsetSensitivityNoiseTimeWindow", 100.f },
+               { "onsetSensitivityRawPowerThreshold", 80.f },
+               { "glideThresholdPitch", 60.f },
+               { "glideThresholdHopMinimum", 3.f },
+               { "glideThresholdHopMaximum", 70.f },
+               { "glideThresholdDuration", 50.f },
+               { "glideThresholdProximity", 1500.f },
+               { "linkThreshold", 100.f }
+            } }   
          }
        },
        { "noteDurations",
