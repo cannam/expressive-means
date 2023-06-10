@@ -75,7 +75,14 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 80.f }
              } },
            { "Keys / Mallets",
-             { { "onsetSensitivityPitch", 60.f },
+             { { "onsetSensitivityPitch", 99999.f },
+               { "onsetSensitivityNoise", 8.f },
+               { "onsetSensitivityLevel", 8.f },
+               { "onsetSensitivityNoiseTimeWindow", 100.f },
+               { "onsetSensitivityRawPowerThreshold", 15.f }
+             } },
+           { "Keys / Mallets (historical)",
+             { { "onsetSensitivityPitch", 99999.f },
                { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
@@ -89,7 +96,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 12.f }
              } },
            { "Percussion",
-             { { "onsetSensitivityPitch", 250.f },
+             { { "onsetSensitivityPitch", 99999.f },
                { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 50.f },
