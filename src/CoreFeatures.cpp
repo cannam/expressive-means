@@ -492,13 +492,6 @@ CoreFeatures::actualFinish()
 
     int lastBelowThreshold = -vibratoSuppressionThresholdSteps;
     double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
-
-    // "pitch change locations are reported c. 20 ms delayed on
-    // average. Maybe we could just hard code this value as a
-    // compensation? --> pitch change onsets are reported as being 20
-    // ms before they are actually recognised"
-    int pitchOnsetAdvance = msToSteps(20.0, m_parameters.stepSize, false);
-
     
     for (int i = 0; i + halfLength < n; ++i) {
         // "absolute difference... falls below o_2":
