@@ -98,12 +98,12 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "vibratoRateMaximum", 10.f },
                { "rateBoundaryModerate", 5.f },
                { "rateBoundaryFast", 6.f },
-               { "vibratoRangeMinimum", 30.f },
+               { "vibratoRangeMinimum", 20.f },
                { "vibratoRangeMaximum", 400.f },
                { "rangeBoundaryMedium", 80.f },
                { "rangeBoundaryWide", 160.f },
                { "sectionThreshold", 150.f },
-               { "developmentThreshold", 40.f },
+               { "developmentThreshold", 20.f },
                { "correlationThreshold", 0.5f },
                { "segmentationType", 3.f }
              } }   
