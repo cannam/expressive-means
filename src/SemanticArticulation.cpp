@@ -76,6 +76,8 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f }
+               { "impulseNoiseRatioPlosive_percent", 26.f }
+               { "impulseNoiseRatioFricative_percent", 13.f }
              } },
           { "Vocal (Classical)",
              { { "onsetSensitivityPitch", 100.f },
