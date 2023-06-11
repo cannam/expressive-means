@@ -497,7 +497,7 @@ CoreFeatures::actualFinish()
         // "absolute difference... falls below o_2":
         if (m_pitchOnsetDf[i] < threshold && m_pitchOnsetDfValidity[i]) {
             if (i > lastBelowThreshold + vibratoSuppressionThresholdSteps) {
-                m_pitchOnsets.insert(i - pitchOnsetAdvance);
+                m_pitchOnsets.insert(i);
             }
             lastBelowThreshold = i;
         }
