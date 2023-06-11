@@ -91,7 +91,7 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.name = "Onset sensitivity: Pitch";
     d.unit = "cents";
     d.minValue = 0.f;
-    d.maxValue = 99999.f;
+    d.maxValue = 9999.f;
     d.defaultValue = defaultCoreParams.onsetSensitivityPitch_cents;
     list.push_back(d);
     
