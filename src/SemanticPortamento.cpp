@@ -101,8 +101,8 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "pitchAverageWindow", 150.f }
              } },
            { "Short (< 150 ms)",
-             { { "minimumOnsetInterval", 60.f },
-               { "pitchAverageWindow", 60.f }
+             { { "minimumOnsetInterval", 50.f },
+               { "pitchAverageWindow", 50.f }
              } }
          }
        }
