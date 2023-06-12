@@ -77,20 +77,20 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
            { "Keys / Mallets",
              { { "pyin-threshdistr", 1.f },
                { "pyin-lowampsuppression", 1.f },
-               { "onsetSensitivityPitch", 99999.f },
+               { "onsetSensitivityPitch", 999999999.f },
                { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 9.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 6.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
            { "Keys / Mallets (historical)",
              { { "pyin-threshdistr", 1.f },
                { "pyin-lowampsuppression", 1.f },
-               { "onsetSensitivityPitch", 99999.f },
+               { "onsetSensitivityPitch", 999999999.f },
                { "onsetSensitivityNoise", 9.f },
                { "onsetSensitivityLevel", 10.f },
                { "onsetSensitivityNoiseTimeWindow", 60.f },
-               { "onsetSensitivityRawPowerThreshold", 12.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
            { "Wind",
              { { "onsetSensitivityPitch", 10.f },
@@ -100,7 +100,9 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 12.f }
              } },
            { "Percussion",
-             { { "onsetSensitivityPitch", 99999.f },
+             { { "pyin-threshdistr", 1.f },
+               { "pyin-lowampsuppression", 1.f },
+               { "onsetSensitivityPitch", 999999999.f },
                { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 50.f },
