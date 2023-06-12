@@ -75,18 +75,22 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 80.f }
              } },
            { "Keys / Mallets",
-             { { "onsetSensitivityPitch", 99999.f },
+             { { "pyin-threshdistr", 1.f },
+               { "pyin-lowampsuppression", 1.f },
+               { "onsetSensitivityPitch", 99999.f },
                { "onsetSensitivityNoise", 8.f },
-               { "onsetSensitivityLevel", 8.f },
+               { "onsetSensitivityLevel", 9.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
            { "Keys / Mallets (historical)",
-             { { "onsetSensitivityPitch", 99999.f },
+             { { "pyin-threshdistr", 1.f },
+               { "pyin-lowampsuppression", 1.f },
+               { "onsetSensitivityPitch", 99999.f },
                { "onsetSensitivityNoise", 9.f },
                { "onsetSensitivityLevel", 10.f },
                { "onsetSensitivityNoiseTimeWindow", 60.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 12.f }
              } },
            { "Wind",
              { { "onsetSensitivityPitch", 10.f },
@@ -114,8 +118,8 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "pitchAverageWindow", 150.f }
              } },
            { "Short (< 150 ms)",
-             { { "minimumOnsetInterval", 60.f },
-               { "pitchAverageWindow", 60.f }
+             { { "minimumOnsetInterval", 50.f },
+               { "pitchAverageWindow", 50.f }
              } }
           }
        }
