@@ -53,7 +53,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
          }
         },
        { "instrumentType",
-         { { "Strings",
+         { { "Bowed Strings",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 24.f },
                { "onsetSensitivityLevel", 8.f },
@@ -74,7 +74,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 80.f }
              } },
-           { "Keys / Mallets",
+           { "Piano / Plugged Strings",
              { { "pyin-threshdistr", 1.f },
                { "pyin-lowampsuppression", 1.f },
                { "onsetSensitivityPitch", 999999999.f },
@@ -83,7 +83,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
-           { "Keys / Mallets (historical)",
+           { "Piano / Plugged Strings (historical)",
              { { "pyin-threshdistr", 1.f },
                { "pyin-lowampsuppression", 1.f },
                { "onsetSensitivityPitch", 999999999.f },
@@ -92,7 +92,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 60.f },
                { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
-           { "Wind",
+           { "Wind / Organ",
              { { "onsetSensitivityPitch", 10.f },
                { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
