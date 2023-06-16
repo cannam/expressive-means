@@ -91,7 +91,7 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 80.f }
              } },
-           { "Piano / Guitar",
+           { "Piano / Plugged Strings",
              { { "pyin-threshdistr", 1.f },
                { "pyin-lowampsuppression", 1.f },
                { "onsetSensitivityPitch", 999999999.f },
@@ -100,7 +100,7 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
-           { "Piano / Guitar (historical)",
+           { "Piano / Plugged Strings (historical)",
              { { "pyin-threshdistr", 1.f },
                { "pyin-lowampsuppression", 1.f },
                { "onsetSensitivityPitch", 999999999.f },
