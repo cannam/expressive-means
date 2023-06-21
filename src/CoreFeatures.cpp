@@ -150,7 +150,7 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
         d.unit = "dB";
         d.minValue = -120.f;
         d.maxValue = 0.f;
-        d.defaultValue = defaultCoreParams.spectralDropFloor_dB;
+        d.defaultValue = defaultCoreParams.spectralDropOffset_dB;
         list.push_back(d);
     }
 }
@@ -181,7 +181,7 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
     } else if (identifier == "noteDurationThreshold") {
         value = noteDurationThreshold_dB;
     } else if (identifier == "spectralDropFloor") {
-        value = spectralDropFloor_dB;
+        value = spectralDropOffset_dB;
     } else if (identifier == "spectralFrequencyMin") {
         value = spectralFrequencyMin_Hz;
     } else if (identifier == "spectralFrequencyMax") {
@@ -220,7 +220,7 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
     } else if (identifier == "noteDurationThreshold") {
         noteDurationThreshold_dB = value;
     } else if (identifier == "spectralDropFloor") {
-        spectralDropFloor_dB = value;
+        spectralDropOffset_dB = value;
     } else if (identifier == "spectralFrequencyMin") {
         spectralFrequencyMin_Hz = value;
     } else if (identifier == "spectralFrequencyMax") {
@@ -282,7 +282,8 @@ CoreFeatures::initialise(Parameters parameters) {
     levelRiseParameters.sampleRate = m_sampleRate;
     levelRiseParameters.blockSize = m_parameters.blockSize;
     levelRiseParameters.rise_dB = m_parameters.onsetSensitivityLevel_dB;
-    levelRiseParameters.floor_dB = m_parameters.spectralDropFloor_dB;
+    levelRiseParameters.noiseFloor_dB = m_parameters.spectralNoiseFloor_dB;
+    levelRiseParameters.offset_dB = m_parameters.spectralDropOffset_dB;
     levelRiseParameters.frequencyMin_Hz = m_parameters.spectralFrequencyMin_Hz;
     levelRiseParameters.frequencyMax_Hz = m_parameters.spectralFrequencyMax_Hz;
     levelRiseParameters.historyLength =
@@ -635,7 +636,7 @@ CoreFeatures::actualFinish()
         int s = p + sustainBeginSteps;
 
         if (s < n) {
-            auto bins = m_onsetLevelRise.getBinsAboveFloorAt(s);
+            auto bins = m_onsetLevelRise.getBinsAboveOffsetAt(s);
             binsAtBegin.insert(bins.begin(), bins.end());
             nBinsAtBegin = bins.size();
             
@@ -676,7 +677,7 @@ CoreFeatures::actualFinish()
 
             } else if (nBinsAtBegin > 0) {
 
-                auto binsHere = m_onsetLevelRise.getBinsAboveFloorAt(q);
+                auto binsHere = m_onsetLevelRise.getBinsAboveOffsetAt(q);
                 int remaining = 0;
                 for (auto bin: binsHere) {
                     if (binsAtBegin.find(bin) != binsAtBegin.end()) {

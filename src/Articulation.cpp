@@ -645,7 +645,7 @@ Articulation::getRemainingFeatures()
         for (int i = 0; i < noiseWindowSteps; ++i) {
             if (i < n) {
                 binsAboveFloor.push_back
-                    (m_coreFeatures.getOnsetBinsAboveFloorAt(onset + i));
+                    (m_coreFeatures.getOnsetBinsAboveNoiseFloorAt(onset + i));
             }
         }
         bool lungoPrecedes = false;

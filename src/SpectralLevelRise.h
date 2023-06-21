@@ -37,7 +37,8 @@ public:
         double frequencyMin_Hz;
         double frequencyMax_Hz;
         double rise_dB;
-        double floor_dB;
+        double noiseFloor_dB;
+        double offset_dB;
         int historyLength;
         Parameters() :
             sampleRate(48000.0),
@@ -45,7 +46,8 @@ public:
             frequencyMin_Hz(100.0),
             frequencyMax_Hz(4000.0),
             rise_dB(20.0),
-            floor_dB(-70.0),
+            noiseFloor_dB(-70.0),
+            offset_dB(-70.0),
             historyLength(20)
         {}
     };
@@ -93,11 +95,17 @@ public:
                       << ") should be positive" << std::endl;
             throw std::logic_error("SpectralLevelRise::initialise: rise dB should be positive (it is a gain ratio)");
         }
-        if (parameters.floor_dB > 0.0) {
-            std::cerr << "SpectralLevelRise::initialise: floor dB ("
-                      << parameters.floor_dB
+        if (parameters.noiseFloor_dB > 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: noise floor dB ("
+                      << parameters.noiseFloor_dB
                       << ") is expected to be negative" << std::endl;
-            throw std::logic_error("SpectralLevelRise::initialise: floor dB is expected to be negative (it is a signal level)");
+            throw std::logic_error("SpectralLevelRise::initialise: noise floor dB is expected to be negative (it is a signal level)");
+        }
+        if (parameters.offset_dB > 0.0) {
+            std::cerr << "SpectralLevelRise::initialise: offset dB ("
+                      << parameters.offset_dB
+                      << ") is expected to be negative" << std::endl;
+            throw std::logic_error("SpectralLevelRise::initialise: offset dB is expected to be negative (it is a signal level)");
         }
         if (parameters.historyLength < 2) {
             std::cerr << "SpectralLevelRise::initialise: historyLength ("
@@ -115,7 +123,8 @@ public:
             (double(m_parameters.blockSize) * m_parameters.frequencyMax_Hz) /
             m_parameters.sampleRate;
         m_rise_ratio = pow(10.0, m_parameters.rise_dB / 10.0);
-        m_floor_mag = pow(10.0, m_parameters.floor_dB / 20.0);
+        m_noiseFloor_mag = pow(10.0, m_parameters.noiseFloor_dB / 20.0);
+        m_offset_mag = pow(10.0, m_parameters.offset_dB / 20.0);
 
         // Hann window
         m_window.reserve(m_parameters.blockSize);
@@ -155,17 +164,21 @@ public:
                            ro.data(), io.data());
 
         std::vector<double> magnitudes;
-        std::vector<int> aboveFloor;
+        std::vector<int> aboveNoiseFloor, aboveOffset;
         for (int i = m_binmin; i <= m_binmax; ++i) {
             double mag = sqrt(ro[i] * ro[i] + io[i] * io[i]);
             mag /= double(m_parameters.blockSize);
             magnitudes.push_back(mag);
-            if (mag > m_floor_mag) {
-                aboveFloor.push_back(i);
+            if (mag > m_noiseFloor_mag) {
+                aboveNoiseFloor.push_back(i);
+            }
+            if (mag > m_offset_mag) {
+                aboveOffset.push_back(i);
             }
         }
 
-        m_binsAboveFloor.push_back(aboveFloor);
+        m_binsAboveNoiseFloor.push_back(aboveNoiseFloor);
+        m_binsAboveOffset.push_back(aboveOffset);
         m_magHistory.push_back(magnitudes);
 
         if (int(m_magHistory.size()) >= m_parameters.historyLength) {
@@ -187,9 +200,17 @@ public:
         return m_fractions;
     }
     
-    std::vector<int> getBinsAboveFloorAt(int step) const {
-        if (step < int(m_binsAboveFloor.size())) {
-            return m_binsAboveFloor.at(step);
+    std::vector<int> getBinsAboveNoiseFloorAt(int step) const {
+        if (step < int(m_binsAboveNoiseFloor.size())) {
+            return m_binsAboveNoiseFloor.at(step);
+        } else {
+            return {};
+        }
+    }
+    
+    std::vector<int> getBinsAboveOffsetAt(int step) const {
+        if (step < int(m_binsAboveOffset.size())) {
+            return m_binsAboveOffset.at(step);
         } else {
             return {};
         }
@@ -200,12 +221,14 @@ private:
     int m_binmin;
     int m_binmax;
     double m_rise_ratio;
-    double m_floor_mag;
+    double m_noiseFloor_mag;
+    double m_offset_mag;
     bool m_initialised;
     std::vector<float> m_window;
     std::deque<std::vector<double>> m_magHistory;
     std::vector<double> m_fractions;
-    std::vector<std::vector<int>> m_binsAboveFloor;
+    std::vector<std::vector<int>> m_binsAboveNoiseFloor;
+    std::vector<std::vector<int>> m_binsAboveOffset;
 
     double extractFraction() const {
         // If, for a given bin i, there is a value anywhere in the

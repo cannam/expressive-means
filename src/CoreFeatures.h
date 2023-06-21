@@ -53,7 +53,8 @@ public:
         float minimumOnsetInterval_ms;              // 2.6, o_6
         float sustainBeginThreshold_ms;
         float noteDurationThreshold_dB;             // 2.7, o_7
-        float spectralDropFloor_dB;
+        float spectralNoiseFloor_dB;
+        float spectralDropOffset_dB;
         float spectralFrequencyMin_Hz;
         float spectralFrequencyMax_Hz;
 
@@ -72,7 +73,8 @@ public:
             minimumOnsetInterval_ms(100.f),
             sustainBeginThreshold_ms(60.f),
             noteDurationThreshold_dB(12.f),
-            spectralDropFloor_dB(-70.f),
+            spectralNoiseFloor_dB(-70.f),
+            spectralDropOffset_dB(-70.f),
             spectralFrequencyMin_Hz(100.f),
             spectralFrequencyMax_Hz(4000.f)
         {}
@@ -162,9 +164,15 @@ public:
     }
     
     std::vector<int>
-    getOnsetBinsAboveFloorAt(int step) const {
+    getOnsetBinsAboveNoiseFloorAt(int step) const {
         assertFinished();
-        return m_onsetLevelRise.getBinsAboveFloorAt(step);
+        return m_onsetLevelRise.getBinsAboveNoiseFloorAt(step);
+    }
+    
+    std::vector<int>
+    getOnsetBinsAboveOffsetAt(int step) const {
+        assertFinished();
+        return m_onsetLevelRise.getBinsAboveOffsetAt(step);
     }
 
     std::vector<double>
