@@ -438,15 +438,32 @@ CoreFeatures::actualFinish()
     // with one another, and result i corresponds to time i*stepSize +
     // blockSize/2.
     //
+    // Whereas if we run pYIN in "imprecise" mode, the pYIN values are
+    // offset relative to the others by (blockSize/4)/stepSize hops
+    // and need to be pulled back by that number e.g. by clipping the
+    // start.
+    //
     // Following this logic, we make no adjustments to the hop values
     // in any of this code because they all align with one another,
     // but we implement the blockSize/2 offset in our timeForStep()
     // method and expect it to be used whenever anything wants to map
     // from a hop number to a returned timestamp.
+
+    int toDropFromPYin = 0;
+    if (!m_parameters.pyinPreciseTiming) {
+        toDropFromPYin = (m_parameters.blockSize / 4) / m_parameters.stepSize;
+#ifdef DEBUG_CORE_FEATURES
+        cerr << "dropping " << toDropFromPYin << " opening values from pYin pitch track to compensate for imprecise timing mode" << endl;
+#endif
+    }
     
     auto pyinFeatures = m_pyin.getRemainingFeatures();
     for (const auto &f: pyinFeatures[m_pyinSmoothedPitchTrackOutput]) {
-        m_pyinPitchHz.push_back(f.values[0]);
+        if (toDropFromPYin > 0) {
+            --toDropFromPYin;
+        } else {
+            m_pyinPitchHz.push_back(f.values[0]);
+        }
     }
 
     double prevHz = 0.0;

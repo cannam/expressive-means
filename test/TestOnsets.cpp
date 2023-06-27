@@ -90,6 +90,8 @@ BOOST_AUTO_TEST_CASE(defaultParams)
     int hop = cf.getPreferredStepSize();
 
     CoreFeatures::Parameters params;
+
+    // Necessary for this synthetic example
     params.pyinFixedLag = false;
         
     cf.initialise(params);
@@ -101,24 +103,37 @@ BOOST_AUTO_TEST_CASE(defaultParams)
 
     cf.finish();
 
+    /*
+    auto pitches = cf.getPYinPitch_Hz();
+    int i = 0;
+    for (auto pitch : pitches) {
+        cerr << i++ << ": " << pitch << endl;
+    }
+    */
+    
     auto onsets = cf.getMergedOnsets();
 
     // We should see onsets at 0.5 sec, 2.0 sec, 3.0 sec. The first
     // and third are spectral rise type, the second pitch change.
     BOOST_CHECK(onsets.size() == 3);
 
+    vector<int> hops;
     vector<Vamp::RealTime> times;
     vector<CoreFeatures::OnsetType> types;
     
     for (auto onset : onsets) {
+        /*
         cerr << "Onset at " << onset.first
              << " (" << cf.timeForStep(onset.first) << " )"
              << " of type " << int(onset.second) << endl;
-
+        */
+        hops.push_back(onset.first);
         times.push_back(cf.timeForStep(onset.first));
         types.push_back(onset.second);
     }
 
+    // These are the "acceptance" ranges
+    
     BOOST_CHECK(times[0] > Vamp::RealTime::fromSeconds(0.47));
     BOOST_CHECK(times[0] < Vamp::RealTime::fromSeconds(0.51));
     BOOST_CHECK(types[0] == CoreFeatures::OnsetType::SpectralLevelRise);
@@ -130,8 +145,12 @@ BOOST_AUTO_TEST_CASE(defaultParams)
     BOOST_CHECK(times[2] > Vamp::RealTime::fromSeconds(2.97));
     BOOST_CHECK(times[2] < Vamp::RealTime::fromSeconds(3.01));
     BOOST_CHECK(types[2] == CoreFeatures::OnsetType::SpectralLevelRise);
-    
-    
+
+    // These are the "regression" values
+
+    BOOST_CHECK(hops[0] == 80);
+    BOOST_CHECK(hops[1] == 336);
+    BOOST_CHECK(hops[2] == 511);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
