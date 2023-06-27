@@ -101,16 +101,44 @@ BOOST_AUTO_TEST_CASE(defaultParams)
 
     cf.finish();
 
-    auto pitch = cf.getPYinPitch_Hz();
-    for (auto p : pitch) {
-        cerr << p << " Hz" << endl;
-    }
-    
     auto onsets = cf.getMergedOnsets();
 
+    // We should see onsets at 0.5 sec, 2.0 sec, 3.0 sec. The first
+    // and third are spectral rise type, the second pitch change
+    // type. The fourth onset here is spurious - it happens because a
+    // spectral rise is detected in the broadband noise of the final
+    // offset. In theory we could eliminate it because there is no
+    // activity after the onset, even at the moment where the sustain
+    // phase is normally expected to begin - but we don't have a
+    // principled way to do that yet without eliminating true
+    // percussive onsets. Something to come back to there.
+    // 
+    BOOST_CHECK(onsets.size() == 4);
+
+    vector<Vamp::RealTime> times;
+    vector<CoreFeatures::OnsetType> types;
+    
     for (auto onset : onsets) {
-        cerr << "Onset at " << onset.first << " of type " << int(onset.second) << endl;
+        cerr << "Onset at " << onset.first
+             << " (" << cf.timeForStep(onset.first) << " )"
+             << " of type " << int(onset.second) << endl;
+
+        times.push_back(cf.timeForStep(onset.first));
+        types.push_back(onset.second);
     }
+
+    BOOST_CHECK(times[0] > Vamp::RealTime::fromSeconds(0.47));
+    BOOST_CHECK(times[0] < Vamp::RealTime::fromSeconds(0.51));
+    BOOST_CHECK(types[0] == CoreFeatures::OnsetType::SpectralLevelRise);
+
+    BOOST_CHECK(times[1] > Vamp::RealTime::fromSeconds(1.97));
+    BOOST_CHECK(times[1] < Vamp::RealTime::fromSeconds(2.01));
+    BOOST_CHECK(types[1] == CoreFeatures::OnsetType::Pitch);
+
+    BOOST_CHECK(times[2] > Vamp::RealTime::fromSeconds(2.97));
+    BOOST_CHECK(times[2] < Vamp::RealTime::fromSeconds(3.01));
+    BOOST_CHECK(types[2] == CoreFeatures::OnsetType::SpectralLevelRise);
+    
     
 }
 
