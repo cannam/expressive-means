@@ -635,6 +635,10 @@ CoreFeatures::actualFinish()
                                       m_parameters.stepSize, false);
 
     map<int, double> offsetDropDfEntries;
+
+    // Onsets that turn out to have nothing going on at all when the
+    // sustain start time arrives are spurious and may be removed
+    set<int> spuriousOnsets;
     
     for (auto i = m_mergedOnsets.begin(); i != m_mergedOnsets.end(); ++i) {
         int p = i->first;
@@ -666,12 +670,23 @@ CoreFeatures::actualFinish()
                  << "; we have " << binsAtBegin.size()
                  << " bins active" << endl;
 #endif
+
+            if (sustainBeginSteps > 0 && nBinsAtBegin == 0) {
+#ifdef DEBUG_CORE_FEATURES
+                cerr << "no bins active at sustain start index " << s
+                     << ", marking onset as spurious" << endl;
+#endif
+                spuriousOnsets.insert(p);
+                continue;
+            }
             
         } else {
 #ifdef DEBUG_CORE_FEATURES
             cerr << "sustain start index " << s
-                 << " out of range at end" << endl;
+                 << " out of range at end, marking onset as spurious" << endl;
 #endif
+            spuriousOnsets.insert(p);
+            continue;
         }
         
         int q = s;
@@ -705,7 +720,7 @@ CoreFeatures::actualFinish()
                                                                     
 #ifdef DEBUG_CORE_FEATURES
                 cerr << "at step " << q << " we have " << binsHere.size()
-                     << " of which " << remaining
+                     << " bins active of which " << remaining
                      << " remain from the sustain begin step, giving df value "
                      << df << endl;
 #endif
@@ -722,6 +737,16 @@ CoreFeatures::actualFinish()
             m_onsetOffsets[p] = { limit, type };
         } else {
             m_onsetOffsets[p] = { q, type };
+        }
+    }
+
+    if (!spuriousOnsets.empty()) {
+#ifdef DEBUG_CORE_FEATURES
+        cerr << "removing " << spuriousOnsets.size()
+             << " spurious onsets" << endl;
+#endif
+        for (auto p : spuriousOnsets) {
+            m_mergedOnsets.erase(p);
         }
     }
 

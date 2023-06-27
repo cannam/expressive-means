@@ -104,16 +104,8 @@ BOOST_AUTO_TEST_CASE(defaultParams)
     auto onsets = cf.getMergedOnsets();
 
     // We should see onsets at 0.5 sec, 2.0 sec, 3.0 sec. The first
-    // and third are spectral rise type, the second pitch change
-    // type. The fourth onset here is spurious - it happens because a
-    // spectral rise is detected in the broadband noise of the final
-    // offset. In theory we could eliminate it because there is no
-    // activity after the onset, even at the moment where the sustain
-    // phase is normally expected to begin - but we don't have a
-    // principled way to do that yet without eliminating true
-    // percussive onsets. Something to come back to there.
-    // 
-    BOOST_CHECK(onsets.size() == 4);
+    // and third are spectral rise type, the second pitch change.
+    BOOST_CHECK(onsets.size() == 3);
 
     vector<Vamp::RealTime> times;
     vector<CoreFeatures::OnsetType> types;
