@@ -67,7 +67,7 @@ public:
             pyinThresholdDistribution(2.f),
             pyinLowAmpSuppressionThreshold(0.1f),
             pyinFixedLag(true),
-            pyinPreciseTiming(true),
+            pyinPreciseTiming(false),
             pitchAverageWindow_ms(150.f),
             onsetSensitivityPitch_cents(15.f),
             onsetSensitivityNoise_percent(24.f),

@@ -44,9 +44,10 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     auto pyinParams = tempPYin.getParameterDescriptors();
     for (auto pd: pyinParams) {
         if (pd.identifier == "threshdistr" ||
-            pd.identifier == "lowampsuppression") {
+            pd.identifier == "lowampsuppression" ||
+            pd.identifier == "precisetime") {
             // If we want to expose other pYin params, this is the
-            // place to do it
+            // place to do it (add them to the list in the above conditional)
             pd.identifier = "pyin-" + pd.identifier;
             pd.name = "pYIN: " + pd.name;
             list.push_back(pd);
