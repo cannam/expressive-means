@@ -242,7 +242,8 @@ private:
         int above = 0;
         for (int i = 0; i < n; ++i) {
             for (int j = 1; j < m; ++j) {
-                if (m_magHistory[j][i] > m_magHistory[0][i] * m_rise_ratio) {
+                if (m_magHistory[j][i] > m_magHistory[0][i] * m_rise_ratio &&
+                    m_magHistory[j][i] > m_noiseFloor_mag) {
                     ++above;
                     break;
                 }
