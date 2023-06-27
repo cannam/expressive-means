@@ -23,6 +23,18 @@
         "pyin": {
             "vcs": "hg",
             "service": "soundsoftware"
+        },
+        "bqaudiostream": {
+            "vcs": "hg", "service": "sourcehut", "owner": "breakfastquay"
+        },
+        "bqresample": {
+            "vcs": "hg", "service": "sourcehut", "owner": "breakfastquay"
+        },
+        "bqthingfactory": {
+            "vcs": "hg", "service": "sourcehut", "owner": "breakfastquay"
+        },
+        "bqvec": {
+            "vcs": "hg", "service": "sourcehut", "owner": "breakfastquay"
         }
     }
 }

@@ -79,6 +79,27 @@ pyin_sources = [
   pyin_dir / 'MonoPitchHMM.cpp',
 ]
 
+# Only used for tests in some troubleshooting configurations
+bq_sources = [
+  'ext/bqaudiostream/src/AudioReadStream.cpp',
+  'ext/bqaudiostream/src/AudioReadStreamFactory.cpp',
+  'ext/bqaudiostream/src/AudioStreamExceptions.cpp',
+  'ext/bqaudiostream/src/AudioWriteStreamFactory.cpp',
+  'ext/bqresample/src/Resampler.cpp',
+  'ext/bqresample/src/BQResampler.cpp',
+  'ext/bqresample/src/common.cpp',
+  'ext/bqvec/src/Allocators.cpp',
+  'ext/bqvec/src/Barrier.cpp',
+  'ext/bqvec/src/VectorOpsComplex.cpp',
+]
+
+bq_includedirs = [
+  'ext/bqaudiostream',
+  'ext/bqthingfactory',
+  'ext/bqresample',
+  'ext/bqvec',
+]
+
 feature_defines = []
 
 if system == 'darwin'
@@ -121,8 +142,9 @@ if have_boost_unit_test
     vamp_sources,
     qmdsp_sources,
     pyin_sources,
-    include_directories: [ vamp_dir ],
-    cpp_args: [ feature_defines ],
+    bq_sources,
+    include_directories: [ vamp_dir, bq_includedirs ],
+    cpp_args: [ feature_defines, '-DUSE_BQRESAMPLER' ],
     dependencies: [ boost_unit_test_dep ],
     install: false,
     build_by_default: true

@@ -13,6 +13,9 @@
 
 #include "../src/CoreFeatures.h"
 
+#include "bqaudiostream/AudioWriteStream.h"
+#include "bqaudiostream/AudioWriteStreamFactory.h"
+
 #include <iostream>
 
 using std::cerr;
@@ -64,6 +67,11 @@ makeTestSignal()
         }
     }
 
+    auto str = breakfastquay::AudioWriteStreamFactory::createWriteStream
+        ("testsignal.wav", 1, rate);
+    str->putInterleavedFrames(duration, signal.data());
+    delete str;
+    
 //    for (int i = 0; i < duration; ++i) {
 //        cerr << "# " << i << "," << signal[i] << endl;
 //    }

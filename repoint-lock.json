@@ -3,11 +3,23 @@
     "vamp-plugin-sdk": {
       "pin": "7df85ecf98d9477c1ac5a36f51807062e00d8695"
     },
+    "qm-dsp": {
+      "pin": "e34a3cc188332ed7c33cd9257ef164de5b587191"
+    },
     "pyin": {
       "pin": "a7d9c6142f8f"
     },
-    "qm-dsp": {
-      "pin": "e34a3cc188332ed7c33cd9257ef164de5b587191"
+    "bqaudiostream": {
+      "pin": "1ac3beeccf36"
+    },
+    "bqresample": {
+      "pin": "38c3e524416a"
+    },
+    "bqthingfactory": {
+      "pin": "2e4bd170f57f"
+    },
+    "bqvec": {
+      "pin": "291cde50db9d"
     }
   }
 }
