@@ -90,6 +90,7 @@ BOOST_AUTO_TEST_CASE(defaultParams)
     int hop = cf.getPreferredStepSize();
 
     CoreFeatures::Parameters params;
+    params.pyinFixedLag = false;
         
     cf.initialise(params);
     
@@ -100,6 +101,11 @@ BOOST_AUTO_TEST_CASE(defaultParams)
 
     cf.finish();
 
+    auto pitch = cf.getPYinPitch_Hz();
+    for (auto p : pitch) {
+        cerr << p << " Hz" << endl;
+    }
+    
     auto onsets = cf.getMergedOnsets();
 
     for (auto onset : onsets) {
