@@ -45,6 +45,8 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     for (auto pd: pyinParams) {
         if (pd.identifier == "threshdistr" ||
             pd.identifier == "lowampsuppression") {
+            // If we want to expose other pYin params, this is the
+            // place to do it
             pd.identifier = "pyin-" + pd.identifier;
             pd.name = "pYIN: " + pd.name;
             list.push_back(pd);
@@ -162,6 +164,10 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
         value = pyinThresholdDistribution;
     } else if (identifier == "pyin-lowampsuppression") {
         value = pyinLowAmpSuppressionThreshold;
+    } else if (identifier == "pyin-fixedlag") {
+        value = pyinFixedLag;
+    } else if (identifier == "pyin-precisetime") {
+        value = pyinPreciseTiming;
     } else if (identifier == "pitchAverageWindow") {
         value = pitchAverageWindow_ms;
     } else if (identifier == "onsetSensitivityPitch") {
@@ -201,6 +207,10 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
         pyinThresholdDistribution = value;
     } else if (identifier == "pyin-lowampsuppression") {
         pyinLowAmpSuppressionThreshold = value;
+    } else if (identifier == "pyin-fixedlag") {
+        pyinFixedLag = value;
+    } else if (identifier == "pyin-precisetime") {
+        pyinPreciseTiming = value;
     } else if (identifier == "pitchAverageWindow") {
         pitchAverageWindow_ms = value;
     } else if (identifier == "onsetSensitivityPitch") {
@@ -262,13 +272,18 @@ CoreFeatures::initialise(Parameters parameters) {
     }
         
     m_pyin.setParameter("outputunvoiced", 2.f); // As negative frequencies
-    m_pyin.setParameter("precisetime", 1.f); // Match timing with other features
-                                             // (see notes in finish() below)
     
     m_pyin.setParameter("threshdistr",
                         m_parameters.pyinThresholdDistribution);
     m_pyin.setParameter("lowampsuppression",
                         m_parameters.pyinLowAmpSuppressionThreshold);
+    m_pyin.setParameter("fixedlag",
+                        m_parameters.pyinFixedLag);
+
+    // See notes in finish() below about timing alignment - it is
+    // easier with precisetime, but pyin runs so much more slowly
+    m_pyin.setParameter("precisetime",
+                        m_parameters.pyinPreciseTiming);
 
     if (!m_pyin.initialise(1, m_parameters.stepSize, m_parameters.blockSize)) {
         throw logic_error("pYIN initialisation failed");
