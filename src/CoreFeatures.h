@@ -44,8 +44,8 @@ public:
         bool normalise;
         float pyinThresholdDistribution;
         float pyinLowAmpSuppressionThreshold;
-        float pyinFixedLag;
-        float pyinPreciseTiming;
+        bool pyinFixedLag;
+        bool pyinPreciseTiming;
         float pitchAverageWindow_ms;                // 2.1, o_1
         float onsetSensitivityPitch_cents;          // 2.2, o_2
         float onsetSensitivityNoise_percent;        // 2.3, o_3
@@ -66,8 +66,8 @@ public:
             normalise(true),
             pyinThresholdDistribution(2.f),
             pyinLowAmpSuppressionThreshold(0.1f),
-            pyinFixedLag(1.f),
-            pyinPreciseTiming(1.f),
+            pyinFixedLag(true),
+            pyinPreciseTiming(true),
             pitchAverageWindow_ms(150.f),
             onsetSensitivityPitch_cents(15.f),
             onsetSensitivityNoise_percent(24.f),

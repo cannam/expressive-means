@@ -165,9 +165,9 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
     } else if (identifier == "pyin-lowampsuppression") {
         value = pyinLowAmpSuppressionThreshold;
     } else if (identifier == "pyin-fixedlag") {
-        value = pyinFixedLag;
+        value = (pyinFixedLag ? 1.f : 0.f);
     } else if (identifier == "pyin-precisetime") {
-        value = pyinPreciseTiming;
+        value = (pyinPreciseTiming ? 1.f : 0.f);
     } else if (identifier == "pitchAverageWindow") {
         value = pitchAverageWindow_ms;
     } else if (identifier == "onsetSensitivityPitch") {
@@ -208,9 +208,9 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
     } else if (identifier == "pyin-lowampsuppression") {
         pyinLowAmpSuppressionThreshold = value;
     } else if (identifier == "pyin-fixedlag") {
-        pyinFixedLag = value;
+        pyinFixedLag = (value > 0.5f);
     } else if (identifier == "pyin-precisetime") {
-        pyinPreciseTiming = value;
+        pyinPreciseTiming = (value > 0.5f);
     } else if (identifier == "pitchAverageWindow") {
         pitchAverageWindow_ms = value;
     } else if (identifier == "onsetSensitivityPitch") {
@@ -278,12 +278,12 @@ CoreFeatures::initialise(Parameters parameters) {
     m_pyin.setParameter("lowampsuppression",
                         m_parameters.pyinLowAmpSuppressionThreshold);
     m_pyin.setParameter("fixedlag",
-                        m_parameters.pyinFixedLag);
+                        m_parameters.pyinFixedLag ? 1.f : 0.f);
 
     // See notes in finish() below about timing alignment - it is
     // easier with precisetime, but pyin runs so much more slowly
     m_pyin.setParameter("precisetime",
-                        m_parameters.pyinPreciseTiming);
+                        m_parameters.pyinPreciseTiming ? 1.f : 0.f);
 
     if (!m_pyin.initialise(1, m_parameters.stepSize, m_parameters.blockSize)) {
         throw logic_error("pYIN initialisation failed");
