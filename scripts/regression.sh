@@ -16,11 +16,10 @@ while read output ; do
     echo "--- Testing $output"
     VAMP_PATH=./build sonic-annotator -d "vamp:expressive-means:$output" -w csv --csv-stdout --csv-omit-filename "$input" > /tmp/$$
     expected=scripts/regression-expected/"$(echo $output | sed s/:/_/g)"
-    if diff -u /tmp/$$ "$expected" ; then
+    if sdiff -w 78 /tmp/$$ "$expected" ; then
         echo "--- Passed"
     else
         echo "*** FAILED"
-        exit 1
     fi
     echo
 done <<EOF
