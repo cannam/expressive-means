@@ -13,8 +13,12 @@ project(
     meson_version: '>= 0.53.0'
 )
 
-# Increment for each bump of the project version (major or minor, doesn't matter)
+# Increment for each bump of project version (major or minor, doesn't matter)
 plugin_version = '4'
+
+# Cause plugins to be given fresh names for identification during testing;
+# ensure empty for releases. Must follow pattern for plugin IDs (e.g. no spaces)
+plugin_testing_tag = 'pyin-imprecise'
 
 conf = configuration_data()
 conf.set('version', meson.project_version())
@@ -116,6 +120,10 @@ else
   vamp_symbol_args = [
     '-Wl,--version-script=' + meson.current_source_dir() / 'vamp-plugin.map'
   ]
+endif
+
+if plugin_testing_tag != ''
+  feature_defines += [ '-DPLUGIN_TESTING_TAG="' + plugin_testing_tag + '"' ]
 endif
 
 expressive_means = shared_library(

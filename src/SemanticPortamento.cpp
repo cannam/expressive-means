@@ -123,12 +123,12 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
     
 string
 SemanticPortamento::getIdentifier() const {
-    return "portamento-semantic";
+    return TAGGED_ID("portamento-semantic");
 }
 
 string
 SemanticPortamento::getName() const {
-    return "Expressive Means: Portamento";
+    return TAGGED_NAME("Expressive Means: Portamento");
 }
 
 string

@@ -141,12 +141,12 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
     
 string
 SemanticPitchVibrato::getIdentifier() const {
-    return "pitch-vibrato-semantic";
+    return TAGGED_ID("pitch-vibrato-semantic");
 }
 
 string
 SemanticPitchVibrato::getName() const {
-    return "Expressive Means: Pitch Vibrato";
+    return TAGGED_NAME("Expressive Means: Pitch Vibrato");
 }
 
 string

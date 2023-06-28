@@ -41,13 +41,13 @@ Onsets::~Onsets()
 string
 Onsets::getIdentifier() const
 {
-    return "onsets";
+    return TAGGED_ID("onsets");
 }
 
 string
 Onsets::getName() const
 {
-    return "Expressive Means (advanced)";
+    return TAGGED_NAME("Expressive Means (advanced)");
 }
 
 string

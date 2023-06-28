@@ -97,13 +97,13 @@ PitchVibrato::~PitchVibrato()
 string
 PitchVibrato::getIdentifier() const
 {
-    return "pitch-vibrato";
+    return TAGGED_ID("pitch-vibrato");
 }
 
 string
 PitchVibrato::getName() const
 {
-    return "Expressive Means (advanced): Pitch Vibrato";
+    return TAGGED_NAME("Expressive Means (advanced): Pitch Vibrato");
 }
 
 string

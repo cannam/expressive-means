@@ -72,13 +72,13 @@ Articulation::~Articulation()
 string
 Articulation::getIdentifier() const
 {
-    return "articulation";
+    return TAGGED_ID("articulation");
 }
 
 string
 Articulation::getName() const
 {
-    return "Expressive Means (advanced): Articulation";
+    return TAGGED_NAME("Expressive Means (advanced): Articulation");
 }
 
 string

@@ -211,12 +211,12 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
     
 string
 SemanticArticulation::getIdentifier() const {
-    return "articulation-semantic";
+    return TAGGED_ID("articulation-semantic");
 }
 
 string
 SemanticArticulation::getName() const {
-    return "Expressive Means: Articulation";
+    return TAGGED_NAME("Expressive Means: Articulation");
 }
 
 string

@@ -143,12 +143,12 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
     
 string
 SemanticOnsets::getIdentifier() const {
-    return "onsets-semantic";
+    return TAGGED_ID("onsets-semantic");
 }
 
 string
 SemanticOnsets::getName() const {
-    return "Expressive Means";
+    return TAGGED_NAME("Expressive Means");
 }
 
 string

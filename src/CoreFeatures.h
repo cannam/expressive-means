@@ -12,6 +12,14 @@
 #ifndef EXPRESSIVE_MEANS_CORE_FEATURES_H
 #define EXPRESSIVE_MEANS_CORE_FEATURES_H
 
+#ifdef PLUGIN_TESTING_TAG
+#define TAGGED_ID(id) id "-" PLUGIN_TESTING_TAG
+#define TAGGED_NAME(name) name " [" PLUGIN_TESTING_TAG "]"
+#else
+#define TAGGED_ID(id) id
+#define TAGGED_NAME(name) name
+#endif
+
 #include "Power.h"
 #include "SpectralLevelRise.h"
 

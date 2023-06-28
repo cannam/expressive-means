@@ -78,13 +78,13 @@ Portamento::~Portamento()
 string
 Portamento::getIdentifier() const
 {
-    return "portamento";
+    return TAGGED_ID("portamento");
 }
 
 string
 Portamento::getName() const
 {
-    return "Expressive Means (advanced): Portamento";
+    return TAGGED_NAME("Expressive Means (advanced): Portamento");
 }
 
 string
