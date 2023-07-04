@@ -18,7 +18,7 @@ plugin_version = '4'
 
 # Cause plugins to be given fresh names for identification during testing;
 # ensure empty for releases. Must follow pattern for plugin IDs (e.g. no spaces)
-plugin_testing_tag = 'pyin-imprecise'
+plugin_testing_tag = ''
 
 conf = configuration_data()
 conf.set('version', meson.project_version())
