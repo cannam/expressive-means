@@ -78,7 +78,7 @@ public:
             pyinPreciseTiming(false),
             pitchAverageWindow_ms(150.f),
             onsetSensitivityPitch_cents(15.f),
-            onsetSensitivityNoise_percent(24.f),
+            onsetSensitivityNoise_percent(17.f),
             onsetSensitivityLevel_dB(8.f),
             onsetSensitivityNoiseTimeWindow_ms(100.f),
             onsetSensitivityRawPowerThreshold_dB(6.f),
@@ -86,7 +86,7 @@ public:
             sustainBeginThreshold_ms(60.f),
             noteDurationThreshold_dB(12.f),
             spectralNoiseFloor_dB(-70.f),
-            spectralDropOffset_dB(-70.f),
+            spectralDropOffset_dB(-60.f),
             spectralFrequencyMin_Hz(100.f),
             spectralFrequencyMax_Hz(4000.f)
         {}
