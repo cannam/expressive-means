@@ -524,17 +524,21 @@ CoreFeatures::actualFinish()
         std::min(minimumOnsetSteps,
                  msToSteps(120.0, m_parameters.stepSize, false));
 
-    int lastBelowThreshold = -vibratoSuppressionThresholdSteps;
     double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
+    int aboveThresholdCount = 0;
     
     for (int i = 0; i + halfLength < n; ++i) {
         // "absolute difference... falls below o_2":
-        if (m_pitchOnsetDf[i] < threshold && m_pitchOnsetDfValidity[i]) {
-            if (i > lastBelowThreshold + vibratoSuppressionThresholdSteps) {
+        if (m_pitchOnsetDfValidity[i]) {
+            if (m_pitchOnsetDf[i] >= threshold) {
+                aboveThresholdCount ++;
+                continue;
+            }
+            if (aboveThresholdCount > vibratoSuppressionThresholdSteps) {
                 m_pitchOnsets.insert(i);
             }
-            lastBelowThreshold = i;
         }
+        aboveThresholdCount = 0;
     }
     
     vector<double> riseFractions = m_onsetLevelRise.getFractions();
