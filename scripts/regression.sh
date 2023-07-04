@@ -12,13 +12,18 @@ if [ ! -f "$input" ]; then
     exit 2
 fi
 
+suffix=-pyin-imprecise
+
 while read output ; do 
     echo "--- Testing $output"
-    VAMP_PATH=./build sonic-annotator -d "vamp:expressive-means:$output" -w csv --csv-stdout --csv-omit-filename "$input" > /tmp/$$
+    suffixed=$(echo "$output" | sed 's/:/'$suffix':/')
+    VAMP_PATH=$(pwd)/build sonic-annotator -d "vamp:expressive-means:$suffixed" -w csv --csv-stdout --csv-omit-filename "$input" > /tmp/$$
     expected=scripts/regression-expected/"$(echo $output | sed s/:/_/g)"
-    if sdiff -w 78 /tmp/$$ "$expected" ; then
+    #    cp /tmp/$$ "$expected"
+    if diff -q /tmp/$$ "$expected" ; then
         echo "--- Passed"
     else
+        sdiff -w 78 /tmp/$$ "$expected"
         echo "*** FAILED"
     fi
     echo
