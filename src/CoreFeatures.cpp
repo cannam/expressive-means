@@ -50,6 +50,7 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
             // place to do it (add them to the list in the above conditional)
             pd.identifier = "pyin-" + pd.identifier;
             pd.name = "pYIN: " + pd.name;
+            pd.description = "pYin parameters after Matthias Mauch's (2014) method. Switching to precise timing will deliver exact time-pitch alignments, but will take about five times longer for calculation."
             list.push_back(pd);
         }
     }
