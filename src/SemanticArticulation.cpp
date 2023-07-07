@@ -19,7 +19,7 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
        "articulationType", "articulationIndex" },
      // Parameter selection (passed through, or new)
      { "clef", "instrumentType", "noteDurations",
-       "soundQuality", "reverb", "overlap", "normaliseAudio"
+       "soundQuality", "reverb", "overlap", "normaliseAudio", "pyin-precisetime"
      },
      // Parameter metadata (map)
      { { "clef",
