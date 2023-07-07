@@ -17,7 +17,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
      // Output selection (to be passed through)
      { "onsets", "durations" },
      // Parameter selection (passed through, or new)
-     { "clef", "instrumentType", "noteDurations", "normaliseAudio"
+     { "clef", "instrumentType", "noteDurations", "normaliseAudio", "pyin-precisetime"
      },
      // Parameter metadata (map)
      { { "clef",
