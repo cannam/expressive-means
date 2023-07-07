@@ -86,10 +86,10 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
              } },
            { "Vocal (Jazz & Pop)",
              { { "onsetSensitivityPitch", 60.f },
-               { "onsetSensitivityNoise", 25.f },
+               { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 12.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f }
              } },
            { "Piano / Plugged Strings",
              { { "pyin-threshdistr", 1.f },
