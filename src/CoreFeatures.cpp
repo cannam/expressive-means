@@ -150,7 +150,7 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
         list.push_back(d);
     
         d.identifier = "spectralDropFloor";
-        d.name = "Offset sensitivity: Spectral drop floor level";
+        d.name = "Spectral drop floor level";
         d.unit = "dB";
         d.minValue = -120.f;
         d.maxValue = 0.f;
