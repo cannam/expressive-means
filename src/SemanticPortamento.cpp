@@ -72,8 +72,8 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "glideThresholdPitch", 60.f },
                { "glideThresholdHopMinimum", 3.f },
                { "glideThresholdHopMaximum", 70.f },
-               { "glideThresholdDuration", 50.f },
-               { "glideThresholdProximity", 1500.f },
+               { "glideThresholdDuration", 20.f },
+               { "glideThresholdProximity", 2000.f },
                { "linkThreshold", 100.f }
              } },  
           { "Vocal (Jazz & Pop)",
