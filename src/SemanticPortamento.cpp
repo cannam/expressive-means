@@ -64,9 +64,9 @@ SemanticPortamento::SemanticPortamento(float inputSampleRate) :
                { "linkThreshold", 70.f }
              } },
            { "Vocal (Classical)",
-             { { "onsetSensitivityPitch", 100.f },
-               { "onsetSensitivityNoise", 40.f },
-               { "onsetSensitivityLevel", 7.f },
+             { { "onsetSensitivityPitch", 80.f },
+               { "onsetSensitivityNoise", 45.f },
+               { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 10.f },
                { "glideThresholdPitch", 60.f },
