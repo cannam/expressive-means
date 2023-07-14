@@ -55,6 +55,7 @@ public:
         bool pyinFixedLag;
         bool pyinPreciseTiming;
         float pitchAverageWindow_ms;                // 2.1, o_1
+        bool usePitchOnsetDetector;
         float onsetSensitivityPitch_cents;          // 2.2, o_2
         float onsetSensitivityNoise_percent;        // 2.3, o_3
         float onsetSensitivityLevel_dB;             // 2.4, o_4
@@ -77,6 +78,7 @@ public:
             pyinFixedLag(true),
             pyinPreciseTiming(false),
             pitchAverageWindow_ms(150.f),
+            usePitchOnsetDetector(true),
             onsetSensitivityPitch_cents(15.f),
             onsetSensitivityNoise_percent(17.f),
             onsetSensitivityLevel_dB(8.f),

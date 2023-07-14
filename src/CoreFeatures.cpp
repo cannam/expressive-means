@@ -91,11 +91,26 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
     d.defaultValue = defaultCoreParams.pitchAverageWindow_ms;
     list.push_back(d);
 
+    d.identifier = "usePitchOnsetDetector";
+    d.name = "Onsets: Use pitch";
+    d.description = "Take pitch variation into account for onset detection. Switch this off when dealing with instruments having fixed-pitch or unpitched notes.";
+    d.unit = "";
+    d.minValue = 0.f;
+    d.maxValue = 1.f;
+    d.defaultValue = defaultCoreParams.usePitchOnsetDetector ? 1.f : 0.f;
+    d.isQuantized = true;
+    d.quantizeStep = 1.f;
+    list.push_back(d);
+
+    d.description = "";
+    d.isQuantized = false;
+    d.quantizeStep = 0.f;
+
     d.identifier = "onsetSensitivityPitch";
     d.name = "Onset sensitivity: Pitch";
     d.unit = "cents";
     d.minValue = 0.f;
-    d.maxValue = 99999.f;
+    d.maxValue = 500.f;
     d.defaultValue = defaultCoreParams.onsetSensitivityPitch_cents;
     list.push_back(d);
     
@@ -172,6 +187,8 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
         value = (pyinPreciseTiming ? 1.f : 0.f);
     } else if (identifier == "pitchAverageWindow") {
         value = pitchAverageWindow_ms;
+    } else if (identifier == "usePitchOnsetDetector") {
+        value = (usePitchOnsetDetector ? 1.f : 0.f);
     } else if (identifier == "onsetSensitivityPitch") {
         value = onsetSensitivityPitch_cents;
     } else if (identifier == "onsetSensitivityNoise") {
@@ -215,6 +232,8 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
         pyinPreciseTiming = (value > 0.5f);
     } else if (identifier == "pitchAverageWindow") {
         pitchAverageWindow_ms = value;
+    } else if (identifier == "usePitchOnsetDetector") {
+        usePitchOnsetDetector = (value > 0.5f);
     } else if (identifier == "onsetSensitivityPitch") {
         onsetSensitivityPitch_cents = value;
     } else if (identifier == "onsetSensitivityNoise") {
@@ -516,30 +535,34 @@ CoreFeatures::actualFinish()
     int minimumOnsetSteps = msToSteps(m_parameters.minimumOnsetInterval_ms,
                                       m_parameters.stepSize, false);
 
-    // "subsequent onsets require o_2 to be exceeded for at least the
-    // duration of o_6 [minimumOnsetSteps] first, but not exceeding
-    // 120ms" (the last clause added in issue #11). The purpose is
-    // just to avoid vibratos triggering pitch-based onsets. Calculate
-    // that threshold now
-    int vibratoSuppressionThresholdSteps =
-        std::min(minimumOnsetSteps,
-                 msToSteps(120.0, m_parameters.stepSize, false));
+    if (m_parameters.usePitchOnsetDetector) {
+        
+        // "subsequent onsets require o_2 to be exceeded for at least
+        // the duration of o_6 [minimumOnsetSteps] first, but not
+        // exceeding 120ms" (the last clause added in issue #11). The
+        // purpose is just to avoid vibratos triggering pitch-based
+        // onsets. Calculate that threshold now
+        
+        int vibratoSuppressionThresholdSteps =
+            std::min(minimumOnsetSteps,
+                     msToSteps(120.0, m_parameters.stepSize, false));
 
-    double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
-    int aboveThresholdCount = 0;
+        double threshold = m_parameters.onsetSensitivityPitch_cents / 100.0;
+        int aboveThresholdCount = 0;
     
-    for (int i = 0; i + halfLength < n; ++i) {
-        // "absolute difference... falls below o_2":
-        if (m_pitchOnsetDfValidity[i]) {
-            if (m_pitchOnsetDf[i] >= threshold) {
-                aboveThresholdCount ++;
-                continue;
+        for (int i = 0; i + halfLength < n; ++i) {
+            // "absolute difference... falls below o_2":
+            if (m_pitchOnsetDfValidity[i]) {
+                if (m_pitchOnsetDf[i] >= threshold) {
+                    aboveThresholdCount ++;
+                    continue;
+                }
+                if (aboveThresholdCount > vibratoSuppressionThresholdSteps) {
+                    m_pitchOnsets.insert(i);
+                }
             }
-            if (aboveThresholdCount > vibratoSuppressionThresholdSteps) {
-                m_pitchOnsets.insert(i);
-            }
+            aboveThresholdCount = 0;
         }
-        aboveThresholdCount = 0;
     }
     
     vector<double> riseFractions = m_onsetLevelRise.getFractions();
