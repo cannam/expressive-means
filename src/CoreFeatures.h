@@ -66,6 +66,7 @@ public:
         float noteDurationThreshold_dB;             // 2.7, o_7
         float spectralNoiseFloor_dB;
         float spectralDropOffset_dB;
+        float spectralDropOffsetRatio_percent;
         float spectralFrequencyMin_Hz;
         float spectralFrequencyMax_Hz;
 
@@ -89,6 +90,7 @@ public:
             noteDurationThreshold_dB(12.f),
             spectralNoiseFloor_dB(-70.f),
             spectralDropOffset_dB(-60.f),
+            spectralDropOffsetRatio_percent(40.f),
             spectralFrequencyMin_Hz(100.f),
             spectralFrequencyMax_Hz(4000.f)
         {}

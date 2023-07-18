@@ -165,11 +165,19 @@ CoreFeatures::Parameters::appendVampParameterDescriptors(Vamp::Plugin::Parameter
         list.push_back(d);
     
         d.identifier = "spectralDropFloor";
-        d.name = "Spectral drop floor level";
+        d.name = "Offset sensitivity: Spectral drop floor level";
         d.unit = "dB";
         d.minValue = -120.f;
         d.maxValue = 0.f;
         d.defaultValue = defaultCoreParams.spectralDropOffset_dB;
+        list.push_back(d);
+    
+        d.identifier = "spectralDropOffsetRatio";
+        d.name = "Offset sensitivity: Spectral drop offset ratio";
+        d.unit = "%";
+        d.minValue = 5.f;
+        d.maxValue = 100.f;
+        d.defaultValue = defaultCoreParams.spectralDropOffsetRatio_percent;
         list.push_back(d);
     }
 }
@@ -207,6 +215,8 @@ CoreFeatures::Parameters::obtainVampParameter(string identifier, float &value) c
         value = noteDurationThreshold_dB;
     } else if (identifier == "spectralDropFloor") {
         value = spectralDropOffset_dB;
+    } else if (identifier == "spectralDropOffsetRatio") {
+        value = spectralDropOffsetRatio_percent;
     } else if (identifier == "spectralFrequencyMin") {
         value = spectralFrequencyMin_Hz;
     } else if (identifier == "spectralFrequencyMax") {
@@ -252,6 +262,8 @@ CoreFeatures::Parameters::acceptVampParameter(string identifier, float value)
         noteDurationThreshold_dB = value;
     } else if (identifier == "spectralDropFloor") {
         spectralDropOffset_dB = value;
+    } else if (identifier == "spectralDropOffsetRatio") {
+        spectralDropOffsetRatio_percent = value;
     } else if (identifier == "spectralFrequencyMin") {
         spectralFrequencyMin_Hz = value;
     } else if (identifier == "spectralFrequencyMax") {
@@ -771,7 +783,10 @@ CoreFeatures::actualFinish()
                      << df << endl;
 #endif
 
-                if (df <= 0.4) {
+                float offsetRatio =
+                    m_parameters.spectralDropOffsetRatio_percent / 100.f;
+
+                if (df <= offsetRatio) {
                     type = OffsetType::SpectralLevelDrop;
                     break;
                 }
