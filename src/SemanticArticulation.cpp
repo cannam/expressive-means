@@ -52,44 +52,45 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
          { { "Treble",
              { { "spectralFrequencyMin", 100.f },
                { "spectralFrequencyMax", 4000.f },
-               { "sustainBeginThreshold", 50.f },
                { "volumeDevelopmentThreshold", 2.f }
              } },
            { "Alto",
              { { "spectralFrequencyMin", 100.f },
                { "spectralFrequencyMax", 3000.f },
-               { "sustainBeginThreshold", 60.f },
                { "volumeDevelopmentThreshold", 2.f }
              } },
            { "Bass",
              { { "spectralFrequencyMin", 50.f },
                { "spectralFrequencyMax", 2000.f },
-               { "sustainBeginThreshold", 70.f },
                { "volumeDevelopmentThreshold", 3.f }
              } }
          }
         },
        { "instrumentType",
-         { { "Bowed Strings",
+          { { "Bowed Strings",
              { { "onsetSensitivityPitch", 15.f },
                { "onsetSensitivityNoise", 17.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
-          { "Vocal (Classical)",
+           { "Vocal (Classical)",
              { { "onsetSensitivityPitch", 80.f },
                { "onsetSensitivityNoise", 45.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 10.f }
+               { "onsetSensitivityRawPowerThreshold", 10.f }, 
+               { "sustainBeginThreshold", 150.f }, 
+               { "spectralDropOffsetRatio", 30.f }
              } },
            { "Vocal (Jazz & Pop)",
              { { "onsetSensitivityPitch", 60.f },
                { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f },
+               { "sustainBeginThreshold", 100.f }, 
+               { "spectralDropOffsetRatio", 20.f }
              } },
            { "Piano / Plugged Strings",
              { { "pyin-threshdistr", 1.f },
@@ -98,7 +99,10 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityNoise", 5.f },
                { "onsetSensitivityLevel", 9.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f }, 
+               { "noteDurationThreshold", 15.f },               
+               { "spectralDropFloor", -70.f },
+               { "spectralDropOffsetRatio", 20.f }
              } },
            { "Piano / Plugged Strings (historical)",
              { { "pyin-threshdistr", 1.f },
@@ -107,7 +111,10 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityNoise", 8.f },
                { "onsetSensitivityLevel", 10.f },
                { "onsetSensitivityNoiseTimeWindow", 60.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f },
+               { "noteDurationThreshold", 15.f },               
+               { "spectralDropFloor", -70.f },
+               { "spectralDropOffsetRatio", 20.f }
              } },
            { "Wind / Organ",
              { { "onsetSensitivityPitch", 10.f },
@@ -123,8 +130,11 @@ SemanticArticulation::SemanticArticulation(float inputSampleRate) :
                { "onsetSensitivityNoise", 4.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 50.f },
-               { "onsetSensitivityRawPowerThreshold", 80.f }
-             } }                  
+               { "onsetSensitivityRawPowerThreshold", 80.f },
+               { "sustainBeginThreshold", 0.f },
+               { "spectralDropFloor", -70.f },
+               { "spectralDropOffsetRatio", 20.f }
+             } }                                    
          }
        },
        { "noteDurations",
