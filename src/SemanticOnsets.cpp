@@ -58,8 +58,8 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityRawPowerThreshold", 6.f }
              } },
            { "Vocal (Classical)",
-             { { "onsetSensitivityPitch", 80.f },
-               { "onsetSensitivityNoise", 45.f },
+             { { "onsetSensitivityPitch", 20.f },
+               { "onsetSensitivityNoise", 35.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 10.f }, 
@@ -67,8 +67,8 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "spectralDropOffsetRatio", 30.f }
              } },
            { "Vocal (Jazz & Pop)",
-             { { "onsetSensitivityPitch", 60.f },
-               { "onsetSensitivityNoise", 30.f },
+             { { "onsetSensitivityPitch", 20.f },
+               { "onsetSensitivityNoise", 25.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 15.f },
