@@ -70,7 +70,7 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "segmentationType", 3.f }
              } },
            { "Vocal (Classical)",
-             { { "onsetSensitivityPitch", 20.f },
+             { { "onsetSensitivityPitch", 25.f },
                { "onsetSensitivityNoise", 35.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
@@ -91,8 +91,8 @@ SemanticPitchVibrato::SemanticPitchVibrato(float inputSampleRate) :
                { "segmentationType", 3.f }
              } },     
            { "Vocal (Jazz & Pop)",
-             { { "onsetSensitivityPitch", 20.f },
-               { "onsetSensitivityNoise", 25.f },
+             { { "onsetSensitivityPitch", 25.f },
+               { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
                { "onsetSensitivityRawPowerThreshold", 15.f },
