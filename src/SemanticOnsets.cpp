@@ -71,7 +71,7 @@ SemanticOnsets::SemanticOnsets(float inputSampleRate) :
                { "onsetSensitivityNoise", 30.f },
                { "onsetSensitivityLevel", 8.f },
                { "onsetSensitivityNoiseTimeWindow", 100.f },
-               { "onsetSensitivityRawPowerThreshold", 15.f }
+               { "onsetSensitivityRawPowerThreshold", 15.f },
                { "sustainBeginThreshold", 100.f }, 
                { "spectralDropOffsetRatio", 20.f }
              } },
