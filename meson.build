@@ -1,7 +1,7 @@
 project(
     'Expressive Means',
     'c', 'cpp',
-    version: '0.3.1',
+    version: '1.0.0',
     license: 'GPL-2.0-or-later',
     default_options: [
         'cpp_std=c++17',
@@ -14,7 +14,7 @@ project(
 )
 
 # Increment for each bump of project version (major or minor, doesn't matter)
-plugin_version = '4'
+plugin_version = '5'
 
 # Cause plugins to be given fresh names for identification during testing;
 # ensure empty for releases. Must follow pattern for plugin IDs (e.g. no spaces)
