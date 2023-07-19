@@ -18,6 +18,8 @@
 #include <vector>
 #include <cmath>
 
+//#define DEBUG_SEMANTIC_ADAPTER 1
+
 using std::string;
 
 template <class Adapted>
@@ -237,8 +239,10 @@ public:
                               << " is out of name range 0-" << n-1 << std::endl;
                 } else {
                     for (auto ppv : m_namedOptionsParameters.at(id).at(v).second) {
+#ifdef DEBUG_SEMANTIC_ADAPTER
                         std::cerr << "[named] " << ppv.first << " -> "
                                   << ppv.second << std::endl;
+#endif
                         m_adapted.setParameter(ppv.first, ppv.second);
                     }
                 }
@@ -250,8 +254,10 @@ public:
                               << " is out of range 1-" << n << std::endl;
                 } else {
                     for (auto ppv : m_numberedOptionsParameters.at(id).at(v-1)) {
+#ifdef DEBUG_SEMANTIC_ADAPTER
                         std::cerr << "[numbered] " << ppv.first << " -> "
                                   << ppv.second << std::endl;
+#endif
                         m_adapted.setParameter(ppv.first, ppv.second);
                     }
                 }
@@ -260,8 +266,10 @@ public:
                 for (auto ppv : m_toggleParameters.at(id)) {
                     float value =
                         (v < 0.5 ? ppv.second.first : ppv.second.second);
+#ifdef DEBUG_SEMANTIC_ADAPTER
                     std::cerr << "[toggled] " << ppv.first << " -> "
                               << value << std::endl;
+#endif
                     m_adapted.setParameter(ppv.first, value);
                 }                    
             } else {

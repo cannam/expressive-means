@@ -409,8 +409,8 @@ Onsets::getRemainingFeatures()
     }
 
     auto spectralDropDf = m_coreFeatures.getOffsetDropDF();
-        
-    for (size_t i = 0; i < rawPower.size(); ++i) {
+    
+    for (size_t i = 0; i < spectralDropDf.size(); ++i) {
         Feature f;
         f.hasTimestamp = true;
         f.timestamp = m_coreFeatures.timeForStep(i);

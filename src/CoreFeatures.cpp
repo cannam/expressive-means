@@ -511,6 +511,44 @@ CoreFeatures::actualFinish()
         }
     }
 
+    // Retrieve the other detection function sources now and establish
+    // the proper lengths - they can differ because of framing
+    // differences, but we want to make sure we never index anything
+    // beyond the length of the shortest
+
+    vector<double> riseFractions = m_onsetLevelRise.getFractions();
+    m_rawPower = m_power.getRawPower();
+    m_smoothedPower = m_power.getSmoothedPower();
+
+    int n = m_pitch.size();
+#ifdef DEBUG_CORE_FEATURES
+    cerr << "pitch has " << n << " steps" << endl;
+#endif
+    
+    if (int(m_rawPower.size()) < n) {
+        n = m_rawPower.size();
+#ifdef DEBUG_CORE_FEATURES
+        cerr << "but power only " << n << ", reducing count" << endl;
+#endif
+    } else if (int(m_rawPower.size()) > n) {
+#ifdef DEBUG_CORE_FEATURES
+        cerr << "but power has " << m_rawPower.size() << ", truncating it" << endl;
+#endif
+        m_rawPower = vector<double>(m_rawPower.begin(),
+                                    m_rawPower.begin() + n);
+        m_smoothedPower = vector<double>(m_smoothedPower.begin(),
+                                         m_smoothedPower.begin() + n);
+    }
+    
+    if (int(riseFractions.size()) < n) {
+#ifdef DEBUG_CORE_FEATURES
+        cerr << "but riseFractions only " << riseFractions.size() << ", zero-padding it at end" << endl;
+#endif
+        while (int(riseFractions.size()) < n) {
+            riseFractions.push_back(0.0);
+        }
+    }
+    
     // "If the absolute difference of a pitch and its following
     // moving pitch average window falls below o_2" - calculate a
     // moving mean window over the pitch curve (which is in
@@ -522,10 +560,9 @@ CoreFeatures::actualFinish()
                                       m_parameters.stepSize, true);
     int halfLength = pitchFilterLength/2;
     MeanFilter pitchFilter(pitchFilterLength);
-    int n = m_pitch.size();
     m_filteredPitch = vector<double>(n, 0.0);
     pitchFilter.filter(m_pitch.data(), m_filteredPitch.data(), n);
-    
+
     for (int i = 0; i + halfLength < n; ++i) {
         m_pitchOnsetDf.push_back
             (fabs(m_pitch[i] - m_filteredPitch[i + halfLength]));
@@ -577,11 +614,10 @@ CoreFeatures::actualFinish()
         }
     }
     
-    vector<double> riseFractions = m_onsetLevelRise.getFractions();
     double upperThreshold = m_parameters.onsetSensitivityNoise_percent / 100.0;
     double lowerThreshold = upperThreshold / 2.0;
     bool aboveThreshold = false;
-    for (int i = 0; i < int(riseFractions.size()); ++i) {
+    for (int i = 0; i < n; ++i) {
         // Watch for the level to rise above threshold, then wait
         // for it to fall again and identify that moment as the
         // onset.
@@ -595,9 +631,6 @@ CoreFeatures::actualFinish()
         }
     }
 
-    m_rawPower = m_power.getRawPower();
-    m_smoothedPower = m_power.getSmoothedPower();
-        
     int rawPowerSteps = msToSteps(50.0, m_parameters.stepSize, false);
     bool onsetComing = false;
     double prevDerivative = 0.0;
@@ -609,7 +642,7 @@ CoreFeatures::actualFinish()
     // m_powerRiseOnsets) until we see the derivative of raw power
     // begin to fall again, otherwise the onset appears early.
     
-    for (int i = 0; i + 1 < int(m_rawPower.size()); ++i) {
+    for (int i = 0; i + 1 < n; ++i) {
         double derivative = m_rawPower[i+1] - m_rawPower[i];
         if (onsetComing) {
             if (derivative < prevDerivative) {
@@ -686,8 +719,6 @@ CoreFeatures::actualFinish()
         prevP = p;
         prevType = type;
     }
-
-    n = m_rawPower.size();
 
     int sustainBeginSteps = msToSteps(m_parameters.sustainBeginThreshold_ms,
                                       m_parameters.stepSize, false);
