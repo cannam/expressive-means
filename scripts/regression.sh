@@ -15,6 +15,9 @@ fi
 suffix=
 #suffix=-pyin-imprecise
 
+passed=0
+failed=0
+
 while read output ; do 
     echo "--- Testing $output"
     suffixed=$(echo "$output" | sed 's/:/'$suffix':/')
@@ -23,9 +26,11 @@ while read output ; do
 #    cp /tmp/$$ "$expected"
     if diff -q /tmp/$$ "$expected" ; then
         echo "--- Passed"
+        passed=$(($passed+1))
     else
-        sdiff -w 78 /tmp/$$ "$expected"
+        sdiff -w 78 /tmp/$$ "$expected" || true
         echo "*** FAILED"
+        failed=$(($failed+1))
     fi
     echo
 done <<EOF
@@ -34,4 +39,6 @@ done <<EOF
     pitch-vibrato:summary
     portamento:summary
 EOF
+
+echo "--- $passed passed, $failed failed"
 
