@@ -9,7 +9,7 @@ with a primary focus on bowed stringed instruments.
 * Code by Chris Cannam, Particular Programs Ltd (London, UK)
 * Makes use of "pYIN" by Matthias Mauch and of Tilo Haehnel's "vibratoanalyse.R" method
 
-* See the [reference manual](https://github.com/cannam/expressive-means/releases/download/v1.0.0/ExpressiveMeans_ReferenceManual_v1.0.pdf)
+See the [reference manual](https://github.com/cannam/expressive-means/releases/download/v1.0.0/ExpressiveMeans_ReferenceManual_v1.0.pdf) for comprehensive documentation.
 
 ## To install from a pre-built package
 
