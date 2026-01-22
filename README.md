@@ -7,7 +7,7 @@ with a focus on bowed stringed instruments.
  
 * Method by Frithjof Vollmer, Stuttgart University of Music and the Performing Arts (Germany)
 * Code by Chris Cannam, Particular Programs Ltd (London, UK)
-* Makes use of "pYIN" by Matthias Mauch and of Tilo Haehnel's "vibratoanalyse.R"
+* Makes use of Matthias Mauch's "pYIN" and of Tilo Haehnel's "vibratoanalyse.R" model
 
 See the [reference manual](https://github.com/cannam/expressive-means/releases/download/v1.0.0/ExpressiveMeans_ReferenceManual_v1.0.pdf) for comprehensive documentation.
 
